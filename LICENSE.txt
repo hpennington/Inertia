@@ -1,0 +1,125 @@
+# DUAL LICENSE AGREEMENT
+
+**Copyright © 2025 Inertia Graphics. All rights reserved.**
+
+This software and associated documentation (the "Licensed Work") is made available under a dual licensing model. You may choose to use the Licensed Work under either license option below.
+
+## LICENSE OPTIONS
+
+### OPTION 1: GNU GENERAL PUBLIC LICENSE (GPL)
+
+The Licensed Work is licensed under the **GNU General Public License version 3.0 (GPL-3.0)**.
+
+**Key GPL Requirements:**
+- **Open Source:** Any modifications or derivative works must also be released under GPL-3.0
+- **Source Code:** You must provide source code when distributing the Licensed Work or derivatives
+- **Copyleft:** Any larger work that includes GPL code must also be GPL-licensed
+- **Attribution:** You must preserve all copyright notices and license information
+
+**Permitted Under GPL:**
+- Use for any purpose (commercial or non-commercial)
+- Study and modify the source code
+- Distribute original or modified versions
+- Use in commercial products (if entire product is GPL-licensed)
+
+**GPL Restrictions:**
+- Cannot combine with proprietary code in the same program without GPL-licensing everything
+- Cannot distribute without providing source code
+- Cannot remove or modify GPL license terms
+
+**Full GPL License:**
+The complete text of GPL-3.0 is available at: https://www.gnu.org/licenses/gpl-3.0.html
+
+### OPTION 2: COMMERCIAL LICENSE
+
+If you cannot comply with GPL-3.0 requirements, you must obtain a commercial license from Inertia Graphics.
+
+**Commercial License Benefits:**
+- **Proprietary Use:** Embed in closed-source commercial products
+- **No Copyleft:** No requirement to open-source your entire application
+- **Flexible Distribution:** Distribute without source code requirements
+- **Commercial Support:** Access to technical support and updates
+- **Legal Protection:** Indemnification and warranty coverage available
+
+**When You Need a Commercial License:**
+- Creating proprietary software products
+- SaaS applications that don't release source code
+- Embedding in closed-source commercial systems
+- OEM or distribution partnerships
+- Any use where GPL compliance is not feasible
+
+**Commercial License Terms:**
+- Individual negotiation based on use case
+- Pricing tiers available for different scales
+- Options for perpetual or subscription licensing
+- Enterprise packages with support included
+
+## OBTAINING A COMMERCIAL LICENSE
+
+**Contact Information:**
+Email: haydenpennington@icloud.com
+
+**Required Information:**
+- Description of your product/service
+- Expected distribution scale
+- Integration requirements
+- Support needs
+
+**License Process:**
+1. Submit license inquiry with use case details
+2. Receive quote and license terms
+3. Execute license agreement
+4. Receive commercial license certificate
+
+## COMPLIANCE AND ENFORCEMENT
+
+### License Choice
+You must clearly identify which license you are operating under and comply with all terms of your chosen license.
+
+### GPL Compliance Monitoring
+If using under GPL, you must:
+- Provide prominent notice of GPL licensing
+- Make source code available as required
+- Include copy of GPL license with distributions
+- Document any modifications made
+
+### Commercial License Compliance
+Commercial licensees receive specific compliance guidelines with their license agreement.
+
+## GENERAL TERMS
+
+### Dual License Clarification
+This dual licensing means:
+- The same codebase is available under both licenses
+- You choose which license to operate under
+- You cannot mix license terms
+- Switching between licenses requires new agreement
+
+### Contributions
+Any contributions to the Licensed Work may be subject to a Contributor License Agreement (CLA) and will be made available under both licensing options.
+
+### Warranty and Liability
+
+**GPL License:** Licensed "as is" under standard GPL warranty disclaimers.
+
+**Commercial License:** Warranty and liability terms specified in individual commercial license agreements.
+
+### Trademark and Branding
+"Inertia Graphics" and related trademarks remain property of Inertia Graphics regardless of license choice.
+
+### Governing Law
+This agreement is governed by the laws of the State of California, United States. Disputes will be resolved in California state or federal courts.
+
+---
+
+**License Summary:**
+- **For Open Source Projects:** Use under GPL-3.0 (free)
+- **For Proprietary Products:** Commercial license required (paid)
+
+**Contact:** haydenpennington@icloud.com  
+**License Version:** 1.0  
+**Effective Date:** September 12, 2025
+
+---
+
+*This dual license allows maximum flexibility: developers can use our software in open source projects for free under GPL, while commercial developers can purchase a license for proprietary use.*
