@@ -275,17 +275,17 @@ public struct InertiaViewRepresentable: NSViewRepresentable {
 @Observable
 public final class InertiaDataModel{
     public let containerId: InertiaID
-    public var inertiaSchema: InertiaAnimationSchema
+    public var inertiaSchemas: [InertiaID: InertiaAnimationSchema]
     public var tree: Tree
     public var actionableIds: Set<String>
     public var states: [InertiaID: InertiaAnimationState]
     public var actionableIdToAnimationIdMap: [String: String] = [:]
-    
+
     public var isActionable: Bool = false
-    
-    public init(containerId: InertiaID, inertiaSchema: InertiaAnimationSchema, tree: Tree, actionableIds: Set<String>) {
+
+    public init(containerId: InertiaID, inertiaSchemas: [InertiaID: InertiaAnimationSchema], tree: Tree, actionableIds: Set<String>) {
         self.containerId = containerId
-        self.inertiaSchema = inertiaSchema
+        self.inertiaSchemas = inertiaSchemas
         self.tree = tree
         self.actionableIds = actionableIds
         self.states = [:]
@@ -333,7 +333,7 @@ public struct InertiaContainer<Content: View>: View {
         // TODO: - Solve error handling when file is missing or schema is wrong
         if dev {
             self._inertiaDataModel = State(
-                wrappedValue: InertiaDataModel(containerId: id, inertiaSchema: InertiaSchemaAnimation(), tree: Tree(id: id), actionableIds: Set())
+                wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: [:], tree: Tree(id: id), actionableIds: Set())
             )
         } else {
             if let url = bundle.url(forResource: id, withExtension: "json") {
@@ -342,7 +342,7 @@ public struct InertiaContainer<Content: View>: View {
                    let schema = decodeInertiaSchema(json: data) {
                     NSLog("[INERTIA_LOG]: InertiaDataModel instantiated for container: \(id)")
                     self._inertiaDataModel = State(
-                        wrappedValue: InertiaDataModel(containerId: id, inertiaSchema: schema, tree: Tree(id: id), actionableIds: Set())
+                        wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: [schema.id: schema], tree: Tree(id: id), actionableIds: Set())
                     )
                 } else {
                     NSLog("[INERTIA_LOG]:  Failed to decode the inertia schema")
@@ -740,37 +740,46 @@ struct InertiaActionable<Content: View>: View {
         .task {
             updateHierarchyId()
         }
-        .onChange(of: hierarchyId) { _, hierarchyId in
-            guard let hierarchyId else {
-                return
-            }
-            
-            inertiaDataModel?.actionableIdToAnimationIdMap[hierarchyId] = hierarchyIdPrefix
-        }
         .onDisappear {
             // Cleanup disabled for new schema - no shape objects with zIndex
         }
     }
-    
+
     var getAnimation: InertiaAnimationSchema? {
         guard let inertiaDataModel else {
             NSLog("[INERTIA_LOG]:  inertiaDataModel is nil")
             return nil
         }
-        
+
         guard let hierarchyId else {
+            NSLog("[INERTIA_LOG]:  hierarchyId is nil")
             return nil
         }
 
+        NSLog("[INERTIA_LOG]: [InertiaActionable.getAnimation] hierarchyId: \(hierarchyId), hierarchyIdPrefix: \(hierarchyIdPrefix)")
+        NSLog("[INERTIA_LOG]: [InertiaActionable.getAnimation] actionableIdToAnimationIdMap: \(inertiaDataModel.actionableIdToAnimationIdMap)")
+        NSLog("[INERTIA_LOG]: [InertiaActionable.getAnimation] available schema IDs: \(Array(inertiaDataModel.inertiaSchemas.keys))")
+
+        // First try to get the animation ID from the map
         guard let animationId = inertiaDataModel.actionableIdToAnimationIdMap[hierarchyId] else {
-            NSLog("[INERTIA_LOG]:  animationId is nil")
+            NSLog("[INERTIA_LOG]:  no mapping for hierarchyId: \(hierarchyId), trying hierarchyIdPrefix: \(hierarchyIdPrefix)")
+            // If not in the map, try using hierarchyIdPrefix directly (fallback)
+            guard let animation = inertiaDataModel.inertiaSchemas[hierarchyIdPrefix] else {
+                NSLog("[INERTIA_LOG]:  animation not found for hierarchyId: \(hierarchyId) or hierarchyIdPrefix: \(hierarchyIdPrefix)")
+                return nil
+            }
+            NSLog("[INERTIA_LOG]:  using hierarchyIdPrefix fallback: \(hierarchyIdPrefix)")
+            return animation
+        }
+
+        // Look up the animation using the mapped animation ID
+        guard let animation = inertiaDataModel.inertiaSchemas[animationId] else {
+            NSLog("[INERTIA_LOG]:  animation not found for animationId: \(animationId)")
             return nil
         }
-        NSLog("[INERTIA_LOG]:  hierarchyId: \(hierarchyId) animationId: \(animationId)")
-        let animation = inertiaDataModel.inertiaSchema
-    
+        NSLog("[INERTIA_LOG]:  found animation - hierarchyId: \(hierarchyId) -> animationId: \(animationId)")
+
         return animation
-        
     }
 }
 
@@ -1028,7 +1037,7 @@ struct InertiaEditable<Content: View>: View {
             // Cleanup disabled for new schema - no shape objects with zIndex
         }
     }
-    
+
     var getAnimation: InertiaAnimationSchema? {
         guard let inertiaDataModel else {
             NSLog("[INERTIA_LOG]:  inertiaDataModel is nil")
@@ -1036,37 +1045,56 @@ struct InertiaEditable<Content: View>: View {
         }
 
         guard let hierarchyId else {
+            NSLog("[INERTIA_LOG]:  hierarchyId is nil")
             return nil
         }
 
+        NSLog("[INERTIA_LOG]: [InertiaEditable.getAnimation] hierarchyId: \(hierarchyId), hierarchyIdPrefix: \(hierarchyIdPrefix)")
+        NSLog("[INERTIA_LOG]: [InertiaEditable.getAnimation] actionableIdToAnimationIdMap: \(inertiaDataModel.actionableIdToAnimationIdMap)")
+        NSLog("[INERTIA_LOG]: [InertiaEditable.getAnimation] available schema IDs: \(Array(inertiaDataModel.inertiaSchemas.keys))")
+
+        // First try to get the animation ID from the map
         guard let animationId = inertiaDataModel.actionableIdToAnimationIdMap[hierarchyId] else {
-            NSLog("[INERTIA_LOG]:  animationId is nil")
-            return nil
-        }
-        NSLog("[INERTIA_LOG]:  hierarchyId: \(hierarchyId) animationId: \(animationId)")
-        // In the new schema, inertiaSchema is directly the animation
-        let animation = inertiaDataModel.inertiaSchema
-
-        if animation.id == animationId {
+            NSLog("[INERTIA_LOG]:  no mapping for hierarchyId: \(hierarchyId), trying hierarchyIdPrefix: \(hierarchyIdPrefix)")
+            // If not in the map, try using hierarchyIdPrefix directly (fallback)
+            guard let animation = inertiaDataModel.inertiaSchemas[hierarchyIdPrefix] else {
+                NSLog("[INERTIA_LOG]:  animation not found for hierarchyId: \(hierarchyId) or hierarchyIdPrefix: \(hierarchyIdPrefix)")
+                return nil
+            }
+            NSLog("[INERTIA_LOG]:  using hierarchyIdPrefix fallback: \(hierarchyIdPrefix)")
             return animation
-        } else {
-            NSLog("[INERTIA_LOG]:  animation id mismatch - expected: \(animationId), got: \(animation.id)")
+        }
+
+        // Look up the animation using the mapped animation ID
+        guard let animation = inertiaDataModel.inertiaSchemas[animationId] else {
+            NSLog("[INERTIA_LOG]:  animation not found for animationId: \(animationId)")
             return nil
         }
+        NSLog("[INERTIA_LOG]:  found animation - hierarchyId: \(hierarchyId) -> animationId: \(animationId)")
+
+        return animation
     }
-    
+
     func handleMessage(selectedIds: Set<String>) {
         NSLog("[INERTIA_LOG]: handleMessage(selectedIds) \(selectedIds)")
         inertiaDataModel?.actionableIds = selectedIds
     }
     
     func handleMessageSchema(schemaWrappers: [InertiaSchemaWrapper]) {
+        NSLog("[INERTIA_LOG]: [handleMessageSchema] received \(schemaWrappers.count) schema wrappers")
         for schemaWrapper in schemaWrappers {
+            NSLog("[INERTIA_LOG]: [handleMessageSchema] wrapper - containerId: \(schemaWrapper.container.containerId), actionableId: \(schemaWrapper.actionableId), animationId: \(schemaWrapper.animationId)")
+            NSLog("[INERTIA_LOG]: [handleMessageSchema] my containerId: \(inertiaDataModel?.containerId ?? "nil")")
+
             if schemaWrapper.container.containerId == inertiaDataModel?.containerId {
-                
+                // Store the mapping from actionable ID to animation ID
                 inertiaDataModel?.actionableIdToAnimationIdMap[schemaWrapper.actionableId] = schemaWrapper.animationId
-                inertiaDataModel?.inertiaSchema = schemaWrapper.schema
-                NSLog("[INERTIA_LOG]:  animationId: \(schemaWrapper.animationId) actionableId: \(schemaWrapper.actionableId)")
+                // Store the schema by its animation ID
+                inertiaDataModel?.inertiaSchemas[schemaWrapper.animationId] = schemaWrapper.schema
+                NSLog("[INERTIA_LOG]:  ✅ stored schema - animationId: \(schemaWrapper.animationId) actionableId: \(schemaWrapper.actionableId)")
+                NSLog("[INERTIA_LOG]:  map now: \(inertiaDataModel?.actionableIdToAnimationIdMap ?? [:])")
+            } else {
+                NSLog("[INERTIA_LOG]:  ❌ skipped - container mismatch")
             }
         }
     }
