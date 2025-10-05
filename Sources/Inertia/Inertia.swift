@@ -768,16 +768,8 @@ struct InertiaActionable<Content: View>: View {
         }
         NSLog("[INERTIA_LOG]:  hierarchyId: \(hierarchyId) animationId: \(animationId)")
         let animation = inertiaDataModel.inertiaSchema
-//        if let animation {
-//            return animation
-//        } else {
-//            NSLog("\(inertiaDataModel.inertiaSchema.objects)")
-//            NSLog("[INERTIA_LOG]:  animation is nil")
-//            return nil
-//        }
-        
-        NSLog("[INERTIA_LOG]:  animation nil at end")
-        return nil
+    
+        return animation
         
     }
 }
