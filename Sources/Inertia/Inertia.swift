@@ -275,7 +275,7 @@ public struct InertiaViewRepresentable: NSViewRepresentable {
 @Observable
 public final class InertiaDataModel{
     public let containerId: InertiaID
-    public var inertiaSchema: InertiaSchema
+    public var inertiaSchema: InertiaAnimationSchema
     public var tree: Tree
     public var actionableIds: Set<String>
     public var states: [InertiaID: InertiaAnimationState]
@@ -283,7 +283,7 @@ public final class InertiaDataModel{
     
     public var isActionable: Bool = false
     
-    public init(containerId: InertiaID, inertiaSchema: InertiaSchema, tree: Tree, actionableIds: Set<String>) {
+    public init(containerId: InertiaID, inertiaSchema: InertiaAnimationSchema, tree: Tree, actionableIds: Set<String>) {
         self.containerId = containerId
         self.inertiaSchema = inertiaSchema
         self.tree = tree
@@ -333,7 +333,7 @@ public struct InertiaContainer<Content: View>: View {
         // TODO: - Solve error handling when file is missing or schema is wrong
         if dev {
             self._inertiaDataModel = State(
-                wrappedValue: InertiaDataModel(containerId: id, inertiaSchema: InertiaSchema(id: id, objects: []), tree: Tree(id: id), actionableIds: Set())
+                wrappedValue: InertiaDataModel(containerId: id, inertiaSchema: InertiaSchemaAnimation(), tree: Tree(id: id), actionableIds: Set())
             )
         } else {
             if let url = bundle.url(forResource: id, withExtension: "json") {
@@ -685,67 +685,10 @@ struct InertiaActionable<Content: View>: View {
     
     @ViewBuilder
     private var backgroundView: some View {
-        let frame = CGRect(origin: .zero, size: inertiaContainerSize)
-        let device = vm.device
-        NSLog("[INERTIA_LOG]:  enter backgroundView")
-        guard let inertiaDataModel else {
-            return AnyView(EmptyView())
-        }
-                
-        let object = inertiaDataModel.inertiaSchema.objects.first(where: { element in
-            element.objectType == .shape
-        })
-        
-        NSLog("[INERTIA_LOG]:  enter object")
-        guard let currentViewZIndex = object?.zIndex else {
-            return AnyView(EmptyView())
-        }
-        NSLog("[INERTIA_LOG]:  enter currentViewZIndex")
-        guard currentViewZIndex != .zero else {
-            return AnyView(EmptyView())
-        }
-        
-//        if vm.layerOwner[currentViewZIndex - 1] == nil {
-//            NSLog("[INERTIA_LOG]:  enter layerOwnder 1")
-//            vm.layerOwner[currentViewZIndex - 1] = object?.id
-//        } else if vm.layerOwner[currentViewZIndex - 1] != object?.id {
-//            NSLog("[INERTIA_LOG]:  enter layerOwnder 2")
-//            return AnyView(EmptyView())
-//        }
-        
-//        let zUnderObjects = inertiaDataModel.inertiaSchema.objects.filter({$0.objectType == .shape && $0.zIndex == currentViewZIndex - 1})
-        let zUnderObjects = inertiaDataModel.inertiaSchema.objects.filter({$0.objectType == .shape})
-
-        if !zUnderObjects.isEmpty {
-            NSLog("[INERTIA_LOG]:  enter zUnderObjects")
-            let uiview = TouchForwardingComponent(interactive: false, component: {
-                InertiaViewRepresentable {
-                    let vertices = zUnderObjects.flatMap {
-                        let node = TriangleNode(
-                            id: $0.id,
-                            animationValues: .zero,
-                            zIndex: $0.zIndex,
-                            size: $0.width,
-                            center: $0.position,
-                            color: CGColor(red: $0.color[0], green: $0.color[1], blue: $0.color[2], alpha: $0.color[3])
-                        )
-                        
-                        return node.vertices
-                    }
-                    
-                    return VertexRenderer(frame: frame, device: device, vertices: vertices)
-                }.frame(width: inertiaContainerSize.width, height: inertiaContainerSize.height)}, frame: frame)
-            
-            
-            return AnyView(
-                InertiaViewRepresentable {
-                    return uiview
-                }
-            )
-        } else {
-            NSLog("[INERTIA_LOG]:  enter EmptyView")
-            return AnyView(EmptyView())
-        }
+        // Background view disabled for new schema structure
+        // The new schema only contains animation data, no shape objects
+        NSLog("[INERTIA_LOG]:  backgroundView - new schema doesn't support shapes")
+        return AnyView(EmptyView())
     }
     
     @MainActor
@@ -805,11 +748,7 @@ struct InertiaActionable<Content: View>: View {
             inertiaDataModel?.actionableIdToAnimationIdMap[hierarchyId] = hierarchyIdPrefix
         }
         .onDisappear {
-            if let zIndex = inertiaDataModel?.inertiaSchema.objects.first(where: { element in
-                element.objectType == .shape
-            })?.zIndex {
-                vm.layerOwner[zIndex]?.removeAll()
-            }
+            // Cleanup disabled for new schema - no shape objects with zIndex
         }
     }
     
@@ -828,15 +767,14 @@ struct InertiaActionable<Content: View>: View {
             return nil
         }
         NSLog("[INERTIA_LOG]:  hierarchyId: \(hierarchyId) animationId: \(animationId)")
-        let animation = inertiaDataModel.inertiaSchema.objects.first(where: { $0.animation.id == animationId })?.animation
-        
-        if let animation {
-            return animation
-        } else {
-            NSLog("\(inertiaDataModel.inertiaSchema.objects)")
-            NSLog("[INERTIA_LOG]:  animation is nil")
-            return nil
-        }
+        let animation = inertiaDataModel.inertiaSchema
+//        if let animation {
+//            return animation
+//        } else {
+//            NSLog("\(inertiaDataModel.inertiaSchema.objects)")
+//            NSLog("[INERTIA_LOG]:  animation is nil")
+//            return nil
+//        }
         
         NSLog("[INERTIA_LOG]:  animation nil at end")
         return nil
@@ -970,67 +908,10 @@ struct InertiaEditable<Content: View>: View {
     
     @ViewBuilder
     private var backgroundView: some View {
-        let frame = CGRect(origin: .zero, size: inertiaContainerSize)
-        let device = vm.device
-        NSLog("[INERTIA_LOG]:  enter backgroundView")
-        guard let inertiaDataModel else {
-            return AnyView(EmptyView())
-        }
-                
-        let object = inertiaDataModel.inertiaSchema.objects.first(where: { element in
-            element.objectType == .shape
-        })
-        
-        NSLog("[INERTIA_LOG]:  enter object")
-        guard let currentViewZIndex = object?.zIndex else {
-            return AnyView(EmptyView())
-        }
-        NSLog("[INERTIA_LOG]:  enter currentViewZIndex")
-        guard currentViewZIndex != .zero else {
-            return AnyView(EmptyView())
-        }
-        
-//        if vm.layerOwner[currentViewZIndex - 1] == nil {
-//            NSLog("[INERTIA_LOG]:  enter layerOwnder 1")
-//            vm.layerOwner[currentViewZIndex - 1] = object?.id
-//        } else if vm.layerOwner[currentViewZIndex - 1] != object?.id {
-//            NSLog("[INERTIA_LOG]:  enter layerOwnder 2")
-//            return AnyView(EmptyView())
-//        }
-        
-//        let zUnderObjects = inertiaDataModel.inertiaSchema.objects.filter({$0.objectType == .shape && $0.zIndex == currentViewZIndex - 1})
-        let zUnderObjects = inertiaDataModel.inertiaSchema.objects.filter({$0.objectType == .shape})
-
-        if !zUnderObjects.isEmpty {
-            NSLog("[INERTIA_LOG]:  enter zUnderObjects")
-            let uiview = TouchForwardingComponent(interactive: false, component: {
-                InertiaViewRepresentable {
-                    let vertices = zUnderObjects.flatMap {
-                        let node = TriangleNode(
-                            id: $0.id,
-                            animationValues: .zero,
-                            zIndex: $0.zIndex,
-                            size: $0.width,
-                            center: $0.position,
-                            color: CGColor(red: $0.color[0], green: $0.color[1], blue: $0.color[2], alpha: $0.color[3])
-                        )
-                        
-                        return node.vertices
-                    }
-                    
-                    return VertexRenderer(frame: frame, device: device, vertices: vertices)
-                }.frame(width: inertiaContainerSize.width, height: inertiaContainerSize.height)}, frame: frame)
-            
-            
-            return AnyView(
-                InertiaViewRepresentable {
-                    return uiview
-                }
-            )
-        } else {
-            NSLog("[INERTIA_LOG]:  enter EmptyView")
-            return AnyView(EmptyView())
-        }
+        // Background view disabled for new schema structure
+        // The new schema only contains animation data, no shape objects
+        NSLog("[INERTIA_LOG]:  backgroundView - new schema doesn't support shapes")
+        return AnyView(EmptyView())
     }
     
     @MainActor
@@ -1152,11 +1033,7 @@ struct InertiaEditable<Content: View>: View {
             }
         }
         .onDisappear {
-            if let zIndex = inertiaDataModel?.inertiaSchema.objects.first(where: { element in
-                element.objectType == .shape
-            })?.zIndex {
-                vm.layerOwner[zIndex]?.removeAll()
-            }
+            // Cleanup disabled for new schema - no shape objects with zIndex
         }
     }
     
@@ -1165,7 +1042,7 @@ struct InertiaEditable<Content: View>: View {
             NSLog("[INERTIA_LOG]:  inertiaDataModel is nil")
             return nil
         }
-        
+
         guard let hierarchyId else {
             return nil
         }
@@ -1175,19 +1052,15 @@ struct InertiaEditable<Content: View>: View {
             return nil
         }
         NSLog("[INERTIA_LOG]:  hierarchyId: \(hierarchyId) animationId: \(animationId)")
-        let animation = inertiaDataModel.inertiaSchema.objects.first(where: { $0.animation.id == animationId })?.animation
-        
-        if let animation {
+        // In the new schema, inertiaSchema is directly the animation
+        let animation = inertiaDataModel.inertiaSchema
+
+        if animation.id == animationId {
             return animation
         } else {
-            NSLog("\(inertiaDataModel.inertiaSchema.objects)")
-            NSLog("[INERTIA_LOG]:  animation is nil")
+            NSLog("[INERTIA_LOG]:  animation id mismatch - expected: \(animationId), got: \(animation.id)")
             return nil
         }
-        
-        NSLog("[INERTIA_LOG]:  animation nil at end")
-        return nil
-        
     }
     
     func handleMessage(selectedIds: Set<String>) {
@@ -1248,12 +1121,12 @@ public struct InertiaAnimation: Codable, Hashable {
 }
 
 public struct InertiaSchemaWrapper: Codable {
-    public let schema: InertiaSchema
+    public let schema: InertiaAnimationSchema
     public let actionableId: String
     public let container: AnimationContainer
     public let animationId: String
     
-    public init(schema: InertiaSchema, actionableId: String, container: AnimationContainer, animationId: String) {
+    public init(schema: InertiaAnimationSchema, actionableId: String, container: AnimationContainer, animationId: String) {
         self.schema = schema
         self.actionableId = actionableId
         self.container = container
@@ -1386,61 +1259,61 @@ public struct InertiaAnimationKeyframe: Identifiable, Codable, Equatable, Custom
     }
 }
 
-public enum InertiaObjectType: String, Codable, Equatable, CustomStringConvertible {
-    public var description: String {
-        "\(self.rawValue)"
-    }
-    
-    case shape, animation
-}
+//public enum InertiaObjectType: String, Codable, Equatable, CustomStringConvertible {
+//    public var description: String {
+//        "\(self.rawValue)"
+//    }
+//    
+//    case shape, animation
+//}
+//
+//public struct InertiaShape: Codable, Identifiable, Equatable, CustomStringConvertible {
+//    public var description: String {
+//"""
+//{"id": "\(id)", "containerId": "\(containerId.description)", "width": \(width.description), "height": \(height.description), "position": \(position.debugDescription), "color": \(color.description), "shape": \(shape.description), "objectType": \(objectType.description), "zIndex": \(zIndex), "animation": \(animation.description)}
+//"""
+//    }
+//    
+//    public let id: InertiaID
+//    public let containerId: InertiaID
+//    public let width: CGFloat
+//    public let height: CGFloat
+//    public let position: CGPoint
+//    public let color: [CGFloat]
+//    public let shape: String
+//    public let objectType: InertiaObjectType
+//    public let zIndex: Int
+//    public let animation: InertiaAnimationSchema
+//    
+//    public init(id: InertiaID, containerId: InertiaID, width: CGFloat, height: CGFloat, position: CGPoint, color: [CGFloat], shape: String, objectType: InertiaObjectType, zIndex: Int, animation: InertiaAnimationSchema) {
+//        self.id = id
+//        self.containerId = containerId
+//        self.width = width
+//        self.height = height
+//        self.position = position
+//        self.color = color
+//        self.shape = shape
+//        self.objectType = objectType
+//        self.zIndex = zIndex
+//        self.animation = animation
+//    }
+//}
 
-public struct InertiaShape: Codable, Identifiable, Equatable, CustomStringConvertible {
-    public var description: String {
-"""
-{"id": "\(id)", "containerId": "\(containerId.description)", "width": \(width.description), "height": \(height.description), "position": \(position.debugDescription), "color": \(color.description), "shape": \(shape.description), "objectType": \(objectType.description), "zIndex": \(zIndex), "animation": \(animation.description)}
-"""
-    }
-    
-    public let id: InertiaID
-    public let containerId: InertiaID
-    public let width: CGFloat
-    public let height: CGFloat
-    public let position: CGPoint
-    public let color: [CGFloat]
-    public let shape: String
-    public let objectType: InertiaObjectType
-    public let zIndex: Int
-    public let animation: InertiaAnimationSchema
-    
-    public init(id: InertiaID, containerId: InertiaID, width: CGFloat, height: CGFloat, position: CGPoint, color: [CGFloat], shape: String, objectType: InertiaObjectType, zIndex: Int, animation: InertiaAnimationSchema) {
-        self.id = id
-        self.containerId = containerId
-        self.width = width
-        self.height = height
-        self.position = position
-        self.color = color
-        self.shape = shape
-        self.objectType = objectType
-        self.zIndex = zIndex
-        self.animation = animation
-    }
-}
-
-public struct InertiaSchema: Codable, Equatable, CustomStringConvertible {
-    public var description: String {
-"""
-{"id": "\(id)", objects: \(objects)}
-"""
-    }
-    
-    public let id: InertiaID
-    public let objects: [InertiaShape]
-    
-    public init(id: InertiaID, objects: [InertiaShape]) {
-        self.id = id
-        self.objects = objects
-    }
-}
+//public struct InertiaSchema: Codable, Equatable, CustomStringConvertible {
+//    public var description: String {
+//"""
+//{"id": "\(id)", objects: \(objects)}
+//"""
+//    }
+//    
+//    public let id: InertiaID
+//    public let objects: [InertiaShape]
+//    
+//    public init(id: InertiaID, objects: [InertiaShape]) {
+//        self.id = id
+//        self.objects = objects
+//    }
+//}
 
 public enum InertiaAnimationInvokeType: String, Codable, CustomStringConvertible {
     public var description: String {
@@ -1456,12 +1329,12 @@ public struct InertiaAnimationSchema: Codable, Identifiable, Equatable, CustomSt
 {"id": \(id), "initialValues": \(initialValues), "invokeType": \(invokeType), "keyframes": \(keyframes)}
 """
     }
-    
+
     public let id: InertiaID
     public let initialValues: InertiaAnimationValues
     public let invokeType: InertiaAnimationInvokeType
     public let keyframes: [InertiaAnimationKeyframe]
-    
+
     public init(id: InertiaID, initialValues: InertiaAnimationValues, invokeType: InertiaAnimationInvokeType, keyframes: [InertiaAnimationKeyframe]) {
         self.id = id
         self.initialValues = initialValues
@@ -1470,9 +1343,19 @@ public struct InertiaAnimationSchema: Codable, Identifiable, Equatable, CustomSt
     }
 }
 
-func decodeInertiaSchema(json: Data) -> InertiaSchema? {
+// Helper to create an empty schema for dev mode
+func InertiaSchemaAnimation() -> InertiaAnimationSchema {
+    InertiaAnimationSchema(
+        id: "",
+        initialValues: .zero,
+        invokeType: .auto,
+        keyframes: []
+    )
+}
+
+func decodeInertiaSchema(json: Data) -> InertiaAnimationSchema? {
     do {
-        let schema = try JSONDecoder().decode(InertiaSchema.self, from: json)
+        let schema = try JSONDecoder().decode(InertiaAnimationSchema.self, from: json)
         return schema
     } catch {
         print("Failed to decode JSON: \(error.localizedDescription)")
