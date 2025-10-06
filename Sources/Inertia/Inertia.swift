@@ -339,13 +339,14 @@ public struct InertiaContainer<Content: View>: View {
             if let url = bundle.url(forResource: id, withExtension: "json") {
                 let schemaText = try! String(contentsOf: url, encoding: .utf8)
                 if let data = schemaText.data(using: .utf8),
-                   let schema = decodeInertiaSchema(json: data) {
+                   let schemas = decodeInertiaSchemas(json: data) {
                     NSLog("[INERTIA_LOG]: InertiaDataModel instantiated for container: \(id)")
+                    let schemaMap = schemas.reduce(into: [String: InertiaAnimationSchema]()) { $0[$1.id] = $1 }
                     self._inertiaDataModel = State(
-                        wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: [schema.id: schema], tree: Tree(id: id), actionableIds: Set())
+                        wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: schemaMap, tree: Tree(id: id), actionableIds: Set())
                     )
                 } else {
-                    NSLog("[INERTIA_LOG]:  Failed to decode the inertia schema")
+                    NSLog("[INERTIA_LOG]:  Failed to decode the inertia schemas")
                     fatalError()
                 }
             } else {
@@ -1181,15 +1182,15 @@ extension View {
     }
 }
 
-public struct InertiaAnimationValues: VectorArithmetic, Animatable, Codable, Equatable, CustomStringConvertible {
+public struct InertiaAnimationValues: VectorArithmetic, Animatable, Equatable, CustomStringConvertible {
     public var description: String {
 """
 {"scale": \(scale), "translate": \(translate), "rotate": \(rotate), "rotateCenter": \(rotateCenter), "opacity": \(opacity)}
 """
     }
-    
+
     public static var zero = InertiaAnimationValues(scale: .zero, translate: .zero, rotate: .zero, rotateCenter: .zero, opacity: .zero)
-    
+
     public init(scale: CGFloat, translate: CGSize, rotate: CGFloat, rotateCenter: CGFloat, opacity: CGFloat) {
         self.scale = scale
         self.translate = translate
@@ -1197,7 +1198,7 @@ public struct InertiaAnimationValues: VectorArithmetic, Animatable, Codable, Equ
         self.rotateCenter = rotateCenter
         self.opacity = opacity
     }
-    
+
     public var scale: CGFloat
     public var translate: CGSize
     public var rotate: CGFloat
@@ -1252,6 +1253,36 @@ public struct InertiaAnimationValues: VectorArithmetic, Animatable, Codable, Equ
         var result = lhs
         result -= rhs
         return result
+    }
+}
+
+// MARK: - Codable conformance for InertiaAnimationValues
+extension InertiaAnimationValues: Codable {
+    enum CodingKeys: String, CodingKey {
+        case scale, translate, rotate, rotateCenter, opacity
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        scale = try container.decode(CGFloat.self, forKey: .scale)
+        rotate = try container.decode(CGFloat.self, forKey: .rotate)
+        rotateCenter = try container.decode(CGFloat.self, forKey: .rotateCenter)
+        opacity = try container.decode(CGFloat.self, forKey: .opacity)
+
+        // Decode translate as array [x, y]
+        let translateArray = try container.decode([CGFloat].self, forKey: .translate)
+        translate = CGSize(width: translateArray[0], height: translateArray[1])
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(scale, forKey: .scale)
+        try container.encode(rotate, forKey: .rotate)
+        try container.encode(rotateCenter, forKey: .rotateCenter)
+        try container.encode(opacity, forKey: .opacity)
+
+        // Encode translate as array [x, y]
+        try container.encode([translate.width, translate.height], forKey: .translate)
     }
 }
 
@@ -1373,10 +1404,10 @@ func InertiaSchemaAnimation() -> InertiaAnimationSchema {
     )
 }
 
-func decodeInertiaSchema(json: Data) -> InertiaAnimationSchema? {
+func decodeInertiaSchemas(json: Data) -> [InertiaAnimationSchema]? {
     do {
-        let schema = try JSONDecoder().decode(InertiaAnimationSchema.self, from: json)
-        return schema
+        let schemas = try JSONDecoder().decode([InertiaAnimationSchema].self, from: json)
+        return schemas
     } catch {
         print("Failed to decode JSON: \(error.localizedDescription)")
         return nil
