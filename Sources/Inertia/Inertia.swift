@@ -718,16 +718,13 @@ struct InertiaActionable<Content: View>: View {
         Group {
             if let animation = animation ?? getAnimation {
                 wrappedContent
-                    .scaleEffect(animation.initialValues.scale)
-                    .rotationEffect(Angle(degrees: animation.initialValues.rotateCenter), anchor: .center)
-                    .offset(x: animation.initialValues.translate.width * inertiaContainerSize.width, y: animation.initialValues.translate.height * inertiaContainerSize.height)
-                    .opacity(animation.initialValues.opacity)
                     .keyframeAnimator(initialValue: animation.initialValues, content: { contentView, values in
                         contentView
-                            .scaleEffect(values.scale / animation.initialValues.scale)
-                            .rotationEffect(Angle(degrees: values.rotateCenter - animation.initialValues.rotateCenter), anchor: .center)
-                            .offset(x: (values.translate.width - animation.initialValues.translate.width) * inertiaContainerSize.width, y: (values.translate.height - animation.initialValues.translate.height) * inertiaContainerSize.height)
-                            .opacity(values.opacity / animation.initialValues.opacity)
+                            .scaleEffect(values.scale)
+//                            .rotationEffect(Angle (degrees: values.rotate), anchor: .topLeading)
+                            .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
+                            .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
+                            .opacity(values.opacity)
                     }, keyframes: { _ in
                         KeyframeTrack {
                             for keyframe in animation.keyframes {
@@ -946,16 +943,13 @@ struct InertiaEditable<Content: View>: View {
         Group {
             if let animation = animation ?? getAnimation {
                 wrappedContent
-                    .scaleEffect(animation.initialValues.scale)
-                    .rotationEffect(Angle(degrees: animation.initialValues.rotateCenter), anchor: .center)
-                    .offset(x: animation.initialValues.translate.width * inertiaContainerSize.width, y: animation.initialValues.translate.height * inertiaContainerSize.height)
-                    .opacity(animation.initialValues.opacity)
                     .keyframeAnimator(initialValue: animation.initialValues, content: { contentView, values in
                         contentView
-                            .scaleEffect(values.scale / animation.initialValues.scale)
-                            .rotationEffect(Angle(degrees: values.rotateCenter - animation.initialValues.rotateCenter), anchor: .center)
-                            .offset(x: (values.translate.width - animation.initialValues.translate.width) * inertiaContainerSize.width, y: (values.translate.height - animation.initialValues.translate.height) * inertiaContainerSize.height)
-                            .opacity(values.opacity / animation.initialValues.opacity)
+                            .scaleEffect(values.scale)
+                            .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
+                            .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
+                            .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
+                            .opacity(values.opacity)
                     }, keyframes: { _ in
                         KeyframeTrack {
                             for keyframe in animation.keyframes {
