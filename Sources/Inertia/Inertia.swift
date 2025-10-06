@@ -272,22 +272,32 @@ public struct InertiaViewRepresentable: NSViewRepresentable {
 }
 #endif
 
+public struct ActionableIdPair: Codable, Hashable {
+    public let hierarchyIdPrefix: String
+    public let hierarchyId: String
+
+    public init(hierarchyIdPrefix: String, hierarchyId: String) {
+        self.hierarchyIdPrefix = hierarchyIdPrefix
+        self.hierarchyId = hierarchyId
+    }
+}
+
 @Observable
 public final class InertiaDataModel{
     public let containerId: InertiaID
     public var inertiaSchemas: [InertiaID: InertiaAnimationSchema]
     public var tree: Tree
-    public var actionableIds: Set<String>
+    public var actionableIdPairs: Set<ActionableIdPair>
     public var states: [InertiaID: InertiaAnimationState]
     public var actionableIdToAnimationIdMap: [String: String] = [:]
 
     public var isActionable: Bool = false
 
-    public init(containerId: InertiaID, inertiaSchemas: [InertiaID: InertiaAnimationSchema], tree: Tree, actionableIds: Set<String>) {
+    public init(containerId: InertiaID, inertiaSchemas: [InertiaID: InertiaAnimationSchema], tree: Tree, actionableIdPairs: Set<ActionableIdPair>) {
         self.containerId = containerId
         self.inertiaSchemas = inertiaSchemas
         self.tree = tree
-        self.actionableIds = actionableIds
+        self.actionableIdPairs = actionableIdPairs
         self.states = [:]
     }
 }
@@ -333,7 +343,7 @@ public struct InertiaContainer<Content: View>: View {
         // TODO: - Solve error handling when file is missing or schema is wrong
         if dev {
             self._inertiaDataModel = State(
-                wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: [:], tree: Tree(id: id), actionableIds: Set())
+                wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: [:], tree: Tree(id: id), actionableIdPairs: Set())
             )
         } else {
             if let url = bundle.url(forResource: id, withExtension: "json") {
@@ -343,7 +353,7 @@ public struct InertiaContainer<Content: View>: View {
                     NSLog("[INERTIA_LOG]: InertiaDataModel instantiated for container: \(id)")
                     let schemaMap = schemas.reduce(into: [String: InertiaAnimationSchema]()) { $0[$1.id] = $1 }
                     self._inertiaDataModel = State(
-                        wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: schemaMap, tree: Tree(id: id), actionableIds: Set())
+                        wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: schemaMap, tree: Tree(id: id), actionableIdPairs: Set())
                     )
                 } else {
                     NSLog("[INERTIA_LOG]:  Failed to decode the inertia schemas")
@@ -420,13 +430,13 @@ public class WebSocketClient {
             self.actionableIds = actionableIds
         }
     }
-    
+
     public struct MessageTranslation: Codable {
         public let translationX: CGFloat
         public let translationY: CGFloat
-        public let actionableIds: Set<String>
-        
-        public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<String>) {
+        public let actionableIds: Set<ActionableIdPair>
+
+        public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<ActionableIdPair>) {
             self.translationX = translationX
             self.translationY = translationY
             self.actionableIds = actionableIds
@@ -708,13 +718,16 @@ struct InertiaActionable<Content: View>: View {
         Group {
             if let animation = animation ?? getAnimation {
                 wrappedContent
+                    .scaleEffect(animation.initialValues.scale)
+                    .rotationEffect(Angle(degrees: animation.initialValues.rotateCenter), anchor: .center)
+                    .offset(x: animation.initialValues.translate.width * inertiaContainerSize.width, y: animation.initialValues.translate.height * inertiaContainerSize.height)
+                    .opacity(animation.initialValues.opacity)
                     .keyframeAnimator(initialValue: animation.initialValues, content: { contentView, values in
                         contentView
-                            .scaleEffect(values.scale)
-//                            .rotationEffect(Angle (degrees: values.rotate), anchor: .topLeading)
-                            .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
-                            .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
-                            .opacity(values.opacity)
+                            .scaleEffect(values.scale / animation.initialValues.scale)
+                            .rotationEffect(Angle(degrees: values.rotateCenter - animation.initialValues.rotateCenter), anchor: .center)
+                            .offset(x: (values.translate.width - animation.initialValues.translate.width) * inertiaContainerSize.width, y: (values.translate.height - animation.initialValues.translate.height) * inertiaContainerSize.height)
+                            .opacity(values.opacity / animation.initialValues.opacity)
                     }, keyframes: { _ in
                         KeyframeTrack {
                             for keyframe in animation.keyframes {
@@ -822,12 +835,12 @@ struct InertiaEditable<Content: View>: View {
         guard let inertiaDataModel else {
             return false
         }
-        
+
         guard let hierarchyId else {
             return false
         }
-        
-        return inertiaDataModel.actionableIds.contains(hierarchyId)
+
+        return inertiaDataModel.actionableIdPairs.contains(where: { $0.hierarchyId == hierarchyId })
     }
     
     var dragGesture: some Gesture {
@@ -841,12 +854,12 @@ struct InertiaEditable<Content: View>: View {
             .onEnded { value in
                 if inertiaDataModel?.isActionable == true {
                     dragOffset = value.translation
-                    if let actionableIds = inertiaDataModel?.actionableIds {
+                    if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
                         manager.sendMessage(
                             WebSocketClient.MessageTranslation(
                                 translationX: (dragOffset.width) / (inertiaContainerSize.width),
                                 translationY: (dragOffset.height) / (inertiaContainerSize.height),
-                                actionableIds: actionableIds
+                                actionableIds: actionableIdPairs
                             )
                         )
                     }
@@ -876,10 +889,11 @@ struct InertiaEditable<Content: View>: View {
                 return
             }
 
-            if inertiaDataModel.actionableIds.contains(hierarchyId) {
-                inertiaDataModel.actionableIds.remove(hierarchyId)
+            let pair = ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: hierarchyId)
+            if inertiaDataModel.actionableIdPairs.contains(pair) {
+                inertiaDataModel.actionableIdPairs.remove(pair)
             } else {
-                inertiaDataModel.actionableIds.insert(hierarchyId)
+                inertiaDataModel.actionableIdPairs.insert(pair)
             }
             
             if let ip = getHostIPAddressFromResolvConf() {
@@ -891,9 +905,9 @@ struct InertiaEditable<Content: View>: View {
                 if !manager.isConnected {
                     manager.connect(uri: uri)
                 }
-                
+
                 let tree = inertiaDataModel.tree
-                let actionableIds = inertiaDataModel.actionableIds
+                let actionableIds = Set(inertiaDataModel.actionableIdPairs.map { $0.hierarchyId })
                 let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIds)
                 manager.sendMessage(message)
             }
@@ -932,13 +946,16 @@ struct InertiaEditable<Content: View>: View {
         Group {
             if let animation = animation ?? getAnimation {
                 wrappedContent
+                    .scaleEffect(animation.initialValues.scale)
+                    .rotationEffect(Angle(degrees: animation.initialValues.rotateCenter), anchor: .center)
+                    .offset(x: animation.initialValues.translate.width * inertiaContainerSize.width, y: animation.initialValues.translate.height * inertiaContainerSize.height)
+                    .opacity(animation.initialValues.opacity)
                     .keyframeAnimator(initialValue: animation.initialValues, content: { contentView, values in
                         contentView
-                            .scaleEffect(values.scale)
-                            .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
-                            .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
-                            .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
-                            .opacity(values.opacity)
+                            .scaleEffect(values.scale / animation.initialValues.scale)
+                            .rotationEffect(Angle(degrees: values.rotateCenter - animation.initialValues.rotateCenter), anchor: .center)
+                            .offset(x: (values.translate.width - animation.initialValues.translate.width) * inertiaContainerSize.width, y: (values.translate.height - animation.initialValues.translate.height) * inertiaContainerSize.height)
+                            .opacity(values.opacity / animation.initialValues.opacity)
                     }, keyframes: { _ in
                         KeyframeTrack {
                             for keyframe in animation.keyframes {
@@ -947,10 +964,13 @@ struct InertiaEditable<Content: View>: View {
                         }
                     })
                     .onAppear {
-                        self.dragOffset = animation.initialValues.translate
+                        self.dragOffset = CGSize(
+                            width: animation.initialValues.translate.width * inertiaContainerSize.width,
+                            height: animation.initialValues.translate.height * inertiaContainerSize.height
+                        )
                     }
             } else {
-                wrappedContent                    
+                wrappedContent
             }
         }
     //            .frame(minWidth: contentSize.width, minHeight: contentSize.height)
@@ -1027,8 +1047,9 @@ struct InertiaEditable<Content: View>: View {
                 if !manager.isConnected {
                     manager.connect(uri: uri)
                 }
-                
-                if let tree = inertiaDataModel?.tree, let actionableIds = inertiaDataModel?.actionableIds {
+
+                if let tree = inertiaDataModel?.tree, let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
+                    let actionableIds = Set(actionableIdPairs.map { $0.hierarchyId })
                     let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIds)
                     manager.sendMessage(message)
                 }
@@ -1078,7 +1099,11 @@ struct InertiaEditable<Content: View>: View {
 
     func handleMessage(selectedIds: Set<String>) {
         NSLog("[INERTIA_LOG]: handleMessage(selectedIds) \(selectedIds)")
-        inertiaDataModel?.actionableIds = selectedIds
+        // Update actionableIdPairs based on selectedIds
+        // Keep existing pairs that match selectedIds, remove others
+        inertiaDataModel?.actionableIdPairs = inertiaDataModel?.actionableIdPairs.filter { pair in
+            selectedIds.contains(pair.hierarchyId)
+        } ?? Set()
     }
     
     func handleMessageSchema(schemaWrappers: [InertiaSchemaWrapper]) {
