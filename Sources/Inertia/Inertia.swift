@@ -452,9 +452,9 @@ public class WebSocketClient {
     public struct MessageTranslation: Codable {
         public let translationX: CGFloat
         public let translationY: CGFloat
-        public let actionableIds: Set<ActionableIdPair>
+        public let actionableIds: Set<String>
 
-        public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<ActionableIdPair>) {
+        public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<String>) {
             self.translationX = translationX
             self.translationY = translationY
             self.actionableIds = actionableIds
@@ -853,15 +853,8 @@ struct InertiaEditable<Content: View>: View {
     @Environment(\.inertiaContainerSize) var inertiaContainerSize: CGSize
     
     var showSelectedBorder: Bool {
-        guard let inertiaDataModel else {
-            return false
-        }
-
-        guard let hierarchyId else {
-            return false
-        }
-
-        return inertiaDataModel.actionableIdPairs.contains(where: { $0.hierarchyId == hierarchyId })
+        print("[INERTIA_LOG]: \(hierarchyId) \(hierarchyIdPrefix)")
+        return inertiaDataModel!.actionableIdPairs.contains(where: { $0.hierarchyId == hierarchyId })
     }
     
     var dragGesture: some Gesture {
@@ -880,7 +873,7 @@ struct InertiaEditable<Content: View>: View {
                             WebSocketClient.MessageTranslation(
                                 translationX: (dragOffset.width) / (inertiaContainerSize.width),
                                 translationY: (dragOffset.height) / (inertiaContainerSize.height),
-                                actionableIds: actionableIdPairs
+                                actionableIds: Set(actionableIdPairs.map {$0.hierarchyId})
                             )
                         )
                     }
@@ -1043,7 +1036,7 @@ struct InertiaEditable<Content: View>: View {
             }
         })
         .onChange(of: hierarchyId) { oldValue, hierarchyId in
-            print("onAppear: \(hierarchyId)")
+            print("[INERTIA_LOG]: onAppear: \(hierarchyId)")
             if oldValue != nil {
                 return
             }
@@ -1051,6 +1044,7 @@ struct InertiaEditable<Content: View>: View {
             guard let hierarchyId else {
                 return
             }
+            
             NSLog("[INERTIA_LOG]:  adding relationship: hierarchyId: \(hierarchyId) inertiaParentID: \(inertiaParentID), isInertiaContainer: \(isInertiaContainer)")
             inertiaDataModel?.tree.addRelationship(id: hierarchyId, parentId: inertiaParentID, parentIsContainer: isInertiaContainer)
             if let tree = inertiaDataModel?.tree {
@@ -1126,8 +1120,9 @@ struct InertiaEditable<Content: View>: View {
         // Update actionableIdPairs based on selectedIds
         // Keep existing pairs that match selectedIds, remove others
         inertiaDataModel?.actionableIdPairs = inertiaDataModel?.actionableIdPairs.filter { pair in
-            selectedIds.contains(pair.hierarchyId)
+            selectedIds.contains(pair.hierarchyIdPrefix)
         } ?? Set()
+//        inertiaDataModel?.actionableIdPairs
     }
     
     func handleMessageSchema(schemaWrappers: [InertiaSchemaWrapper]) {
