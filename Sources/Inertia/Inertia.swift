@@ -480,7 +480,7 @@ public class WebSocketClient {
     func sendMessage(_ message: MessageActionables) {
         do {
             guard let jsonData = try? JSONEncoder().encode(message) else {
-                print("Error: Could not encode JSON to data")
+                print("[INERTIA_LOG]: Error: Could not encode JSON to data")
                  return
             }
             
@@ -490,9 +490,9 @@ public class WebSocketClient {
             let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
             task?.send(messageData) { error in
                 if let error = error {
-                    print("Error sending message: \(error)")
+                    print("[INERTIA_LOG]: Error sending message: \(error)")
                 } else {
-                    print("Message sent: \(messageData)")
+                    print("[INERTIA_LOG]: Message sent: \(messageData)")
                 }
                 
                 // Begin receiving responses
@@ -502,7 +502,7 @@ public class WebSocketClient {
             }
             
         } catch {
-            print("Error encoding data: \(error)")
+            print("[INERTIA_LOG]: Error encoding data: \(error)")
         }
     }
     
