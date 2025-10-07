@@ -163,7 +163,7 @@ private struct IsInertiaContainerKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var inertiaDataModel: InertiaDataModel? {
+    public var inertiaDataModel: InertiaDataModel? {
         get { self[InertiaDataModelKey.self] }
         set { self[InertiaDataModelKey.self] = newValue }
     }
@@ -284,21 +284,39 @@ public struct ActionableIdPair: Codable, Hashable {
 
 @Observable
 public final class InertiaDataModel{
-    public let containerId: InertiaID
-    public var inertiaSchemas: [InertiaID: InertiaAnimationSchema]
-    public var tree: Tree
-    public var actionableIdPairs: Set<ActionableIdPair>
-    public var states: [InertiaID: InertiaAnimationState]
-    public var actionableIdToAnimationIdMap: [String: String] = [:]
+    let containerId: InertiaID
+    var inertiaSchemas: [InertiaID: InertiaAnimationSchema]
+    var tree: Tree
+    var actionableIdPairs: Set<ActionableIdPair>
+    var states: [InertiaID: InertiaAnimationState]
+    var actionableIdToAnimationIdMap: [String: String] = [:]
+    var registeredHierarchyIdPrefixes: Set<String> = []
 
-    public var isActionable: Bool = false
+    var isActionable: Bool = false
+
+    public func trigger(_ id: InertiaID) {
+        states[id]?.trigger = true
+    }
+
+    public func registerHierarchyIdPrefix(_ prefix: String) {
+        registeredHierarchyIdPrefixes.insert(prefix)
+        // Initialize state for this prefix if it doesn't exist
+        if states[prefix] == nil {
+            states[prefix] = InertiaAnimationState(id: prefix, trigger: false, isCancelled: false)
+        }
+    }
 
     public init(containerId: InertiaID, inertiaSchemas: [InertiaID: InertiaAnimationSchema], tree: Tree, actionableIdPairs: Set<ActionableIdPair>) {
         self.containerId = containerId
         self.inertiaSchemas = inertiaSchemas
         self.tree = tree
         self.actionableIdPairs = actionableIdPairs
-        self.states = [:]
+        // Initialize from schema keys
+        self.registeredHierarchyIdPrefixes = Set(inertiaSchemas.keys)
+        // Initialize states for all schema keys
+        self.states = inertiaSchemas.keys.reduce(into: [:]) { result, key in
+            result[key] = InertiaAnimationState(id: key, trigger: false, isCancelled: false)
+        }
     }
 }
 
@@ -711,6 +729,8 @@ struct InertiaActionable<Content: View>: View {
             hierarchyId = "\(hierarchyIdPrefix)--\(Int.zero)"
             indexManager?.indexMap[hierarchyIdPrefix] = 1
         }
+        // Register this prefix with the data model
+        inertiaDataModel?.registerHierarchyIdPrefix(hierarchyIdPrefix)
     }
     
     var body: some View {
@@ -764,6 +784,10 @@ struct InertiaActionable<Content: View>: View {
 
         guard let hierarchyId else {
             NSLog("[INERTIA_LOG]:  hierarchyId is nil")
+            return nil
+        }
+        
+        guard inertiaDataModel.states[hierarchyIdPrefix]?.trigger == true else {
             return nil
         }
 
@@ -936,6 +960,8 @@ struct InertiaEditable<Content: View>: View {
             hierarchyId = "\(hierarchyIdPrefix)--\(Int.zero)"
             indexManager?.indexMap[hierarchyIdPrefix] = 1
         }
+        // Register this prefix with the data model
+        inertiaDataModel?.registerHierarchyIdPrefix(hierarchyIdPrefix)
     }
     
     var body: some View {
@@ -1064,6 +1090,10 @@ struct InertiaEditable<Content: View>: View {
             NSLog("[INERTIA_LOG]:  hierarchyId is nil")
             return nil
         }
+        
+        guard inertiaDataModel.states[hierarchyIdPrefix]?.trigger == true else {
+            return nil
+        }
 
         NSLog("[INERTIA_LOG]: [InertiaEditable.getAnimation] hierarchyId: \(hierarchyId), hierarchyIdPrefix: \(hierarchyIdPrefix)")
         NSLog("[INERTIA_LOG]: [InertiaEditable.getAnimation] actionableIdToAnimationIdMap: \(inertiaDataModel.actionableIdToAnimationIdMap)")
@@ -1126,7 +1156,7 @@ struct InertiaEditable<Content: View>: View {
 
 public struct InertiaAnimationState: Identifiable, Equatable, Codable {
     public let id: InertiaID
-    public let trigger: Bool?
+    public var trigger: Bool?
     public let isCancelled: Bool
     
     public init(id: InertiaID, trigger: Bool? = nil, isCancelled: Bool = false) {
