@@ -406,7 +406,7 @@ public struct InertiaContainer<Content: View>: View {
 public class WebSocketClient {
     var task: URLSessionWebSocketTask? = nil
     var isConnected: Bool = false
-    public var messageReceived: ((_ selectedIds: Set<String>) -> Void)? = nil
+    public var messageReceived: ((_ selectedIds: Set<ActionableIdPair>) -> Void)? = nil
     public var messageReceivedSchema: ((_ schemas: [InertiaSchemaWrapper]) -> Void)? = nil
     public var messageReceivedIsActionable: ((_ isActionable: Bool) -> Void)? = nil
     static let shared = WebSocketClient()
@@ -441,9 +441,9 @@ public class WebSocketClient {
     
     public struct MessageActionables: Codable {
         public let tree: Tree
-        public let actionableIds: Set<String>
+        public let actionableIds: Set<ActionableIdPair>
         
-        public init(tree: Tree, actionableIds: Set<String>) {
+        public init(tree: Tree, actionableIds: Set<ActionableIdPair>) {
             self.tree = tree
             self.actionableIds = actionableIds
         }
@@ -452,9 +452,9 @@ public class WebSocketClient {
     public struct MessageTranslation: Codable {
         public let translationX: CGFloat
         public let translationY: CGFloat
-        public let actionableIds: Set<String>
+        public let actionableIds: Set<ActionableIdPair>
 
-        public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<String>) {
+        public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<ActionableIdPair>) {
             self.translationX = translationX
             self.translationY = translationY
             self.actionableIds = actionableIds
@@ -592,8 +592,6 @@ public class WebSocketClient {
                     case .actionables:
                         let msg = try! JSONDecoder().decode(WebSocketClient.MessageActionables.self, from: messageWrapper.payload)
                         self.messageReceived?(msg.actionableIds)
-//                        fatalError()
-                        break
                     case .schema:
                         guard let schemaMessage = try? JSONDecoder().decode(WebSocketClient.MessageSchema.self, from: messageWrapper.payload) else {
                             return
@@ -873,7 +871,7 @@ struct InertiaEditable<Content: View>: View {
                             WebSocketClient.MessageTranslation(
                                 translationX: (dragOffset.width) / (inertiaContainerSize.width),
                                 translationY: (dragOffset.height) / (inertiaContainerSize.height),
-                                actionableIds: Set(actionableIdPairs.map {$0.hierarchyId})
+                                actionableIds: actionableIdPairs
                             )
                         )
                     }
@@ -902,7 +900,7 @@ struct InertiaEditable<Content: View>: View {
             guard let hierarchyId else {
                 return
             }
-
+            
             let pair = ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: hierarchyId)
             if inertiaDataModel.actionableIdPairs.contains(pair) {
                 inertiaDataModel.actionableIdPairs.remove(pair)
@@ -921,7 +919,7 @@ struct InertiaEditable<Content: View>: View {
                 }
 
                 let tree = inertiaDataModel.tree
-                let actionableIds = Set(inertiaDataModel.actionableIdPairs.map { $0.hierarchyId })
+                let actionableIds = inertiaDataModel.actionableIdPairs
                 let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIds)
                 manager.sendMessage(message)
             }
@@ -1063,8 +1061,7 @@ struct InertiaEditable<Content: View>: View {
                 }
 
                 if let tree = inertiaDataModel?.tree, let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
-                    let actionableIds = Set(actionableIdPairs.map { $0.hierarchyId })
-                    let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIds)
+                    let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIdPairs)
                     manager.sendMessage(message)
                 }
             }
@@ -1115,15 +1112,30 @@ struct InertiaEditable<Content: View>: View {
         return animation
     }
 
-    func handleMessage(selectedIds: Set<String>) {
-        NSLog("[INERTIA_LOG]: handleMessage(selectedIds) \(selectedIds)")
-        // Update actionableIdPairs based on selectedIds
-        // Keep existing pairs that match selectedIds, remove others
-        inertiaDataModel?.actionableIdPairs = inertiaDataModel?.actionableIdPairs.filter { pair in
-            selectedIds.contains(pair.hierarchyIdPrefix)
-        } ?? Set()
-//        inertiaDataModel?.actionableIdPairs
+//    func handleMessage(selectedIds: Set<ActionableIdPair>) {
+//        NSLog("[INERTIA_LOG]: Az(selectedIds) \(selectedIds)")
+//        // Update actionableIdPairs based on selectedIds
+//        // Keep existing pairs that match selectedIds, remove others
+//        inertiaDataModel?.actionableIdPairs = inertiaDataModel?.actionableIdPairs.filter { pair in
+//            selectedIds.contains(pair)
+//        } ?? Set()
+////        inertiaDataModel?.actionableIdPairs
+//    }
+    
+    func handleMessage(_ msg: Set<ActionableIdPair>) {
+        NSLog("[INERTIA_LOG]: Received handleMessage with \(msg.count) IDs")
+
+        // Build a new Set<ActionableIdPair> from the message
+        let newPairs = Set(msg)
+
+        NSLog("[INERTIA_LOG]: ✅ Updating actionableIdPairs from WS: \(newPairs)")
+
+        // Replace inertiaDataModel.actionableIdPairs with the new set
+        if var model = inertiaDataModel {
+            model.actionableIdPairs = newPairs
+        }
     }
+
     
     func handleMessageSchema(schemaWrappers: [InertiaSchemaWrapper]) {
         NSLog("[INERTIA_LOG]: [handleMessageSchema] received \(schemaWrappers.count) schema wrappers")
