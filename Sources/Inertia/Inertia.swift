@@ -1129,10 +1129,6 @@ struct InertiaEditable<Content: View>: View {
         NSLog("[INERTIA_LOG]: ✅ Updating actionableIdPairs from WS: \(newPairs)")
         
         if var model = inertiaDataModel {
-            let oldPairs = model.actionableIdPairs
-            for oldPair in oldPairs {
-                newPairs.insert(oldPair)
-            }
             model.actionableIdPairs = newPairs
         }
     }
