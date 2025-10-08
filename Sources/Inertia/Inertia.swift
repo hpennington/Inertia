@@ -1124,14 +1124,15 @@ struct InertiaEditable<Content: View>: View {
     
     func handleMessage(_ msg: Set<ActionableIdPair>) {
         NSLog("[INERTIA_LOG]: Received handleMessage with \(msg.count) IDs")
-
-        // Build a new Set<ActionableIdPair> from the message
-        let newPairs = Set(msg)
+        var newPairs = Set(msg)
 
         NSLog("[INERTIA_LOG]: ✅ Updating actionableIdPairs from WS: \(newPairs)")
-
-        // Replace inertiaDataModel.actionableIdPairs with the new set
+        
         if var model = inertiaDataModel {
+            let oldPairs = model.actionableIdPairs
+            for oldPair in oldPairs {
+                newPairs.insert(oldPair)
+            }
             model.actionableIdPairs = newPairs
         }
     }
