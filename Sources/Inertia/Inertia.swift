@@ -411,6 +411,7 @@ public class WebSocketClient {
     public var messageReceivedSchema: ((_ schemas: [InertiaSchemaWrapper]) -> Void)? = nil
     public var messageReceivedIsActionable: ((_ isActionable: Bool) -> Void)? = nil
     static let shared = WebSocketClient()
+    private let sendQueue = DispatchQueue(label: "com.inertia.websocket.send")
 
     init() {
 
@@ -479,93 +480,111 @@ public class WebSocketClient {
     }
     
     func sendMessage(_ message: MessageActionables) {
-        do {
-            guard let jsonData = try? JSONEncoder().encode(message) else {
-                print("[INERTIA_LOG]: Error: Could not encode JSON to data")
-                 return
-            }
-            
-            let messageWrapper = MessageWrapper(type: .actionables, payload: jsonData)
-            let messageWrapperData = try JSONEncoder().encode(messageWrapper)
+        sendQueue.async {
+            do {
+                guard let jsonData = try? JSONEncoder().encode(message) else {
+                    print("[INERTIA_LOG]: Error: Could not encode JSON to data")
+                     return
+                }
 
-            let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
-            task?.send(messageData) { error in
-                if let error = error {
-                    print("[INERTIA_LOG]: Error sending message: \(error)")
-                } else {
-                    print("[INERTIA_LOG]: Message sent: \(messageData)")
+                let messageWrapper = MessageWrapper(type: .actionables, payload: jsonData)
+                let messageWrapperData = try JSONEncoder().encode(messageWrapper)
+
+                let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
+
+                let semaphore = DispatchSemaphore(value: 0)
+                self.task?.send(messageData) { error in
+                    if let error = error {
+                        print("[INERTIA_LOG]: Error sending message: \(error)")
+                    } else {
+                        print("[INERTIA_LOG]: Message sent: \(messageData)")
+                    }
+
+                    // Begin receiving responses
+                    if let task = self.task {
+                        self.receiveMessage(task: task)
+                    }
+                    semaphore.signal()
                 }
-                
-                // Begin receiving responses
-                if let task = self.task {
-                    self.receiveMessage(task: task)
-                }
+                semaphore.wait()
+
+            } catch {
+                print("[INERTIA_LOG]: Error encoding data: \(error)")
             }
-            
-        } catch {
-            print("[INERTIA_LOG]: Error encoding data: \(error)")
         }
     }
     
     func sendMessage(_ message: MessageSchema) {
-        do {
-            guard let jsonData = try? JSONEncoder().encode(message) else {
-                print("Error: Could not encode JSON to data")
-                 return
-            }
-            
-            let messageWrapper = MessageWrapper(type: .schema, payload: jsonData)
-            guard let messageWrapperData = try? JSONEncoder().encode(messageWrapper) else {
-                return
-            }
+        sendQueue.async {
+            do {
+                guard let jsonData = try? JSONEncoder().encode(message) else {
+                    print("Error: Could not encode JSON to data")
+                     return
+                }
 
-            let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
-            task?.send(messageData) { error in
-                if let error = error {
-                    print("Error sending message: \(error)")
-                } else {
-                    print("Message sent: \(messageData)")
+                let messageWrapper = MessageWrapper(type: .schema, payload: jsonData)
+                guard let messageWrapperData = try? JSONEncoder().encode(messageWrapper) else {
+                    return
                 }
-                
-                // Begin receiving responses
-                if let task = self.task {
-                    self.receiveMessage(task: task)
+
+                let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
+
+                let semaphore = DispatchSemaphore(value: 0)
+                self.task?.send(messageData) { error in
+                    if let error = error {
+                        print("Error sending message: \(error)")
+                    } else {
+                        print("Message sent: \(messageData)")
+                    }
+
+                    // Begin receiving responses
+                    if let task = self.task {
+                        self.receiveMessage(task: task)
+                    }
+                    semaphore.signal()
                 }
+                semaphore.wait()
+
+            } catch {
+                print("Error encoding data: \(error)")
             }
-            
-        } catch {
-            print("Error encoding data: \(error)")
         }
     }
     
     func sendMessage(_ message: MessageTranslation) {
-        do {
-            guard let jsonData = try? JSONEncoder().encode(message) else {
-                print("Error: Could not encode JSON to data")
-                return
-            }
-            
-            let messageWrapper = MessageWrapper(type: .translationEnded, payload: jsonData)
-            guard let messageWrapperData = try? JSONEncoder().encode(messageWrapper) else {
-                return
-            }
-            
-            let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
-            task?.send(messageData) { error in
-                if let error = error {
-                    print("Error sending message: \(error)")
-                } else {
-                    print("Message sent: \(messageData)")
+        sendQueue.async {
+            do {
+                guard let jsonData = try? JSONEncoder().encode(message) else {
+                    print("Error: Could not encode JSON to data")
+                    return
                 }
-                
-                // Begin receiving responses
-                if let task = self.task {
-                    self.receiveMessage(task: task)
+
+                let messageWrapper = MessageWrapper(type: .translationEnded, payload: jsonData)
+                guard let messageWrapperData = try? JSONEncoder().encode(messageWrapper) else {
+                    return
                 }
+
+                let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
+
+                let semaphore = DispatchSemaphore(value: 0)
+                self.task?.send(messageData) { error in
+                    if let error = error {
+                        print("Error sending message: \(error)")
+                    } else {
+                        print("Message sent: \(messageData)")
+                    }
+
+                    // Begin receiving responses
+                    if let task = self.task {
+                        self.receiveMessage(task: task)
+                    }
+                    semaphore.signal()
+                }
+                semaphore.wait()
+
+            } catch {
+                print("Error encoding data: \(error)")
             }
-            
-        } catch {
-            print("Error encoding data: \(error)")
         }
     }
     
@@ -997,10 +1016,8 @@ struct InertiaEditable<Content: View>: View {
         .environment(\.inertiaParentID, hierarchyId)
         .environment(\.isInertiaContainer, false)
         .buttonStyle(.plain)
-        .task {
-            updateHierarchyId()
-        }
         .onAppear {
+            updateHierarchyId()
             if !manager.isConnected {
                 if let ip = getHostIPAddressFromResolvConf() {
                     let uri = URL(string: "ws://\(ip):8060")!
@@ -1054,16 +1071,22 @@ struct InertiaEditable<Content: View>: View {
             }
             
             if let ip = getHostIPAddressFromResolvConf() {
-                let uri = URL(string: "ws://\(ip):8060")!                
+                let uri = URL(string: "ws://\(ip):8060")!
                 NSLog("[INERTIA_LOG]: Starting to send data 2...")
                 
                 if !manager.isConnected {
                     manager.connect(uri: uri)
                 }
-
-                if let tree = inertiaDataModel?.tree, let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
-                    let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIdPairs)
-                    manager.sendMessage(message)
+                NSLog("[INERTIA_LOG]: past connect")
+                
+                if let tree = inertiaDataModel?.tree {
+                    NSLog("[INERTIA_LOG]: tree \(tree)")
+                    if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
+                        NSLog("[INERTIA_LOG]: tree \(actionableIdPairs)")
+                        let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIdPairs)
+                        NSLog("[INERTIA_LOG]: \(message)")
+                        manager.sendMessage(message)
+                    }
                 }
             }
         }
