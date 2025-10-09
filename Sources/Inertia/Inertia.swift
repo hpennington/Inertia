@@ -282,6 +282,7 @@ public struct ActionableIdPair: Codable, Hashable {
     }
 }
 
+@MainActor
 @Observable
 public final class InertiaDataModel{
     let containerId: InertiaID
