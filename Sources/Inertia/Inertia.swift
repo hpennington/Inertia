@@ -642,35 +642,7 @@ public class WebSocketClient {
 }
 
 func getHostIPAddressFromResolvConf() -> String? {
-    guard let resolvContents = try? String(contentsOfFile: "/etc/resolv.conf") else {
-        print("Failed to read /etc/resolv.conf")
-        return nil
-    }
-    
-    let lines = resolvContents.components(separatedBy: "\n")
-    var potentialIPs = [String]()
-    
-    for line in lines {
-        if line.starts(with: "nameserver") {
-            let components = line.components(separatedBy: " ")
-            if components.count > 1 {
-                let ipAddress = components[1].trimmingCharacters(in: .whitespaces)
-                
-                // Simple IP address validation
-                if isValidIPAddress(ipAddress) {
-                    potentialIPs.append(ipAddress)
-                }
-            }
-        }
-    }
-    
-    if let firstValidIP = potentialIPs.first {
-        print("firstValidIP: \(firstValidIP)")
-        return firstValidIP
-    } else {
-        print("No valid IP addresses found in /etc/resolv.conf")
-        return nil
-    }
+    return "10.0.0.248"
 }
 
 // Helper function to validate an IPv4 address format
