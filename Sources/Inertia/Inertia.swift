@@ -404,256 +404,6 @@ public struct InertiaContainer<Content: View>: View {
     }
 }
 
-public class WebSocketClient {
-    var task: URLSessionWebSocketTask? = nil
-    var isConnected: Bool = false
-    public var messageReceived: ((_ selectedIds: Set<ActionableIdPair>) -> Void)? = nil
-    public var messageReceivedSchema: ((_ schemas: [InertiaSchemaWrapper]) -> Void)? = nil
-    public var messageReceivedIsActionable: ((_ isActionable: Bool) -> Void)? = nil
-    static let shared = WebSocketClient()
-    private let sendQueue = DispatchQueue(label: "com.inertia.websocket.send")
-
-    init() {
-
-    }
-    
-    func connect(uri: URL) {
-        self.task = URLSession.shared.webSocketTask(with: uri)
-        self.task?.resume()
-        isConnected = self.task?.state == .completed || self.task?.state == .running || self.task?.state == .suspended
-    }
-    
-    public enum MessageType: String, Codable {
-        case actionable
-        case actionables
-//        case selected
-        case translationEnded
-        case schema
-    }
-
-    public struct MessageWrapper: Codable {
-        public let type: MessageType
-        public let payload: Data
-        
-        public init(type: MessageType, payload: Data) {
-            self.type = type
-            self.payload = payload
-        }
-    }
-    
-    public struct MessageActionables: Codable {
-        public let tree: Tree
-        public let actionableIds: Set<ActionableIdPair>
-        
-        public init(tree: Tree, actionableIds: Set<ActionableIdPair>) {
-            self.tree = tree
-            self.actionableIds = actionableIds
-        }
-    }
-
-    public struct MessageTranslation: Codable {
-        public let translationX: CGFloat
-        public let translationY: CGFloat
-        public let actionableIds: Set<ActionableIdPair>
-
-        public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<ActionableIdPair>) {
-            self.translationX = translationX
-            self.translationY = translationY
-            self.actionableIds = actionableIds
-        }
-    }
-    
-    public struct MessageActionable: Codable {
-        public let isActionable: Bool
-        
-        public init(isActionable: Bool) {
-            self.isActionable = isActionable
-        }
-    }
-    
-    public struct MessageSchema: Codable {
-        public let schemaWrappers: [InertiaSchemaWrapper]
-        
-        public init(schemaWrappers: [InertiaSchemaWrapper]) {
-            self.schemaWrappers = schemaWrappers
-        }
-    }
-    
-    func sendMessage(_ message: MessageActionables) {
-        sendQueue.async {
-            do {
-                guard let jsonData = try? JSONEncoder().encode(message) else {
-                    print("[INERTIA_LOG]: Error: Could not encode JSON to data")
-                     return
-                }
-
-                let messageWrapper = MessageWrapper(type: .actionables, payload: jsonData)
-                let messageWrapperData = try JSONEncoder().encode(messageWrapper)
-
-                let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
-
-                let semaphore = DispatchSemaphore(value: 0)
-                self.task?.send(messageData) { error in
-                    if let error = error {
-                        print("[INERTIA_LOG]: Error sending message: \(error)")
-                    } else {
-                        print("[INERTIA_LOG]: Message sent: \(messageData)")
-                    }
-
-                    // Begin receiving responses
-                    if let task = self.task {
-                        self.receiveMessage(task: task)
-                    }
-                    semaphore.signal()
-                }
-                semaphore.wait()
-
-            } catch {
-                print("[INERTIA_LOG]: Error encoding data: \(error)")
-            }
-        }
-    }
-    
-    func sendMessage(_ message: MessageSchema) {
-        sendQueue.async {
-            do {
-                guard let jsonData = try? JSONEncoder().encode(message) else {
-                    print("Error: Could not encode JSON to data")
-                     return
-                }
-
-                let messageWrapper = MessageWrapper(type: .schema, payload: jsonData)
-                guard let messageWrapperData = try? JSONEncoder().encode(messageWrapper) else {
-                    return
-                }
-
-                let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
-
-                let semaphore = DispatchSemaphore(value: 0)
-                self.task?.send(messageData) { error in
-                    if let error = error {
-                        print("Error sending message: \(error)")
-                    } else {
-                        print("Message sent: \(messageData)")
-                    }
-
-                    // Begin receiving responses
-                    if let task = self.task {
-                        self.receiveMessage(task: task)
-                    }
-                    semaphore.signal()
-                }
-                semaphore.wait()
-
-            } catch {
-                print("Error encoding data: \(error)")
-            }
-        }
-    }
-    
-    func sendMessage(_ message: MessageTranslation) {
-        sendQueue.async {
-            do {
-                guard let jsonData = try? JSONEncoder().encode(message) else {
-                    print("Error: Could not encode JSON to data")
-                    return
-                }
-
-                let messageWrapper = MessageWrapper(type: .translationEnded, payload: jsonData)
-                guard let messageWrapperData = try? JSONEncoder().encode(messageWrapper) else {
-                    return
-                }
-
-                let messageData = URLSessionWebSocketTask.Message.data(messageWrapperData)
-
-                let semaphore = DispatchSemaphore(value: 0)
-                self.task?.send(messageData) { error in
-                    if let error = error {
-                        print("Error sending message: \(error)")
-                    } else {
-                        print("Message sent: \(messageData)")
-                    }
-
-                    // Begin receiving responses
-                    if let task = self.task {
-                        self.receiveMessage(task: task)
-                    }
-                    semaphore.signal()
-                }
-                semaphore.wait()
-
-            } catch {
-                print("Error encoding data: \(error)")
-            }
-        }
-    }
-    
-    func receiveMessage(task: URLSessionWebSocketTask) {
-        task.receive { result in
-            switch result {
-            case .failure(let error):
-                print("Error receiving message: \(error)")
-                task.cancel(with: .normalClosure, reason: nil)
-            case .success(let message):
-                switch message {
-                case .data(let data):
-                    guard let messageWrapper = try? JSONDecoder().decode(WebSocketClient.MessageWrapper.self, from: data) else {
-                        return
-                    }
-                    
-                    switch messageWrapper.type {
-                    case .actionable:
-                        guard let actionableMessage = try? JSONDecoder().decode(WebSocketClient.MessageActionable.self, from: messageWrapper.payload) else {
-                            return
-                        }
-                        
-                        NSLog("[INERTIA_LOG]:  Received message (data): \(actionableMessage)")
-                        self.messageReceivedIsActionable?(actionableMessage.isActionable)
-                    case .actionables:
-                        let msg = try! JSONDecoder().decode(WebSocketClient.MessageActionables.self, from: messageWrapper.payload)
-                        self.messageReceived?(msg.actionableIds)
-                    case .schema:
-                        guard let schemaMessage = try? JSONDecoder().decode(WebSocketClient.MessageSchema.self, from: messageWrapper.payload) else {
-                            return
-                        }
-                        
-                        NSLog("[INERTIA_LOG]:  Received message (data): \(schemaMessage)")
-                        self.messageReceivedSchema?(schemaMessage.schemaWrappers)
-                    case .translationEnded:
-                        fatalError()
-//                        guard let schemaMessage = try? JSONDecoder().decode(WebSocketClient.MessageSchema.self, from: messageWrapper.payload) else {
-//                            return
-//                        }
-                        
-//                        NSLog("[INERTIA_LOG]:  Received message (data): \(schemaMessage)")
-//                        self.messageReceivedSchema?(schemaMessage.schemaWrappers)
-                    }
-                case .string(let text):
-                    fatalError()
-                    print("Received message (text): \(text)")
-                @unknown default:
-                    print("Received an unknown message type.")
-                }
-            }
-            
-            self.receiveMessage(task: task)
-        }
-    }
-}
-
-func getHostIPAddressFromResolvConf() -> String? {
-    return "10.0.0.248"
-}
-
-// Helper function to validate an IPv4 address format
-func isValidIPAddress(_ ipAddress: String) -> Bool {
-    let parts = ipAddress.split(separator: ".").map { Int($0) }
-    guard parts.count == 4, parts.allSatisfy({ $0 != nil && $0! >= 0 && $0! <= 255 }) else {
-        return false
-    }
-    return true
-}
-
 struct ParentPath: PreferenceKey {
     static var defaultValue: [String]? = nil
     
@@ -662,7 +412,7 @@ struct ParentPath: PreferenceKey {
     }
 }
 
-let manager = WebSocketClient.shared
+let manager = InertiaWebSocketServer.shared
 
 struct InertiaCanvasSizeKey: EnvironmentKey {
     static let defaultValue: CGSize = .zero
@@ -860,7 +610,7 @@ struct InertiaEditable<Content: View>: View {
                     dragOffset = value.translation
                     if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
                         manager.sendMessage(
-                            WebSocketClient.MessageTranslation(
+                            InertiaMessage.MessageTranslation(
                                 translationX: (dragOffset.width) / (inertiaContainerSize.width),
                                 translationY: (dragOffset.height) / (inertiaContainerSize.height),
                                 actionableIds: actionableIdPairs
@@ -900,21 +650,12 @@ struct InertiaEditable<Content: View>: View {
                 inertiaDataModel.actionableIdPairs.insert(pair)
             }
             
-            if let ip = getHostIPAddressFromResolvConf() {
-                let uri = URL(string: "ws://\(ip):8060")!
-//                    let data: [String: Tree?] = ["tree": inertiaDataModel?.tree]
-                
-                NSLog("[INERTIA_LOG]: Tapped: Starting to send data...")
-                
-                if !manager.isConnected {
-                    manager.connect(uri: uri)
-                }
+            NSLog("[INERTIA_LOG]: Tapped: Starting to send data...")
 
-                let tree = inertiaDataModel.tree
-                let actionableIds = inertiaDataModel.actionableIdPairs
-                let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIds)
-                manager.sendMessage(message)
-            }
+            let tree = inertiaDataModel.tree
+            let actionableIds = inertiaDataModel.actionableIdPairs
+            let message = InertiaMessage.MessageActionables(tree: tree, actionableIds: actionableIds)
+            manager.sendMessage(message)
         }
         .overlay {
             if showSelectedBorder && inertiaDataModel?.isActionable ?? false {
@@ -990,30 +731,27 @@ struct InertiaEditable<Content: View>: View {
         .buttonStyle(.plain)
         .onAppear {
             updateHierarchyId()
-            if !manager.isConnected {
-                if let ip = getHostIPAddressFromResolvConf() {
-                    let uri = URL(string: "ws://\(ip):8060")!
-                    NSLog("[INERTIA_LOG]: Starting to send data 2 (setup)...")
-                    manager.connect(uri: uri)
 
-                    manager.messageReceived = handleMessage
-                    manager.messageReceivedSchema = handleMessageSchema
-                    manager.messageReceivedIsActionable = handleMessageActionable
-                }
-            }
+            NSLog("[INERTIA_LOG]: Starting websocket server (setup)...")
+            manager.start()
+
+            manager.messageReceived = handleMessage
+            manager.messageReceivedSchema = handleMessageSchema
+            manager.messageReceivedIsActionable = handleMessageActionable
         }
         .onChange(of: manager.isConnected, { oldValue, newValue in
-            if !newValue {
-                if let ip = getHostIPAddressFromResolvConf() {
-                    let uri = URL(string: "ws://\(ip):8060")!
-                    NSLog("[INERTIA_LOG]: Starting to send data 2 (setup)...")
-                    manager.connect(uri: uri)
-
-                    manager.messageReceived = handleMessage
-                    manager.messageReceivedSchema = handleMessageSchema
-                    manager.messageReceivedIsActionable = handleMessageActionable
-                }
+            // An editor just attached — push the current hierarchy so it can
+            // render the tree without waiting for the next change.
+            guard newValue, let inertiaDataModel else {
+                return
             }
+
+            NSLog("[INERTIA_LOG]: Editor attached, sending current tree...")
+            let message = InertiaMessage.MessageActionables(
+                tree: inertiaDataModel.tree,
+                actionableIds: inertiaDataModel.actionableIdPairs
+            )
+            manager.sendMessage(message)
         })
         .onChange(of: inertiaDataModel?.tree, { oldValue, newValue in
             if let tree = newValue {
@@ -1042,23 +780,16 @@ struct InertiaEditable<Content: View>: View {
                 }
             }
             
-            if let ip = getHostIPAddressFromResolvConf() {
-                let uri = URL(string: "ws://\(ip):8060")!
-                NSLog("[INERTIA_LOG]: Starting to send data 2...")
-                
-                if !manager.isConnected {
-                    manager.connect(uri: uri)
-                }
-                NSLog("[INERTIA_LOG]: past connect")
-                
-                if let tree = inertiaDataModel?.tree {
-                    NSLog("[INERTIA_LOG]: tree \(tree)")
-                    if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
-                        NSLog("[INERTIA_LOG]: tree \(actionableIdPairs)")
-                        let message = WebSocketClient.MessageActionables(tree: tree, actionableIds: actionableIdPairs)
-                        NSLog("[INERTIA_LOG]: \(message)")
-                        manager.sendMessage(message)
-                    }
+            NSLog("[INERTIA_LOG]: Starting to send data 2...")
+            manager.start()
+
+            if let tree = inertiaDataModel?.tree {
+                NSLog("[INERTIA_LOG]: tree \(tree)")
+                if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
+                    NSLog("[INERTIA_LOG]: tree \(actionableIdPairs)")
+                    let message = InertiaMessage.MessageActionables(tree: tree, actionableIds: actionableIdPairs)
+                    NSLog("[INERTIA_LOG]: \(message)")
+                    manager.sendMessage(message)
                 }
             }
         }

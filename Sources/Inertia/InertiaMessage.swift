@@ -1,0 +1,65 @@
+//
+//  InertiaMessage.swift
+//  Inertia
+//
+//  Wire format shared by the runtime (server) and the editor (client).
+//
+
+import Foundation
+
+public enum InertiaMessage {
+    public enum MessageType: String, Codable {
+        case actionable
+        case actionables
+        case translationEnded
+        case schema
+    }
+
+    public struct MessageWrapper: Codable {
+        public let type: MessageType
+        public let payload: Data
+
+        public init(type: MessageType, payload: Data) {
+            self.type = type
+            self.payload = payload
+        }
+    }
+
+    public struct MessageActionables: Codable {
+        public let tree: Tree
+        public let actionableIds: Set<ActionableIdPair>
+
+        public init(tree: Tree, actionableIds: Set<ActionableIdPair>) {
+            self.tree = tree
+            self.actionableIds = actionableIds
+        }
+    }
+
+    public struct MessageTranslation: Codable {
+        public let translationX: CGFloat
+        public let translationY: CGFloat
+        public let actionableIds: Set<ActionableIdPair>
+
+        public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<ActionableIdPair>) {
+            self.translationX = translationX
+            self.translationY = translationY
+            self.actionableIds = actionableIds
+        }
+    }
+
+    public struct MessageActionable: Codable {
+        public let isActionable: Bool
+
+        public init(isActionable: Bool) {
+            self.isActionable = isActionable
+        }
+    }
+
+    public struct MessageSchema: Codable {
+        public let schemaWrappers: [InertiaSchemaWrapper]
+
+        public init(schemaWrappers: [InertiaSchemaWrapper]) {
+            self.schemaWrappers = schemaWrappers
+        }
+    }
+}
