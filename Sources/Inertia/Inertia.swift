@@ -292,7 +292,9 @@ public final class InertiaDataModel{
     var states: [InertiaID: InertiaAnimationState]
     var actionableIdToAnimationIdMap: [String: String] = [:]
     var registeredHierarchyIdPrefixes: Set<String> = []
-
+    var showGrid: Bool = false
+    var selectedNodePosition: CGSize = .zero
+    var selectedNodeSize: CGSize = .zero
     var isActionable: Bool = false
 
     public func trigger(_ id: InertiaID) {
@@ -385,6 +387,25 @@ public struct InertiaContainer<Content: View>: View {
         }
     }
     
+    private var dragGrid: some View {
+        ZStack {
+            Rectangle()
+                .fill(.red)
+                .frame(width: 1)
+                .frame(maxHeight: .infinity)
+            
+            Rectangle()
+                .fill(.red)
+                .frame(height: 1)
+                .frame(maxWidth: .infinity)
+        }
+        .ignoresSafeArea()
+    }
+    
+    var dragAlignmentGuides: some View {
+        
+    }
+    
     public var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .center) {
@@ -400,6 +421,14 @@ public struct InertiaContainer<Content: View>: View {
                     .scrollDisabled(self.inertiaDataModel.isActionable)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                if inertiaDataModel.showGrid {
+                    ZStack {
+                        dragGrid
+                        dragAlignmentGuides
+                    }
+                }
+            }
         }
     }
 }
@@ -576,6 +605,7 @@ struct InertiaEditable<Content: View>: View {
     @State private var contentSize: CGSize = .zero
     @State private var vm = InertiaViewModel()
     @State private var hierarchyId: String? = nil
+    @State private var selectedSize: CGSize = .zero
     
     private weak var indexManager = SharedIndexManager.shared
     let hierarchyIdPrefix: String
@@ -602,12 +632,23 @@ struct InertiaEditable<Content: View>: View {
             .onChanged { value in
                 if inertiaDataModel?.isActionable == true {
                     dragOffset = value.translation
+                    inertiaDataModel?.showGrid = true
+                    inertiaDataModel?.selectedNodePosition = dragOffset
+                    inertiaDataModel?.selectedNodeSize = selectedSize
+                    manager.sendMessage(
+                        InertiaMessage.MessageSelectedNodeProperties(
+                            positionX: dragOffset.width,
+                            positionY: dragOffset.height,
+                            sizeX: selectedSize.width,
+                            sizeY: selectedSize.height
+                        )
+                    )
                 }
-                
             }
             .onEnded { value in
                 if inertiaDataModel?.isActionable == true {
                     dragOffset = value.translation
+                    inertiaDataModel?.showGrid = false
                     if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
                         manager.sendMessage(
                             InertiaMessage.MessageTranslation(
@@ -628,7 +669,6 @@ struct InertiaEditable<Content: View>: View {
                 .disabled(inertiaDataModel?.isActionable ?? false)
 //                .modifier(BindableSize(size: $contentSize))
         }
-        
         .onTapGesture {
             print("tapped \(content)")
             guard let inertiaDataModel else {
@@ -657,6 +697,16 @@ struct InertiaEditable<Content: View>: View {
             let message = InertiaMessage.MessageActionables(tree: tree, actionableIds: actionableIds)
             manager.sendMessage(message)
         }
+        .background(
+            GeometryReader { proxy in
+                Color.clear.onAppear {
+                    selectedSize = proxy.size
+                }
+                .onChange(of: proxy.size) { oldValue, newValue in
+                    selectedSize = newValue
+                }
+            }
+        )
         .overlay {
             if showSelectedBorder && inertiaDataModel?.isActionable ?? false {
                 Rectangle()

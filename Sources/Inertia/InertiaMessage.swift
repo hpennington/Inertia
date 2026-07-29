@@ -13,6 +13,7 @@ public enum InertiaMessage {
         case actionables
         case translationEnded
         case schema
+        case selectedNodeProperties
     }
 
     public struct MessageWrapper: Codable {
@@ -32,6 +33,20 @@ public enum InertiaMessage {
         public init(tree: Tree, actionableIds: Set<ActionableIdPair>) {
             self.tree = tree
             self.actionableIds = actionableIds
+        }
+    }
+    
+    public struct MessageSelectedNodeProperties: Codable {
+        public let positionX: CGFloat
+        public let positionY: CGFloat
+        public let sizeX: CGFloat
+        public let sizeY: CGFloat
+        
+        public init(positionX: CGFloat, positionY: CGFloat, sizeX: CGFloat, sizeY: CGFloat) {
+            self.positionX = positionX
+            self.positionY = positionY
+            self.sizeX = sizeX
+            self.sizeY = sizeY
         }
     }
 

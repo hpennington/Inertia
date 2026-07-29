@@ -191,11 +191,18 @@ public final class InertiaWebSocketServer {
         case .translationEnded:
             // Runtime-to-editor only.
             NSLog("[INERTIA_LOG]: ⚠️ Unexpected translationEnded from editor")
+        case .selectedNodeProperties:
+            // Runtime-to-editor only.
+            NSLog("[INERTIA_LOG]: ⚠️ Unexpected selectedNodePropertiesr from editor")
         }
     }
 
     // MARK: - Send
 
+    public func sendMessage(_ message: InertiaMessage.MessageSelectedNodeProperties) {
+        broadcast(type: .selectedNodeProperties, payload: message)
+    }
+    
     public func sendMessage(_ message: InertiaMessage.MessageActionables) {
         broadcast(type: .actionables, payload: message)
     }
