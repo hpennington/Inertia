@@ -402,10 +402,60 @@ public struct InertiaContainer<Content: View>: View {
         .ignoresSafeArea()
     }
     
-    var dragAlignmentGuides: some View {
-        
+    /// Dashed guides that track the selected node's edges and center within the container.
+    /// The node's untransformed origin is the container center, so its current center is
+    /// the container center offset by `selectedNodePosition`.
+    @ViewBuilder
+    private func dragAlignmentGuides(in size: CGSize) -> some View {
+        let position = inertiaDataModel.selectedNodePosition
+        let selectedSize = inertiaDataModel.selectedNodeSize
+        let center = CGPoint(
+            x: size.width / 2 + position.width,
+            y: size.height / 2 + position.height
+        )
+        // SwiftUI traps on non-finite geometry, and any of these can be NaN before
+        // the first layout pass or while a drag is being set up.
+        let isValid = size.width.isFinite && size.height.isFinite
+            && selectedSize.width.isFinite && selectedSize.height.isFinite
+            && center.x.isFinite && center.y.isFinite
+            && selectedSize.width > 0 && selectedSize.height > 0
+
+        if isValid {
+            Canvas { context, canvasSize in
+                let xs = [center.x - selectedSize.width / 2, center.x, center.x + selectedSize.width / 2]
+                let ys = [center.y - selectedSize.height / 2, center.y, center.y + selectedSize.height / 2]
+
+                for (index, x) in xs.enumerated() {
+                    var path = Path()
+                    path.move(to: CGPoint(x: x, y: 0))
+                    path.addLine(to: CGPoint(x: x, y: canvasSize.height))
+                    context.stroke(path, with: .color(.cyan.opacity(index == 1 ? 1.0 : 0.5)), style: guideStyle(isCenter: index == 1))
+                }
+
+                for (index, y) in ys.enumerated() {
+                    var path = Path()
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: canvasSize.width, y: y))
+                    context.stroke(path, with: .color(.cyan.opacity(index == 1 ? 1.0 : 0.5)), style: guideStyle(isCenter: index == 1))
+                }
+
+                let bounds = CGRect(
+                    x: center.x - selectedSize.width / 2,
+                    y: center.y - selectedSize.height / 2,
+                    width: selectedSize.width,
+                    height: selectedSize.height
+                )
+                context.stroke(Path(bounds), with: .color(.cyan), style: guideStyle(isCenter: false))
+            }
+            .frame(width: size.width, height: size.height)
+            .allowsHitTesting(false)
+        }
     }
-    
+
+    private func guideStyle(isCenter: Bool) -> StrokeStyle {
+        StrokeStyle(lineWidth: 1, dash: isCenter ? [] : [4, 4])
+    }
+
     public var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .center) {
@@ -425,7 +475,7 @@ public struct InertiaContainer<Content: View>: View {
                 if inertiaDataModel.showGrid {
                     ZStack {
                         dragGrid
-                        dragAlignmentGuides
+                        dragAlignmentGuides(in: proxy.size)
                     }
                 }
             }
@@ -507,7 +557,8 @@ struct InertiaActionable<Content: View>: View {
         Group {
             if let animation = animation ?? getAnimation {
                 wrappedContent
-                    .keyframeAnimator(initialValue: animation.initialValues, content: { contentView, values in
+                    .keyframeAnimator(initialValue: animation.initialValues.sanitized, content: { contentView, rawValues in
+                        let values = rawValues.sanitized
                         contentView
                             .scaleEffect(values.scale)
 //                            .rotationEffect(Angle (degrees: values.rotate), anchor: .topLeading)
@@ -516,7 +567,7 @@ struct InertiaActionable<Content: View>: View {
                             .opacity(values.opacity)
                     }, keyframes: { _ in
                         KeyframeTrack {
-                            for keyframe in animation.keyframes {
+                            for keyframe in animation.playableKeyframes {
                                 CubicKeyframe(keyframe.values, duration: keyframe.duration)
                             }
                         }
@@ -743,7 +794,8 @@ struct InertiaEditable<Content: View>: View {
         Group {
             if let animation = animation ?? getAnimation {
                 wrappedContent
-                    .keyframeAnimator(initialValue: animation.initialValues, content: { contentView, values in
+                    .keyframeAnimator(initialValue: animation.initialValues.sanitized, content: { contentView, rawValues in
+                        let values = rawValues.sanitized
                         contentView
                             .scaleEffect(values.scale)
                             .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
@@ -752,7 +804,7 @@ struct InertiaEditable<Content: View>: View {
                             .opacity(values.opacity)
                     }, keyframes: { _ in
                         KeyframeTrack {
-                            for keyframe in animation.keyframes {
+                            for keyframe in animation.playableKeyframes {
                                 CubicKeyframe(keyframe.values, duration: keyframe.duration)
                             }
                         }
@@ -1083,6 +1135,35 @@ public struct InertiaAnimationValues: VectorArithmetic, Animatable, Equatable, C
         var result = lhs
         result -= rhs
         return result
+    }
+}
+
+extension InertiaAnimationValues {
+    var isFinite: Bool {
+        scale.isFinite && translate.width.isFinite && translate.height.isFinite
+            && rotate.isFinite && rotateCenter.isFinite && opacity.isFinite
+    }
+
+    /// Falls back to the identity transform so a NaN slipping out of interpolation
+    /// can't reach a geometry modifier, which traps.
+    var sanitized: InertiaAnimationValues {
+        isFinite ? self : InertiaAnimationValues(scale: 1, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1)
+    }
+}
+
+extension InertiaAnimationSchema {
+    /// `CubicKeyframe` divides by the keyframe duration when solving its spline, so a
+    /// zero or negative duration produces NaN for every interpolated value. The editor
+    /// records `playheadTime - previousTime`, which is zero for two keyframes captured
+    /// at the same playhead position.
+    var playableKeyframes: [InertiaAnimationKeyframe] {
+        keyframes.compactMap { keyframe in
+            guard keyframe.values.isFinite else { return nil }
+            guard keyframe.duration.isFinite, keyframe.duration > 0 else {
+                return InertiaAnimationKeyframe(id: keyframe.id, values: keyframe.values, duration: 0.001)
+            }
+            return keyframe
+        }
     }
 }
 
