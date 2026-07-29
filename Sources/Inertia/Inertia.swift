@@ -13,6 +13,13 @@ public enum AnimationSignal: Codable {
     case pause
     /// The editor's timeline was resized; play one loop over this many seconds.
     case setLoopDuration(CGFloat)
+    /// The playhead was moved by hand; hold the animation at this many seconds
+    /// into the loop.
+    case seek(CGFloat)
+    /// Carry on from where `pause` or `seek` left off. Only actionables the app
+    /// has already triggered are affected — this never starts one that was not
+    /// running.
+    case resume
 }
 
 public enum InertiaPlayback {
@@ -379,7 +386,16 @@ public final class InertiaDataModel{
     /// interpolate a smooth playhead without flooding the socket.
     private static let clockInterval: Duration = .milliseconds(16)
 
+    /// Where the editor has parked the playhead, while it is parked there.
+    ///
+    /// Non-nil means the animation is being scrubbed rather than played: every
+    /// actionable holds the values its track interpolates to at this time, so
+    /// dragging the playhead walks the animation frame by frame. Playing again
+    /// clears it and hands the screen back to the animators.
+    public private(set) var seekTime: CGFloat? = nil
+
     public func trigger(_ id: InertiaID) {
+        seekTime = nil
         isRunning = true
         states[id]?.trigger = true
         startClock()
@@ -387,11 +403,44 @@ public final class InertiaDataModel{
 
     /// Stops the run and reports where it stopped, so a paused playhead sits
     /// exactly where the animation froze.
+    ///
+    /// Pausing parks the playhead where it is, which holds the frame on screen
+    /// and is what playing again picks up from.
     func pausePlayback() {
         isRunning = false
         clock?.cancel()
         clock = nil
+        seekTime = playheadTime
         report(isRunning: false)
+    }
+
+    /// Picks a paused or scrubbed run back up, from where it was left.
+    ///
+    /// The editor's play button sends schemas; without this nothing on that path
+    /// touches the runtime's playback state, so a pause could only ever be
+    /// undone by the app triggering its animation a second time. Actionables the
+    /// app never triggered stay as they are — starting those is the app's call,
+    /// not the editor's.
+    func resumePlayback() {
+        guard states.values.contains(where: { $0.trigger == true }) else { return }
+
+        seekTime = nil
+        isRunning = true
+        startClock()
+    }
+
+    /// Freezes the animation at `time`.
+    ///
+    /// The editor is the one moving the playhead here, so this does not report
+    /// back: the position it would send is the one it just asked for.
+    func seek(to time: CGFloat) {
+        isRunning = false
+        clock?.cancel()
+        clock = nil
+
+        let time = time.clamped(to: 0...playbackDuration)
+        seekTime = time
+        playheadTime = time
     }
 
     /// Times the run that just started.
@@ -403,13 +452,18 @@ public final class InertiaDataModel{
     ///
     /// A repeating run has no end: the clock wraps at `playbackDuration` the way
     /// the animators restart their tracks, and only a pause stops it.
+    ///
+    /// Playing picks up from wherever the playhead was left — scrubbed to, or
+    /// paused at — rather than from the top. Only a playhead parked at the very
+    /// end of the loop starts over, since there is nothing left to play.
     private func startClock() {
         guard clock == nil else { return }
 
         // Nothing loaded yet: there is no animation for the playhead to follow.
         guard !inertiaSchemas.isEmpty else { return }
 
-        playheadTime = .zero
+        let offset = playheadTime < playbackDuration ? playheadTime : .zero
+        playheadTime = offset
         report(isRunning: true)
 
         let start = ContinuousClock.now
@@ -420,7 +474,7 @@ public final class InertiaDataModel{
 
                 // Read each tick: the timeline can be resized mid-run.
                 let duration = self.playbackDuration
-                let elapsed = (ContinuousClock.now - start).inSeconds
+                let elapsed = offset + (ContinuousClock.now - start).inSeconds
 
                 if self.isRepeating {
                     self.playheadTime = elapsed.truncatingRemainder(dividingBy: duration)
@@ -697,6 +751,19 @@ struct InertiaActionable<Content: View>: View {
         return animation.keyframes(filling: inertiaDataModel?.playbackDuration ?? InertiaPlayback.defaultLoopDuration)
     }
 
+    /// The same track as a timeline that can be evaluated at any point in it,
+    /// which is what scrubbing needs and `keyframeAnimator` — a play button with
+    /// no seek bar — cannot give.
+    func timeline(for animation: InertiaAnimationSchema) -> KeyframeTimeline<InertiaAnimationValues> {
+        KeyframeTimeline(initialValue: animation.initialValues.sanitized) {
+            KeyframeTrack {
+                for keyframe in track(for: animation) {
+                    CubicKeyframe(keyframe.values, duration: keyframe.duration)
+                }
+            }
+        }
+    }
+
     @MainActor
     func updateHierarchyId() {
         if let indexValue = indexManager?.indexMap[hierarchyIdPrefix] {
@@ -713,7 +780,16 @@ struct InertiaActionable<Content: View>: View {
     var body: some View {
         //        GeometryReader { rootProxy in
         Group {
-            if let animation = animation ?? getAnimation, inertiaDataModel?.isRunning == true {
+            if let animation = animation ?? getAnimation, let seekTime = inertiaDataModel?.seekTime {
+                // Being scrubbed: hold the values this track reaches at the time
+                // the playhead is parked on.
+                let values = timeline(for: animation).value(time: seekTime).sanitized
+                wrappedContent
+                    .scaleEffect(values.scale)
+                    .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
+                    .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
+                    .opacity(values.opacity)
+            } else if let animation = animation ?? getAnimation, inertiaDataModel?.isRunning == true {
                 wrappedContent
                     .keyframeAnimator(
                         initialValue: animation.initialValues.sanitized,
@@ -769,6 +845,10 @@ struct InertiaActionable<Content: View>: View {
             inertiaDataModel?.pausePlayback()
         case .setLoopDuration(let duration):
             inertiaDataModel?.loopDuration = InertiaPlayback.clampLoopDuration(duration)
+        case .seek(let time):
+            inertiaDataModel?.seek(to: time)
+        case .resume:
+            inertiaDataModel?.resumePlayback()
         }
     }
     
@@ -783,7 +863,8 @@ struct InertiaActionable<Content: View>: View {
             return nil
         }
         
-        guard inertiaDataModel.isRunning == true else {
+        // Scrubbing shows the animation without running it.
+        guard inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else {
             return nil
         }
         
@@ -964,6 +1045,34 @@ struct InertiaEditable<Content: View>: View {
         return animation.keyframes(filling: inertiaDataModel?.playbackDuration ?? InertiaPlayback.defaultLoopDuration)
     }
 
+    /// The same track as a timeline that can be evaluated at any point in it,
+    /// which is what scrubbing needs and `keyframeAnimator` — a play button with
+    /// no seek bar — cannot give.
+    func timeline(for animation: InertiaAnimationSchema) -> KeyframeTimeline<InertiaAnimationValues> {
+        KeyframeTimeline(initialValue: animation.initialValues.sanitized) {
+            KeyframeTrack {
+                for keyframe in track(for: animation) {
+                    CubicKeyframe(keyframe.values, duration: keyframe.duration)
+                }
+            }
+        }
+    }
+
+    /// What to show right now, or nil when the animation is neither playing nor
+    /// parked somewhere by the editor.
+    ///
+    /// The editor's copy of an animation is drawn from the runtime's own clock
+    /// rather than handed to a `keyframeAnimator`, so playing, pausing and
+    /// scrubbing are all the same thing: read the track at the playhead. It is
+    /// also the only way play can pick up mid-loop — an animator can only ever
+    /// start a track at its beginning.
+    func displayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues? {
+        guard let inertiaDataModel,
+              inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else { return nil }
+
+        return timeline(for: animation).value(time: inertiaDataModel.playheadTime).sanitized
+    }
+
     @MainActor
     func updateHierarchyId() {
         if let indexValue = indexManager?.indexMap[hierarchyIdPrefix] {
@@ -980,26 +1089,13 @@ struct InertiaEditable<Content: View>: View {
     var body: some View {
         //        GeometryReader { rootProxy in
         Group {
-            if let animation = animation ?? getAnimation, inertiaDataModel?.isRunning == true {
+            if let animation = animation ?? getAnimation, let values = displayValues(for: animation) {
                 wrappedContent
-                    .keyframeAnimator(
-                        initialValue: animation.initialValues.sanitized,
-                        repeating: inertiaDataModel?.isRepeating ?? true,
-                        content: { contentView, rawValues in
-                        let values = rawValues.sanitized
-                        contentView
-                            .scaleEffect(values.scale)
-                            .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
-                            .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
-                            .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
-                            .opacity(values.opacity)
-                    }, keyframes: { _ in
-                        KeyframeTrack {
-                            for keyframe in track(for: animation) {
-                                CubicKeyframe(keyframe.values, duration: keyframe.duration)
-                            }
-                        }
-                    })
+                    .scaleEffect(values.scale)
+                    .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
+                    .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
+                    .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
+                    .opacity(values.opacity)
                     .onAppear {
                         self.dragOffset = CGSize(
                             width: animation.initialValues.translate.width * inertiaContainerSize.width,
@@ -1160,6 +1256,10 @@ struct InertiaEditable<Content: View>: View {
             inertiaDataModel?.pausePlayback()
         case .setLoopDuration(let duration):
             inertiaDataModel?.loopDuration = InertiaPlayback.clampLoopDuration(duration)
+        case .seek(let time):
+            inertiaDataModel?.seek(to: time)
+        case .resume:
+            inertiaDataModel?.resumePlayback()
         }
     }
     
