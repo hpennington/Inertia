@@ -201,6 +201,9 @@ public final class InertiaWebSocketServer {
         case .selectedNodeProperties:
             // Runtime-to-editor only.
             NSLog("[INERTIA_LOG]: ⚠️ Unexpected selectedNodePropertiesr from editor")
+        case .playbackProgress:
+            // Runtime-to-editor only.
+            NSLog("[INERTIA_LOG]: ⚠️ Unexpected playbackProgress from editor")
         }
     }
 
@@ -222,6 +225,10 @@ public final class InertiaWebSocketServer {
         broadcast(type: .translationEnded, payload: message)
     }
 
+    public func sendMessage(_ message: InertiaMessage.MessagePlaybackProgress) {
+        broadcast(type: .playbackProgress, payload: message)
+    }
+
     private func broadcast<T: Encodable>(type: InertiaMessage.MessageType, payload: T) {
         queue.async { [weak self] in
             guard let self else { return }
@@ -241,7 +248,8 @@ public final class InertiaWebSocketServer {
                 connection.send(content: wrapperData, contentContext: context, isComplete: true, completion: .contentProcessed({ error in
                     if let error = error {
                         NSLog("[INERTIA_LOG]: ❌ Send error to \(clientId): \(error)")
-                    } else {
+                    } else if type != .playbackProgress {
+                        // Progress ticks every frame; logging them drowns the log.
                         NSLog("[INERTIA_LOG]: ✅ Sent message of type \(type)")
                     }
                 }))

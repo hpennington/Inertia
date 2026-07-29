@@ -11,6 +11,37 @@ public typealias InertiaID = String
 
 public enum AnimationSignal: Codable {
     case pause
+    /// The editor's timeline was resized; play one loop over this many seconds.
+    case setLoopDuration(CGFloat)
+}
+
+public enum InertiaPlayback {
+    /// How long one loop lasts until the editor says otherwise.
+    ///
+    /// A loop lasts as long as the timeline the animation was authored on, not
+    /// as long as its last keyframe: a track that stops moving after half a
+    /// second holds there until the loop comes round again. Every track is
+    /// padded to the loop, so actionables of different lengths restart together
+    /// and the editor's playhead — which draws exactly this span — stays with
+    /// them.
+    public static let defaultLoopDuration: CGFloat = 3.0
+
+    /// The range the timeline can be resized to. A loop shorter than this can't
+    /// hold a keyframe apart from its neighbours; longer is past the point of
+    /// being able to see the whole thing at once.
+    public static let loopDurationRange: ClosedRange<CGFloat> = 0.1...60.0
+
+    /// Brings a loop length the user typed, or a peer sent, into range.
+    public static func clampLoopDuration(_ seconds: CGFloat) -> CGFloat {
+        guard seconds.isFinite else { return defaultLoopDuration }
+        return seconds.clamped(to: loopDurationRange)
+    }
+}
+
+extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
+    }
 }
 
 public class Node: Identifiable, Hashable, Codable, Equatable, CustomStringConvertible {
@@ -286,6 +317,13 @@ public struct ActionableIdPair: Codable, Hashable {
     }
 }
 
+private extension Duration {
+    /// Seconds as a fraction, for arithmetic against keyframe durations.
+    var inSeconds: CGFloat {
+        CGFloat(components.seconds) + CGFloat(components.attoseconds) / 1e18
+    }
+}
+
 @MainActor
 @Observable
 public final class InertiaDataModel{
@@ -301,10 +339,116 @@ public final class InertiaDataModel{
     var selectedNodeSize: CGSize = .zero
     var isActionable: Bool = false
     var isRunning:Bool = false
-    
+
+    /// How far into the run currently on screen we are, in seconds.
+    ///
+    /// SwiftUI's `keyframeAnimator` keeps its own clock and does not publish it,
+    /// so the runtime runs a wall clock alongside it — started and stopped by the
+    /// same things that start and stop the animation — and reports it to the
+    /// editor, whose playhead has no other way to know where the animation is.
+    public private(set) var playheadTime: CGFloat = .zero
+
+    /// Whether the keyframe animators repeat their tracks once they reach the
+    /// end. Passed straight to `keyframeAnimator(initialValue:repeating:…)`, so
+    /// the playhead's clock and the animation on screen loop or stop together.
+    public var isRepeating: Bool = true
+
+    /// How long one loop lasts, as set on the editor's timeline. Applies from
+    /// the next tick of the clock, so resizing the timeline mid-run stretches
+    /// the loop rather than waiting for it to be restarted.
+    public var loopDuration: CGFloat = InertiaPlayback.defaultLoopDuration
+
+    /// One turn of the timeline: where a run ends, and where a repeating one
+    /// wraps back to the start.
+    ///
+    /// The full loop, not the last keyframe — tracks are padded out to it — so
+    /// the playhead crosses the whole timeline however early the animation
+    /// settles. Anything recorded past the end of the loop stretches it, which
+    /// keeps every track the same length as every other.
+    var playbackDuration: CGFloat {
+        let longestTrack = inertiaSchemas.values
+            .map { schema in schema.playableKeyframes.reduce(CGFloat.zero) { $0 + $1.duration } }
+            .max() ?? .zero
+
+        return max(loopDuration, longestTrack)
+    }
+
+    private var clock: Task<Void, Never>? = nil
+
+    /// Roughly one message per display frame. Fine enough for the editor to
+    /// interpolate a smooth playhead without flooding the socket.
+    private static let clockInterval: Duration = .milliseconds(16)
+
     public func trigger(_ id: InertiaID) {
         isRunning = true
         states[id]?.trigger = true
+        startClock()
+    }
+
+    /// Stops the run and reports where it stopped, so a paused playhead sits
+    /// exactly where the animation froze.
+    func pausePlayback() {
+        isRunning = false
+        clock?.cancel()
+        clock = nil
+        report(isRunning: false)
+    }
+
+    /// Times the run that just started.
+    ///
+    /// Actionables trigger one at a time, so a trigger arriving while the clock
+    /// is already running joins the run in progress rather than restarting it —
+    /// otherwise the playhead would jump back to zero on every actionable after
+    /// the first.
+    ///
+    /// A repeating run has no end: the clock wraps at `playbackDuration` the way
+    /// the animators restart their tracks, and only a pause stops it.
+    private func startClock() {
+        guard clock == nil else { return }
+
+        // Nothing loaded yet: there is no animation for the playhead to follow.
+        guard !inertiaSchemas.isEmpty else { return }
+
+        playheadTime = .zero
+        report(isRunning: true)
+
+        let start = ContinuousClock.now
+        clock = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.clockInterval)
+                guard !Task.isCancelled, let self, self.isRunning else { return }
+
+                // Read each tick: the timeline can be resized mid-run.
+                let duration = self.playbackDuration
+                let elapsed = (ContinuousClock.now - start).inSeconds
+
+                if self.isRepeating {
+                    self.playheadTime = elapsed.truncatingRemainder(dividingBy: duration)
+                    self.report(isRunning: true)
+                    continue
+                }
+
+                if elapsed >= duration {
+                    self.playheadTime = duration
+                    self.clock = nil
+                    self.report(isRunning: false)
+                    return
+                }
+
+                self.playheadTime = elapsed
+                self.report(isRunning: true)
+            }
+        }
+    }
+
+    private func report(isRunning: Bool) {
+        manager.sendMessage(
+            InertiaMessage.MessagePlaybackProgress(
+                time: playheadTime,
+                duration: playbackDuration,
+                isRunning: isRunning
+            )
+        )
     }
 
     public func registerHierarchyIdPrefix(_ prefix: String) {
@@ -545,6 +689,14 @@ struct InertiaActionable<Content: View>: View {
         return AnyView(EmptyView())
     }
     
+    /// The track the animator plays: held out to the full loop when repeating,
+    /// so the animation and the editor's playhead share one period.
+    func track(for animation: InertiaAnimationSchema) -> [InertiaAnimationKeyframe] {
+        guard inertiaDataModel?.isRepeating ?? true else { return animation.playableKeyframes }
+
+        return animation.keyframes(filling: inertiaDataModel?.playbackDuration ?? InertiaPlayback.defaultLoopDuration)
+    }
+
     @MainActor
     func updateHierarchyId() {
         if let indexValue = indexManager?.indexMap[hierarchyIdPrefix] {
@@ -563,7 +715,10 @@ struct InertiaActionable<Content: View>: View {
         Group {
             if let animation = animation ?? getAnimation, inertiaDataModel?.isRunning == true {
                 wrappedContent
-                    .keyframeAnimator(initialValue: animation.initialValues.sanitized, content: { contentView, rawValues in
+                    .keyframeAnimator(
+                        initialValue: animation.initialValues.sanitized,
+                        repeating: inertiaDataModel?.isRepeating ?? true,
+                        content: { contentView, rawValues in
                         let values = rawValues.sanitized
                         contentView
                             .scaleEffect(values.scale)
@@ -573,7 +728,7 @@ struct InertiaActionable<Content: View>: View {
                             .opacity(values.opacity)
                     }, keyframes: { _ in
                         KeyframeTrack {
-                            for keyframe in animation.playableKeyframes {
+                            for keyframe in track(for: animation) {
                                 CubicKeyframe(keyframe.values, duration: keyframe.duration)
                             }
                         }
@@ -611,7 +766,9 @@ struct InertiaActionable<Content: View>: View {
     func handleMessageSignal(_ signal: AnimationSignal) {
         switch signal {
         case .pause:
-            inertiaDataModel?.isRunning = false
+            inertiaDataModel?.pausePlayback()
+        case .setLoopDuration(let duration):
+            inertiaDataModel?.loopDuration = InertiaPlayback.clampLoopDuration(duration)
         }
     }
     
@@ -799,6 +956,14 @@ struct InertiaEditable<Content: View>: View {
         return AnyView(EmptyView())
     }
     
+    /// The track the animator plays: held out to the full loop when repeating,
+    /// so the animation and the editor's playhead share one period.
+    func track(for animation: InertiaAnimationSchema) -> [InertiaAnimationKeyframe] {
+        guard inertiaDataModel?.isRepeating ?? true else { return animation.playableKeyframes }
+
+        return animation.keyframes(filling: inertiaDataModel?.playbackDuration ?? InertiaPlayback.defaultLoopDuration)
+    }
+
     @MainActor
     func updateHierarchyId() {
         if let indexValue = indexManager?.indexMap[hierarchyIdPrefix] {
@@ -817,7 +982,10 @@ struct InertiaEditable<Content: View>: View {
         Group {
             if let animation = animation ?? getAnimation, inertiaDataModel?.isRunning == true {
                 wrappedContent
-                    .keyframeAnimator(initialValue: animation.initialValues.sanitized, content: { contentView, rawValues in
+                    .keyframeAnimator(
+                        initialValue: animation.initialValues.sanitized,
+                        repeating: inertiaDataModel?.isRepeating ?? true,
+                        content: { contentView, rawValues in
                         let values = rawValues.sanitized
                         contentView
                             .scaleEffect(values.scale)
@@ -827,7 +995,7 @@ struct InertiaEditable<Content: View>: View {
                             .opacity(values.opacity)
                     }, keyframes: { _ in
                         KeyframeTrack {
-                            for keyframe in animation.playableKeyframes {
+                            for keyframe in track(for: animation) {
                                 CubicKeyframe(keyframe.values, duration: keyframe.duration)
                             }
                         }
@@ -989,7 +1157,9 @@ struct InertiaEditable<Content: View>: View {
     func handleMessageSignal(_ signal: AnimationSignal) {
         switch signal {
         case .pause:
-            inertiaDataModel?.isRunning = false
+            inertiaDataModel?.pausePlayback()
+        case .setLoopDuration(let duration):
+            inertiaDataModel?.loopDuration = InertiaPlayback.clampLoopDuration(duration)
         }
     }
     
@@ -1194,6 +1364,26 @@ extension InertiaAnimationSchema {
             }
             return keyframe
         }
+    }
+
+    /// The playable track held at its final values until `duration` is up.
+    ///
+    /// `keyframeAnimator` repeats a track at the track's own length, so a track
+    /// that ends after one second restarts three times while a three-second one
+    /// runs once — and the playhead, which follows the loop rather than any one
+    /// actionable, would agree with neither. Padding gives every track the same
+    /// period.
+    func keyframes(filling duration: CGFloat) -> [InertiaAnimationKeyframe] {
+        let track = playableKeyframes
+        guard let last = track.last else { return track }
+
+        let elapsed = track.reduce(CGFloat.zero) { $0 + $1.duration }
+        let remainder = duration - elapsed
+        guard remainder > 0.001 else { return track }
+
+        return track + [
+            InertiaAnimationKeyframe(id: "\(last.id)--hold", values: last.values, duration: remainder)
+        ]
     }
 }
 

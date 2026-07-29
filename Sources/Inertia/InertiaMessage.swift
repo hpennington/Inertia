@@ -15,6 +15,7 @@ public enum InertiaMessage {
         case schema
         case selectedNodeProperties
         case signal
+        case playbackProgress
     }
 
     public struct MessageWrapper: Codable {
@@ -79,6 +80,23 @@ public enum InertiaMessage {
         }
     }
     
+    /// Where the run currently on screen has got to, reported by the runtime
+    /// while it animates so the editor's playhead can follow it.
+    public struct MessagePlaybackProgress: Codable {
+        /// Seconds since the run started, clamped to `duration`.
+        public let time: CGFloat
+        /// Length of the longest track in the run.
+        public let duration: CGFloat
+        /// False on the last message of a run — it finished or was paused.
+        public let isRunning: Bool
+
+        public init(time: CGFloat, duration: CGFloat, isRunning: Bool) {
+            self.time = time
+            self.duration = duration
+            self.isRunning = isRunning
+        }
+    }
+
     public struct MessageSignal: Codable {
         public let signal: AnimationSignal
 
