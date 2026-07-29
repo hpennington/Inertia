@@ -9,6 +9,10 @@ import SwiftUI
 
 public typealias InertiaID = String
 
+public enum AnimationSignal: Codable {
+    case pause
+}
+
 public class Node: Identifiable, Hashable, Codable, Equatable, CustomStringConvertible {
     public static func == (lhs: Node, rhs: Node) -> Bool {
         return lhs.id == rhs.id
@@ -296,8 +300,10 @@ public final class InertiaDataModel{
     var selectedNodePosition: CGSize = .zero
     var selectedNodeSize: CGSize = .zero
     var isActionable: Bool = false
-
+    var isRunning:Bool = false
+    
     public func trigger(_ id: InertiaID) {
+        isRunning = true
         states[id]?.trigger = true
     }
 
@@ -555,7 +561,7 @@ struct InertiaActionable<Content: View>: View {
     var body: some View {
         //        GeometryReader { rootProxy in
         Group {
-            if let animation = animation ?? getAnimation {
+            if let animation = animation ?? getAnimation, inertiaDataModel?.isRunning == true {
                 wrappedContent
                     .keyframeAnimator(initialValue: animation.initialValues.sanitized, content: { contentView, rawValues in
                         let values = rawValues.sanitized
@@ -588,14 +594,27 @@ struct InertiaActionable<Content: View>: View {
         .environment(\.inertiaParentID, hierarchyId)
         .environment(\.isInertiaContainer, false)
         .buttonStyle(.plain)
+        .onAppear {
+            manager.messageReceivedSignal = handleMessageSignal
+
+        }
         .task {
             updateHierarchyId()
         }
         .onDisappear {
             // Cleanup disabled for new schema - no shape objects with zIndex
         }
+        
+        
     }
-
+    
+    func handleMessageSignal(_ signal: AnimationSignal) {
+        switch signal {
+        case .pause:
+            inertiaDataModel?.isRunning = false
+        }
+    }
+    
     var getAnimation: InertiaAnimationSchema? {
         guard let inertiaDataModel else {
             NSLog("[INERTIA_LOG]:  inertiaDataModel is nil")
@@ -604,6 +623,10 @@ struct InertiaActionable<Content: View>: View {
 
         guard let hierarchyId else {
             NSLog("[INERTIA_LOG]:  hierarchyId is nil")
+            return nil
+        }
+        
+        guard inertiaDataModel.isRunning == true else {
             return nil
         }
         
@@ -792,7 +815,7 @@ struct InertiaEditable<Content: View>: View {
     var body: some View {
         //        GeometryReader { rootProxy in
         Group {
-            if let animation = animation ?? getAnimation {
+            if let animation = animation ?? getAnimation, inertiaDataModel?.isRunning == true {
                 wrappedContent
                     .keyframeAnimator(initialValue: animation.initialValues.sanitized, content: { contentView, rawValues in
                         let values = rawValues.sanitized
@@ -840,6 +863,7 @@ struct InertiaEditable<Content: View>: View {
             manager.messageReceived = handleMessage
             manager.messageReceivedSchema = handleMessageSchema
             manager.messageReceivedIsActionable = handleMessageActionable
+            manager.messageReceivedSignal = handleMessageSignal(_:)
         }
         .onChange(of: manager.isConnected, { oldValue, newValue in
             // An editor just attached — push the current hierarchy so it can
@@ -961,7 +985,13 @@ struct InertiaEditable<Content: View>: View {
             model.actionableIdPairs = newPairs
         }
     }
-
+    
+    func handleMessageSignal(_ signal: AnimationSignal) {
+        switch signal {
+        case .pause:
+            inertiaDataModel?.isRunning = false
+        }
+    }
     
     func handleMessageSchema(schemaWrappers: [InertiaSchemaWrapper]) {
         NSLog("[INERTIA_LOG]: [handleMessageSchema] received \(schemaWrappers.count) schema wrappers")

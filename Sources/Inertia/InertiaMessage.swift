@@ -14,6 +14,7 @@ public enum InertiaMessage {
         case translationEnded
         case schema
         case selectedNodeProperties
+        case signal
     }
 
     public struct MessageWrapper: Codable {
@@ -75,6 +76,14 @@ public enum InertiaMessage {
 
         public init(schemaWrappers: [InertiaSchemaWrapper]) {
             self.schemaWrappers = schemaWrappers
+        }
+    }
+    
+    public struct MessageSignal: Codable {
+        public let signal: AnimationSignal
+
+        public init(signal: AnimationSignal) {
+            self.signal = signal
         }
     }
 }
