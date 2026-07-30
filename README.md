@@ -3,6 +3,10 @@
 ## Overview
 An editor application and library for creating in-app, native, keyframe animations with a WYSIWYG (what you see is what you get) editor.
 
+## Docs
+
+https://hpennington.github.io/Inertia/
+
 ## Demo Video
 
 
