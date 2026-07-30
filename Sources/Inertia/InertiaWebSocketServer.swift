@@ -73,7 +73,7 @@ public final class InertiaWebSocketServer {
         playbackProgressLock.unlock()
 
         let elapsedS = Double(elapsedMs) / 1000
-        NSLog("[INERTIA_LOG][diag] playbackProgress sent=%d coalesced=%d over %.1fs avgSendMs=%.2f", sent, coalesced, elapsedS, avgSendMs)
+        InertiaLog.debug(String(format: "[diag] playbackProgress sent=%d coalesced=%d over %.1fs avgSendMs=%.2f", sent, coalesced, elapsedS, avgSendMs))
     }
 
     /// Whether the runtime is allowed to host the editor channel at all.
@@ -104,9 +104,9 @@ public final class InertiaWebSocketServer {
             self.isEnabled = isEnabled
 
             if isEnabled {
-                NSLog("[INERTIA_LOG]: Editor channel enabled")
+                InertiaLog.info("Editor channel enabled")
             } else {
-                NSLog("[INERTIA_LOG]: Editor channel disabled, tearing down")
+                InertiaLog.info("Editor channel disabled, tearing down")
                 self.tearDown()
             }
         }
@@ -122,7 +122,7 @@ public final class InertiaWebSocketServer {
 
     private func _start(port: UInt16) {
         guard isEnabled else {
-            NSLog("[INERTIA_LOG]: Not starting listener — editor channel is disabled")
+            InertiaLog.debug("Not starting listener — editor channel is disabled")
             return
         }
         guard listener == nil else { return }
@@ -138,7 +138,7 @@ public final class InertiaWebSocketServer {
             let nwPort = NWEndpoint.Port(rawValue: port),
             let listener = try? NWListener(using: parameters, on: nwPort)
         else {
-            NSLog("[INERTIA_LOG]: ❌ Failed to create listener on port \(port)")
+            InertiaLog.error("Failed to create listener on port \(port)")
             return
         }
 
@@ -149,12 +149,12 @@ public final class InertiaWebSocketServer {
         listener.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
-                NSLog("[INERTIA_LOG]: ✅ Listener ready on port \(port)")
+                InertiaLog.info("Listener ready on port \(port)")
             case .failed(let error):
-                NSLog("[INERTIA_LOG]: ❌ Listener failed: \(error)")
+                InertiaLog.error("Listener failed: \(error)")
                 self?.queue.async { self?.tearDown() }
             case .cancelled:
-                NSLog("[INERTIA_LOG]: ⚠️ Listener cancelled")
+                InertiaLog.warning("Listener cancelled")
             default:
                 break
             }
@@ -188,14 +188,14 @@ public final class InertiaWebSocketServer {
             guard let self else { return }
             switch state {
             case .ready:
-                NSLog("[INERTIA_LOG]: ✅ Editor connected: \(clientId)")
+                InertiaLog.info("Editor connected: \(clientId)")
                 self.updateIsConnected()
                 self.receiveNextMessage(on: connection, clientId: clientId)
             case .failed(let error):
-                NSLog("[INERTIA_LOG]: ❌ Connection failed: \(error)")
+                InertiaLog.error("Connection failed: \(error)")
                 self.remove(clientId)
             case .cancelled:
-                NSLog("[INERTIA_LOG]: ⚠️ Connection cancelled: \(clientId)")
+                InertiaLog.warning("Connection cancelled: \(clientId)")
                 self.remove(clientId)
             default:
                 break
@@ -224,7 +224,7 @@ public final class InertiaWebSocketServer {
             guard let self else { return }
 
             if let error = error {
-                NSLog("[INERTIA_LOG]: ❌ Receive error: \(error)")
+                InertiaLog.error("Receive error: \(error)")
                 self.remove(clientId)
                 return
             }
@@ -236,7 +236,7 @@ public final class InertiaWebSocketServer {
             if let wsMetadata = context.protocolMetadata(definition: NWProtocolWebSocket.definition) as? NWProtocolWebSocket.Metadata {
                 switch wsMetadata.opcode {
                 case .close:
-                    NSLog("[INERTIA_LOG]: 🔌 Editor closed connection: \(clientId)")
+                    InertiaLog.info("🔌 Editor closed connection: \(clientId)")
                     self.remove(clientId)
                     return
                 case .ping, .pong:
@@ -252,7 +252,7 @@ public final class InertiaWebSocketServer {
                 let messageWrapper = try JSONDecoder().decode(InertiaMessage.MessageWrapper.self, from: data)
                 self.handleMessage(messageWrapper)
             } catch {
-                NSLog("[INERTIA_LOG]: ❌ Receive decode error: \(error)")
+                InertiaLog.error("Receive decode error: \(error)")
             }
         }
     }
@@ -263,7 +263,7 @@ public final class InertiaWebSocketServer {
             guard let message = try? JSONDecoder().decode(InertiaMessage.MessageActionable.self, from: messageWrapper.payload) else {
                 return
             }
-            NSLog("[INERTIA_LOG]: Received message (data): \(message)")
+            InertiaLog.verbose("Received message (data): \(message)")
             DispatchQueue.main.async { self.messageReceivedIsActionable?(message.isActionable) }
         case .actionables:
             guard let message = try? JSONDecoder().decode(InertiaMessage.MessageActionables.self, from: messageWrapper.payload) else {
@@ -274,23 +274,23 @@ public final class InertiaWebSocketServer {
             guard let message = try? JSONDecoder().decode(InertiaMessage.MessageSchema.self, from: messageWrapper.payload) else {
                 return
             }
-            NSLog("[INERTIA_LOG]: Received message (data): \(message)")
+            InertiaLog.verbose("Received message (data): \(message)")
             DispatchQueue.main.async { self.messageReceivedSchema?(message.schemaWrappers) }
         case .signal:
             guard let message = try? JSONDecoder().decode(InertiaMessage.MessageSignal.self, from: messageWrapper.payload) else {
                 return
             }
-            NSLog("[INERTIA_LOG]: Received message (data): \(message)")
+            InertiaLog.verbose("Received message (data): \(message)")
             DispatchQueue.main.async { self.messageReceivedSignal?(message.signal, message.sequence) }
         case .translationEnded:
             // Runtime-to-editor only.
-            NSLog("[INERTIA_LOG]: ⚠️ Unexpected translationEnded from editor")
+            InertiaLog.warning("Unexpected translationEnded from editor")
         case .selectedNodeProperties:
             // Runtime-to-editor only.
-            NSLog("[INERTIA_LOG]: ⚠️ Unexpected selectedNodePropertiesr from editor")
+            InertiaLog.warning("Unexpected selectedNodePropertiesr from editor")
         case .playbackProgress:
             // Runtime-to-editor only.
-            NSLog("[INERTIA_LOG]: ⚠️ Unexpected playbackProgress from editor")
+            InertiaLog.warning("Unexpected playbackProgress from editor")
         }
     }
 
@@ -382,7 +382,7 @@ public final class InertiaWebSocketServer {
             let payloadData = try? JSONEncoder().encode(payload),
             let wrapperData = try? JSONEncoder().encode(InertiaMessage.MessageWrapper(type: type, payload: payloadData))
         else {
-            NSLog("[INERTIA_LOG]: ❌ Error encoding message of type \(type)")
+            InertiaLog.error("Error encoding message of type \(type)")
             completion?()
             return
         }
@@ -403,10 +403,10 @@ public final class InertiaWebSocketServer {
             group?.enter()
             connection.send(content: wrapperData, contentContext: context, isComplete: true, completion: .contentProcessed({ error in
                 if let error = error {
-                    NSLog("[INERTIA_LOG]: ❌ Send error to \(clientId): \(error)")
+                    InertiaLog.error("Send error to \(clientId): \(error)")
                 } else if type != .playbackProgress {
                     // Progress ticks every frame; logging them drowns the log.
-                    NSLog("[INERTIA_LOG]: ✅ Sent message of type \(type)")
+                    InertiaLog.verbose("Sent message of type \(type)")
                 }
                 group?.leave()
             }))
