@@ -26,6 +26,9 @@ public final class InertiaWebSocketServer {
     private var listener: NWListener? = nil
     private var connections: [UUID: NWConnection] = [:]
     private let queue = DispatchQueue(label: "com.inertia.websocket.server")
+    private let playbackProgressLock = NSLock()
+    private var pendingPlaybackProgress: InertiaMessage.MessagePlaybackProgress? = nil
+    private var isPlaybackProgressFlushScheduled = false
 
     /// Whether the runtime is allowed to host the editor channel at all.
     ///
@@ -264,34 +267,72 @@ public final class InertiaWebSocketServer {
     }
 
     public func sendMessage(_ message: InertiaMessage.MessagePlaybackProgress) {
-        broadcast(type: .playbackProgress, payload: message)
+        playbackProgressLock.lock()
+        pendingPlaybackProgress = message
+        let shouldScheduleFlush = !isPlaybackProgressFlushScheduled
+        isPlaybackProgressFlushScheduled = true
+        playbackProgressLock.unlock()
+
+        guard shouldScheduleFlush else { return }
+
+        queue.async { [weak self] in
+            self?.flushPlaybackProgress()
+        }
     }
 
     private func broadcast<T: Encodable>(type: InertiaMessage.MessageType, payload: T) {
         queue.async { [weak self] in
-            guard let self else { return }
+            self?.broadcastNow(type: type, payload: payload)
+        }
+    }
 
-            guard
-                let payloadData = try? JSONEncoder().encode(payload),
-                let wrapperData = try? JSONEncoder().encode(InertiaMessage.MessageWrapper(type: type, payload: payloadData))
-            else {
-                NSLog("[INERTIA_LOG]: ❌ Error encoding message of type \(type)")
-                return
-            }
+    private func flushPlaybackProgress() {
+        playbackProgressLock.lock()
+        let message = pendingPlaybackProgress
+        pendingPlaybackProgress = nil
+        isPlaybackProgressFlushScheduled = false
+        playbackProgressLock.unlock()
 
-            let metadata = NWProtocolWebSocket.Metadata(opcode: .binary)
-            let context = NWConnection.ContentContext(identifier: "WebSocketMessage", metadata: [metadata])
+        guard let message else { return }
 
-            for (clientId, connection) in self.connections where connection.state == .ready {
-                connection.send(content: wrapperData, contentContext: context, isComplete: true, completion: .contentProcessed({ error in
-                    if let error = error {
-                        NSLog("[INERTIA_LOG]: ❌ Send error to \(clientId): \(error)")
-                    } else if type != .playbackProgress {
-                        // Progress ticks every frame; logging them drowns the log.
-                        NSLog("[INERTIA_LOG]: ✅ Sent message of type \(type)")
-                    }
-                }))
-            }
+        broadcastNow(type: .playbackProgress, payload: message)
+
+        playbackProgressLock.lock()
+        let hasPendingMessage = pendingPlaybackProgress != nil
+        let shouldReschedule = hasPendingMessage && !isPlaybackProgressFlushScheduled
+        if shouldReschedule {
+            isPlaybackProgressFlushScheduled = true
+        }
+        playbackProgressLock.unlock()
+
+        guard shouldReschedule else { return }
+
+        queue.async { [weak self] in
+            self?.flushPlaybackProgress()
+        }
+    }
+
+    private func broadcastNow<T: Encodable>(type: InertiaMessage.MessageType, payload: T) {
+        guard
+            let payloadData = try? JSONEncoder().encode(payload),
+            let wrapperData = try? JSONEncoder().encode(InertiaMessage.MessageWrapper(type: type, payload: payloadData))
+        else {
+            NSLog("[INERTIA_LOG]: ❌ Error encoding message of type \(type)")
+            return
+        }
+
+        let metadata = NWProtocolWebSocket.Metadata(opcode: .binary)
+        let context = NWConnection.ContentContext(identifier: "WebSocketMessage", metadata: [metadata])
+
+        for (clientId, connection) in connections where connection.state == .ready {
+            connection.send(content: wrapperData, contentContext: context, isComplete: true, completion: .contentProcessed({ error in
+                if let error = error {
+                    NSLog("[INERTIA_LOG]: ❌ Send error to \(clientId): \(error)")
+                } else if type != .playbackProgress {
+                    // Progress ticks every frame; logging them drowns the log.
+                    NSLog("[INERTIA_LOG]: ✅ Sent message of type \(type)")
+                }
+            }))
         }
     }
 }
