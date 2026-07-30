@@ -20,7 +20,7 @@ public final class InertiaWebSocketServer {
 
     public var messageReceived: ((_ selectedIds: Set<ActionableIdPair>) -> Void)? = nil
     public var messageReceivedSchema: ((_ schemas: [InertiaSchemaWrapper]) -> Void)? = nil
-    public var messageReceivedSignal: ((_ signal: AnimationSignal) -> Void)? = nil
+    public var messageReceivedSignal: ((_ signal: AnimationSignal, _ sequence: Int) -> Void)? = nil
     public var messageReceivedIsActionable: ((_ isActionable: Bool) -> Void)? = nil
 
     private var listener: NWListener? = nil
@@ -235,7 +235,7 @@ public final class InertiaWebSocketServer {
                 return
             }
             NSLog("[INERTIA_LOG]: Received message (data): \(message)")
-            DispatchQueue.main.async { self.messageReceivedSignal?(message.signal) }
+            DispatchQueue.main.async { self.messageReceivedSignal?(message.signal, message.sequence) }
         case .translationEnded:
             // Runtime-to-editor only.
             NSLog("[INERTIA_LOG]: ⚠️ Unexpected translationEnded from editor")

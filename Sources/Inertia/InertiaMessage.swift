@@ -89,19 +89,35 @@ public enum InertiaMessage {
         public let duration: CGFloat
         /// False on the last message of a run — it finished or was paused.
         public let isRunning: Bool
+        /// The `sequence` of the last `MessageSignal` the runtime had applied
+        /// when this report was produced.
+        ///
+        /// The runtime's clock free-runs and keeps reporting while a pause or
+        /// resume signal is still in flight, so the editor can't tell a stale
+        /// report from a fresh one by `isRunning` alone. Echoing back the
+        /// sequence it has caught up to lets the editor tell structurally
+        /// whether a given report reflects a request it already sent, instead
+        /// of guessing from a timeout.
+        public let lastProcessedSequence: Int
 
-        public init(time: CGFloat, duration: CGFloat, isRunning: Bool) {
+        public init(time: CGFloat, duration: CGFloat, isRunning: Bool, lastProcessedSequence: Int) {
             self.time = time
             self.duration = duration
             self.isRunning = isRunning
+            self.lastProcessedSequence = lastProcessedSequence
         }
     }
 
     public struct MessageSignal: Codable {
         public let signal: AnimationSignal
+        /// Monotonically increasing per connection; assigned by the sender.
+        /// Echoed back in `MessagePlaybackProgress.lastProcessedSequence` once
+        /// the runtime has applied it.
+        public let sequence: Int
 
-        public init(signal: AnimationSignal) {
+        public init(signal: AnimationSignal, sequence: Int) {
             self.signal = signal
+            self.sequence = sequence
         }
     }
 }

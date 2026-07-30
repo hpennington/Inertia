@@ -351,6 +351,12 @@ public final class InertiaDataModel{
     var isActionable: Bool = false
     var isRunning:Bool = false
 
+    /// The `sequence` of the last `MessageSignal` this runtime has applied.
+    /// Echoed back on every `MessagePlaybackProgress` so the editor can tell
+    /// a report caused by a signal it sent from one still in flight from
+    /// before it, without racing a timeout.
+    public internal(set) var lastProcessedSignalSequence: Int = 0
+
     /// How far into the run currently on screen we are, in seconds.
     ///
     /// SwiftUI's `keyframeAnimator` keeps its own clock and does not publish it,
@@ -504,7 +510,8 @@ public final class InertiaDataModel{
             InertiaMessage.MessagePlaybackProgress(
                 time: playheadTime,
                 duration: playbackDuration,
-                isRunning: isRunning
+                isRunning: isRunning,
+                lastProcessedSequence: lastProcessedSignalSequence
             )
         )
     }
@@ -846,11 +853,12 @@ struct InertiaActionable<Content: View>: View {
         .onDisappear {
             // Cleanup disabled for new schema - no shape objects with zIndex
         }
-        
-        
+
+
     }
-    
-    func handleMessageSignal(_ signal: AnimationSignal) {
+
+    func handleMessageSignal(_ signal: AnimationSignal, sequence: Int) {
+        inertiaDataModel?.lastProcessedSignalSequence = sequence
         switch signal {
         case .pause:
             inertiaDataModel?.pausePlayback()
@@ -1196,7 +1204,7 @@ struct InertiaEditable<Content: View>: View {
             manager.messageReceived = handleMessage
             manager.messageReceivedSchema = handleMessageSchema
             manager.messageReceivedIsActionable = handleMessageActionable
-            manager.messageReceivedSignal = handleMessageSignal(_:)
+            manager.messageReceivedSignal = handleMessageSignal(_:sequence:)
         }
         .onChange(of: manager.isConnected, { oldValue, newValue in
             // An editor just attached — push the current hierarchy so it can
@@ -1319,7 +1327,8 @@ struct InertiaEditable<Content: View>: View {
         }
     }
     
-    func handleMessageSignal(_ signal: AnimationSignal) {
+    func handleMessageSignal(_ signal: AnimationSignal, sequence: Int) {
+        inertiaDataModel?.lastProcessedSignalSequence = sequence
         switch signal {
         case .pause:
             inertiaDataModel?.pausePlayback()
@@ -1331,7 +1340,7 @@ struct InertiaEditable<Content: View>: View {
             inertiaDataModel?.resumePlayback()
         }
     }
-    
+
     func handleMessageSchema(schemaWrappers: [InertiaSchemaWrapper]) {
         NSLog("[INERTIA_LOG]: [handleMessageSchema] received \(schemaWrappers.count) schema wrappers")
         for schemaWrapper in schemaWrappers {
