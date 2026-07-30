@@ -21,7 +21,7 @@ InertiaContainer(
 | --- | --- |
 | `bundle` | Where to look for the animation resource. Defaults to the main bundle. |
 | `dev` | `true` takes animations from the editor and opens the editor channel; `false` loads them from `bundle` and never listens. |
-| `id` | Resource name of the animation file, without `.json`. |
+| `id` | Resource name of the animation file, without `.json`. Also the container id the editor addresses its schemas to — see the warning below. |
 | `hierarchyId` | Id of the root node in the view hierarchy the editor draws. |
 
 ```swift
@@ -34,6 +34,15 @@ InertiaContainer(dev: false, id: "animation", hierarchyId: "animation") {
 
     With `dev: false` the initializer reads `id`.json from `bundle` and traps if the
     resource is missing or fails to decode. `[]` is a valid file.
+
+!!! warning "The editor only addresses the container id `animation`"
+
+    The runtime drops any schema whose container id does not match its own, and the
+    editor sends every schema against the container id `"animation"`. A container with a
+    different `id` therefore loads its bundled file normally but receives nothing from
+    the editor — the app connects, the hierarchy appears, and playback does nothing.
+
+    Use `id: "animation"` for any container you intend to author in the editor.
 
 ### Modifier form
 
@@ -97,10 +106,21 @@ id is triggered — see [Triggering animations](../guides/triggering.md).
 
 ```swift
 var isRepeating: Bool             // default true
-var loopDuration: CGFloat         // seconds; clamped to InertiaPlayback.loopDurationRange
+var loopDuration: CGFloat         // seconds; NOT clamped on assignment
 private(set) var playheadTime: CGFloat   // seconds into the current loop
 private(set) var seekTime: CGFloat?      // non-nil while the editor is holding a frame
 ```
+
+Assigning to `loopDuration` stores the value as given. `InertiaPlayback.loopDurationRange`
+is what the editor clamps its timeline to, and what `clampLoopDuration(_:)` applies to
+lengths arriving from the editor — pass your own values through it yourself if they are
+not already trusted.
+
+The loop the runtime plays is `max(loopDuration, longest track)`, so a track longer than
+`loopDuration` stretches the loop for every track rather than being truncated.
+
+`pause`, `seek` and `resume` are driven by the editor over the socket and are not part of
+the public API — an app can only start playback, not stop it.
 
 ### Hierarchy
 
@@ -155,7 +175,7 @@ interpolate it.
 public struct InertiaAnimationValues {
     public var scale: CGFloat
     public var translate: CGSize   // fraction of the container's size
-    public var rotate: CGFloat     // degrees, top-left anchor
+    public var rotate: CGFloat     // degrees, top-left anchor, applied first
     public var rotateCenter: CGFloat  // degrees, center anchor
     public var opacity: CGFloat
 }
@@ -181,6 +201,6 @@ whole process. `InertiaContainer` calls it from its `dev` flag on appear, and th
 refuses to start a listener until it has been enabled, so you should not need to call it
 yourself unless you are driving the runtime without a container.
 
-`InertiaViewModel` is also public and exposes `trigger`, `cancel` and `restart`, but
-`InertiaContainer` does not inject it into the environment — use
-`\.inertiaDataModel` instead.
+`InertiaViewModel` is also public and exposes `trigger`, `cancel` and `restart`, but the
+three are currently no-ops left over from an earlier schema, and `InertiaContainer` does
+not inject it into the environment. Use `\.inertiaDataModel` instead.

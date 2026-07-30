@@ -40,7 +40,8 @@ struct MyApp: App {
    the bundle. Drive it from a build flag rather than hardcoding it — see
    [Installation](installation.md#add-the-editor-build-flag).
 2. The animation file's name without its extension. `"animation"` loads
-   `animation.json` from the bundle.
+   `animation.json` from the bundle. Keep this as `"animation"` — it doubles as the
+   container id the editor sends animations to.
 3. The root node's id in the view hierarchy the editor draws. Any stable string works.
 
 There is also a modifier form, if you prefer it:

@@ -98,3 +98,8 @@ In practice this matters for two things:
 They can be the same string — the example app uses `"animation"` for both — but they mean
 different things. Change `id` and you change which file loads; change `hierarchyId` and you
 rename the root of the hierarchy.
+
+`id` is also the container id the editor addresses its schemas to, and the editor always
+sends `"animation"`. A container with a different `id` still loads its bundled file, but
+receives nothing in editor mode — so keep `id: "animation"` for anything you author in the
+editor.

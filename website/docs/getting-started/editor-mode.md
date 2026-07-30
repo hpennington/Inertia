@@ -9,13 +9,20 @@ recorded as keyframes. It is a different code path in the runtime, switched on b
 | | `dev: false` | `dev: true` |
 | --- | --- | --- |
 | Animations come from | `animation.json` in the app bundle | the editor, over a WebSocket |
-| Tagged views | animate | are selectable and draggable |
-| Playback clock | owned by the app | driven by the editor's playhead |
+| Tagged views | animate | animate, and are selectable and draggable |
+| Playback clock | runs in the app | still runs in the app; the editor pauses, scrubs and resumes it by message, and mirrors its position on the playhead |
+| Starting an animation | `trigger(_:)` from your app | `trigger(_:)` from your app — the editor cannot start one |
 | Bundle resource | required at init | not read |
 | WebSocket server | never started | listening on port 8060 |
 
 Because the container never touches the bundle resource in editor mode, you can start
 authoring before you have an animation file at all.
+
+!!! warning "Editor mode requires the container id `animation`"
+
+    The editor addresses every schema it sends to the container id `"animation"`, and the
+    runtime drops schemas meant for a different container. A container with any other `id`
+    connects and shows its hierarchy but never receives an animation.
 
 The `dev` flag also gates the WebSocket server itself: with `dev: false` the runtime never
 opens a listener on port 8060, so a shipped build cannot be attached to.
@@ -51,10 +58,16 @@ also works and keeps the flag out of your main target entirely.
    from Xcode, or through the editor's **Install and launch** panel.
 4. Launch the app.
 
-On launch the app opens a WebSocket to the editor on port **8060** and sends its
-Inertia-tagged view hierarchy. The editor's hierarchy panel fills in, and you are
+The app is the one hosting: on launch it starts a WebSocket **server** on port **8060**,
+and the editor connects to it as a client at `ws://127.0.0.1:8060` — the simulator shares
+the Mac's network stack, so there is no address to discover. Once attached, the app sends
+its Inertia-tagged view hierarchy, the editor's hierarchy panel fills in, and you are
 connected. Selecting a view in the simulator highlights it in the editor and the other
 way around.
+
+Because the editor dials in and retries, the order does not matter: launch the app first
+and the editor picks it up, or leave the editor open and it attaches when the app comes
+up.
 
 If the hierarchy panel stays empty, see [Troubleshooting](../troubleshooting.md).
 

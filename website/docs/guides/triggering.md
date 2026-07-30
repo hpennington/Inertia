@@ -62,8 +62,8 @@ Button("Animate all") {
 }
 ```
 
-Every track is padded to the loop length, so tracks of different lengths still restart in
-step with each other.
+While repeating, every track is padded to the loop length, so tracks of different lengths
+still restart in step with each other.
 
 ## Repeating
 
@@ -80,7 +80,16 @@ With it on, tracks are held out to the full loop duration and start over togethe
 ## Loop duration
 
 ```swift
-inertia.loopDuration = 1.5   // seconds, clamped to 0.1...60
+inertia.loopDuration = 1.5   // seconds
+```
+
+Assigning to `loopDuration` does **not** clamp — the property takes whatever you give it,
+including a value outside the usable range. Only the editor's timeline messages are
+clamped on the way in. Run your own values through the same helper if they come from
+somewhere you do not control:
+
+```swift
+inertia.loopDuration = InertiaPlayback.clampLoopDuration(userValue)
 ```
 
 `InertiaPlayback` exposes the same constants the editor uses:
@@ -88,13 +97,31 @@ inertia.loopDuration = 1.5   // seconds, clamped to 0.1...60
 ```swift
 InertiaPlayback.defaultLoopDuration   // 3.0
 InertiaPlayback.loopDurationRange     // 0.1...60.0
-InertiaPlayback.clampLoopDuration(_:) // brings a value into range
+InertiaPlayback.clampLoopDuration(_:) // brings a value into range, non-finite included
 ```
+
+The loop the runtime actually plays is `max(loopDuration, longest track)`, so a track
+longer than the value you set stretches the loop rather than being cut off.
+
+## Triggering in editor mode
+
+The editor's transport does not trigger anything. Its play button pushes the current
+schemas and sends a *resume*, and resume deliberately only picks up actionables your app
+has already triggered — starting one is the app's call, not the editor's.
+
+So a view that is never triggered stays still in the editor too, however many times you
+press play. Give the app a way to trigger while you are authoring — a button, or an
+`.onAppear` — or you will be recording against a view that never moves.
+
+For the same reason, `trigger(_:)` in editor mode does nothing until the editor has sent
+its schemas: the clock will not start while the container has no animations loaded, which
+in editor mode it does not until an editor attaches.
 
 ## What triggering does not do
 
-`trigger(_:)` sets a view's track running and starts the container's clock. It does not
-reset a track that is already playing, and there is no public "stop this one view" on the
-data model. If you need a view to be able to restart from the beginning, structure it so
-the view is removed and re-added, or keep the animation on a track short enough that the
-loop does the work.
+`trigger(_:)` sets a view's track running, clears any frame the editor has the playhead
+parked on, and starts the container's clock. It does not reset a track that is already
+playing, and there is no public "stop this one view" on the data model — pause, seek and
+resume exist, but only the editor can reach them. If you need a view to be able to restart
+from the beginning, structure it so the view is removed and re-added, or keep the
+animation on a track short enough that the loop does the work.

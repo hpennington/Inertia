@@ -50,14 +50,14 @@ Two rotation values, applied together, differing only in anchor:
 - `rotate` swings it about its top-left corner, which moves the view as well as turning
   it.
 
-Both are in degrees, positive clockwise.
+Both are in degrees, positive clockwise, and both are applied on every path — editor
+mode, bundled playback, and a frame held by the playhead — in that order: `rotate` about
+the top-left first, then `rotateCenter` about the center of the result.
 
-!!! note "`rotate` in editor mode"
-
-    The editor's live preview currently applies `rotateCenter` only — `rotate` is not
-    drawn while you are authoring, though it is honoured when the animation plays from a
-    bundled file. If a top-left rotation looks wrong in the editor, check it in a build
-    with `dev: false` before chasing it.
+Neither is recorded by dragging — a drag in the viewport writes `translate` only, and a
+recorded keyframe starts with both rotations at `0`. To rotate, type a value into the
+**Rotate** or **Rotate Center** field of the keyframe editor, or write it into the file
+by hand.
 
 ## `opacity`
 
@@ -67,13 +67,18 @@ sanitizes non-finite values rather than passing them to SwiftUI, which would tra
 ## Interpolation
 
 Keyframes interpolate with a cubic spline (`CubicKeyframe`), so motion eases through
-intermediate keyframes rather than moving in straight segments between them. Two
+intermediate keyframes rather than moving in straight segments between them. Three
 consequences worth knowing:
 
 - A spline can overshoot. Three keyframes moving a view right, then further right, then
   back can swing past the last position before settling.
-- Durations must be positive. The spline divides by the keyframe's duration, so a zero
-  duration on anything but a leading pose produces `NaN`.
+- Durations must be positive, because the spline divides by the keyframe's duration. The
+  runtime rewrites any duration that is zero, negative or non-finite to **1ms** before
+  handing the track to SwiftUI, so such a keyframe reads as an instant jump rather than
+  producing `NaN`.
+- A keyframe whose `values` are non-finite is dropped from the track altogether, taking
+  its duration with it — the keyframes after it therefore land earlier than the file
+  says.
 
 There is no per-keyframe easing curve in the format. If you need a different feel, add
 intermediate keyframes.

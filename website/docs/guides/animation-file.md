@@ -71,12 +71,16 @@ So a track with durations `0, 1, 2` has keyframes at absolute times 0s, 1s, and 
 A leading keyframe with `duration: 0` is therefore a starting pose that takes no time to
 reach, not a keyframe that waits.
 
-!!! warning "Durations must be positive after the first"
+!!! note "Non-positive durations are repaired, not honoured"
 
-    Interpolation divides by the keyframe's duration. A zero or negative duration on any
-    keyframe other than an initial pose produces `NaN` and a view that vanishes. The
-    editor enforces a small positive minimum; if you hand-edit a file, keep durations
-    above zero.
+    Interpolation divides by the keyframe's duration, so the runtime rewrites any
+    duration that is zero, negative or non-finite to 1ms before playing the track. That
+    keeps a hand-edited file from producing `NaN` and a view that vanishes, but the
+    keyframe reads as an instant jump, and every keyframe after it lands 1ms later than
+    the file implies. The editor keeps its own durations above the same minimum.
+
+    A leading keyframe at `duration: 0` is the normal case and behaves as intended: the
+    view is at its starting pose 1ms in, which is not something you can see.
 
 ### `values`
 
@@ -85,13 +89,23 @@ property and leaving the others alone. See [Animatable values](../reference/valu
 
 ## Loop length
 
-The file does not record how long the loop is. A track shorter than the loop holds its
-final pose until the loop comes around, and the loop length used at runtime is the
-runtime's default of 3 seconds unless the editor tells it otherwise.
+The file does not record how long the loop is. At runtime the loop is
 
-If you author against a different loop duration in the editor, an animation played from
-the bundle still loops over the runtime default. Keep the editor's loop duration at 3
-seconds unless you are also driving the loop length yourself.
+```
+max(loopDuration, longest track in the file)
+```
+
+where `loopDuration` starts at the runtime default of 3 seconds and changes only when
+your app sets `inertia.loopDuration` or the editor sends a new timeline length. A track
+shorter than the loop holds its final pose until the loop comes around; a track longer
+than `loopDuration` stretches the loop for every track, so they all still restart
+together.
+
+So an animation authored on a 5-second timeline plays from the bundle over a 5-second
+loop only if one of its tracks actually runs the full 5 seconds. If the longest ends at
+4 seconds the bundled loop is 4 seconds; if it ends at 2 seconds the loop falls back to
+the 3-second default. Either keep the editor's loop duration at 3 seconds, or set
+`inertia.loopDuration` in your app to the length you authored against.
 
 ## Naming and lookup
 

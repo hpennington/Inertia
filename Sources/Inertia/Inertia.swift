@@ -711,8 +711,9 @@ public struct InertiaContainer<Content: View>: View {
             }
             // The editor channel is a development facility, so the container —
             // the one place that knows whether this is a dev build — decides
-            // whether the runtime may listen at all. Without this the server
-            // stays shut and the editable views' `start()` calls do nothing.
+            // whether the runtime may dial the editor at all. Without this the
+            // channel stays shut and the editable views' `start()` calls only
+            // record that a connection was wanted.
             .onAppear { manager.setEnabled(dev) }
             .onChange(of: dev) { _, isDev in
                 manager.setEnabled(isDev)
@@ -729,7 +730,7 @@ struct ParentPath: PreferenceKey {
     }
 }
 
-let manager = InertiaWebSocketServer.shared
+let manager = InertiaWebSocketClient.shared
 
 struct InertiaCanvasSizeKey: EnvironmentKey {
     static let defaultValue: CGSize = .zero
@@ -820,6 +821,7 @@ struct InertiaActionable<Content: View>: View {
                 let values = timeline(for: animation).value(time: seekTime).sanitized
                 wrappedContent
                     .scaleEffect(values.scale)
+                    .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
                     .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
                     .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
                     .opacity(values.opacity)
@@ -832,7 +834,7 @@ struct InertiaActionable<Content: View>: View {
                         let values = rawValues.sanitized
                         contentView
                             .scaleEffect(values.scale)
-//                            .rotationEffect(Angle (degrees: values.rotate), anchor: .topLeading)
+                            .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
                             .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
                             .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
                             .opacity(values.opacity)
@@ -1214,7 +1216,7 @@ struct InertiaEditable<Content: View>: View {
         .onAppear {
             updateHierarchyId()
 
-            InertiaLog.info("Starting websocket server (setup)...")
+            InertiaLog.info("Connecting to the editor (setup)...")
             manager.start()
 
             manager.messageReceived = handleMessage

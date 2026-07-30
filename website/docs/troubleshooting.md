@@ -46,13 +46,33 @@ that field. See [Triggering animations](guides/triggering.md).
 If it is triggered and still still, check the id matches exactly. `.inertia("Card0")` and
 an animation with `"id": "card0"` never find each other, and nothing warns you.
 
-## A view disappears mid-animation
+## Pressing play in the editor does nothing
 
-Almost always a zero or negative keyframe `duration`. The cubic interpolation divides by
-the duration, producing `NaN`, and a view offset by `NaN` is not drawn.
+The editor's play button resumes a run; it cannot start one. Resume only affects
+actionables the app has already triggered, so a view your app never calls `trigger(_:)`
+on stays still no matter what the transport does.
 
-The editor keeps durations above a small positive minimum, so this generally comes from
-hand-edited files. Leading keyframes at `duration: 0` are fine — they are starting poses.
+Give the app a way to trigger while you author — a button, or `.onAppear` — then use the
+editor's transport to play, pause and scrub it.
+
+If nothing at all moves and the hierarchy panel is populated, check the container's `id`:
+the editor sends its schemas to the container id `animation`, and the runtime drops
+schemas addressed to any other container.
+
+## A view jumps between poses instead of moving
+
+A keyframe `duration` that is zero, negative or non-finite. The cubic interpolation
+divides by the duration, so the runtime rewrites any such duration to 1ms before playing
+the track — the view still animates, but that segment is over instantly.
+
+The editor keeps durations above the same minimum, so this generally comes from
+hand-edited files. Leading keyframes at `duration: 0` are fine — they are starting poses,
+and 1ms of it is not visible.
+
+A view that vanishes outright is a different problem: check `opacity`, `scale: 0`, and a
+`translate` big enough to put it outside the container. The runtime replaces any pose it
+cannot draw with the neutral one rather than passing it to SwiftUI, so a non-finite value
+leaves the view sitting still, not missing.
 
 ## The animation is in the wrong place on a different device
 
@@ -65,14 +85,13 @@ you did not mean.
 
 ## Playback in the editor does not match the app
 
-Two likely causes:
+The likely cause is **loop duration**. The editor's loop length is not stored in the
+animation file, so a bundled animation loops over `max(3 seconds, its longest track)`
+however long the timeline you authored on was. An animation built against a 5-second
+timeline whose longest track ends at 4 seconds loops over 4 seconds in the app.
 
-- **Loop duration.** The editor's loop length is not stored in the animation file. An
-  animation authored on a 5-second timeline still loops over the runtime's 3-second
-  default when loaded from the bundle. Either keep the editor at 3 seconds or set
-  `inertia.loopDuration` in your app to match.
-- **`rotate`.** The editor's live preview draws `rotateCenter` but not `rotate`. A
-  top-left rotation shows up in a `dev: false` build and not in the editor.
+Either keep the editor at 3 seconds, or set `inertia.loopDuration` in your app to the
+length you authored against.
 
 ## Scrubbing the playhead does nothing
 

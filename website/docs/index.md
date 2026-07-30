@@ -33,15 +33,17 @@ keyframe animation APIs.
 
 ```mermaid
 flowchart LR
-    A["Your SwiftUI app<br/>.inertia(\"card0\")"] -->|view hierarchy| B["Inertia editor<br/>(macOS)"]
-    B -->|animation schemas<br/>over WebSocket| A
+    B["Inertia editor<br/>(macOS)"] -->|connects to ws://127.0.0.1:8060| A["Your SwiftUI app<br/>.inertia(\"card0\")"]
+    A -->|view hierarchy| B
+    B -->|animation schemas| A
     B -->|writes| C["animation.json"]
     C -->|bundled| D["Your shipped app"]
 ```
 
-In **editor mode** your app connects to the editor over a local WebSocket. It reports its
-Inertia-tagged view hierarchy, and the editor pushes animation schemas back as you edit,
-so what you see in the simulator is the animation as it currently stands.
+In **editor mode** your app hosts a local WebSocket server and the editor connects to it.
+The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
+back as you edit, so what you see in the simulator is the animation as it currently
+stands.
 
 In **release mode** none of that is running. The container loads `animation.json` out of
 your app bundle and plays it through SwiftUI's keyframe animator. The WebSocket server is
