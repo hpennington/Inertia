@@ -27,10 +27,44 @@ public final class InertiaWebSocketServer {
     private var connections: [UUID: NWConnection] = [:]
     private let queue = DispatchQueue(label: "com.inertia.websocket.server")
 
+    /// Whether the runtime is allowed to host the editor channel at all.
+    ///
+    /// Set from `InertiaContainer`'s `dev` flag, and false until something sets
+    /// it: a shipped build has no business listening on a port, and the decision
+    /// belongs here rather than at the call sites so that a `start()` from
+    /// anywhere — a view that is still on screen from a previous editor session,
+    /// or an embedder driving the runtime directly — cannot open one either.
+    private var isEnabled: Bool = false
+
     init() {}
 
-    /// Starts listening. Safe to call repeatedly — subsequent calls are ignored
-    /// while a listener is already up.
+    /// Opens or closes the editor channel for the whole process.
+    ///
+    /// Disabling tears down the listener and every attached editor, so a
+    /// container that switches out of editor mode does not leave the port open.
+    ///
+    /// The server is a singleton, so this is process-wide: in an app with more
+    /// than one container the last one to appear decides. That is the intended
+    /// shape — `dev` comes from a build flag, so every container in a build
+    /// agrees — but a deliberately mixed hierarchy would need its own gate.
+    public func setEnabled(_ isEnabled: Bool, port: UInt16 = inertiaDefaultPort) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            guard isEnabled != self.isEnabled else { return }
+
+            self.isEnabled = isEnabled
+
+            if isEnabled {
+                NSLog("[INERTIA_LOG]: Editor channel enabled")
+            } else {
+                NSLog("[INERTIA_LOG]: Editor channel disabled, tearing down")
+                self.tearDown()
+            }
+        }
+    }
+
+    /// Starts listening, if the editor channel is enabled. Safe to call
+    /// repeatedly — subsequent calls are ignored while a listener is already up.
     public func start(port: UInt16 = inertiaDefaultPort) {
         queue.async { [weak self] in
             self?._start(port: port)
@@ -38,6 +72,10 @@ public final class InertiaWebSocketServer {
     }
 
     private func _start(port: UInt16) {
+        guard isEnabled else {
+            NSLog("[INERTIA_LOG]: Not starting listener — editor channel is disabled")
+            return
+        }
         guard listener == nil else { return }
 
         let parameters = NWParameters.tcp

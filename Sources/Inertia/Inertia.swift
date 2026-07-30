@@ -683,6 +683,14 @@ public struct InertiaContainer<Content: View>: View {
                     }
                 }
             }
+            // The editor channel is a development facility, so the container —
+            // the one place that knows whether this is a dev build — decides
+            // whether the runtime may listen at all. Without this the server
+            // stays shut and the editable views' `start()` calls do nothing.
+            .onAppear { manager.setEnabled(dev) }
+            .onChange(of: dev) { _, isDev in
+                manager.setEnabled(isDev)
+            }
         }
     }
 }
@@ -918,6 +926,19 @@ struct InertiaEditable<Content: View>: View {
     @State private var vm = InertiaViewModel()
     @State private var hierarchyId: String? = nil
     @State private var selectedSize: CGSize = .zero
+    /// Where the node sat before the current gesture began. `DragGesture`
+    /// reports translation relative to its own start, so without carrying the
+    /// accumulated offset every drag after the first snaps back to the origin.
+    @State private var startOffset: CGSize = .zero
+
+    /// The node's position in the container: everything before this gesture
+    /// plus what this gesture has moved so far.
+    private var totalOffset: CGSize {
+        CGSize(
+            width: startOffset.width + dragOffset.width,
+            height: startOffset.height + dragOffset.height
+        )
+    }
     
     private weak var indexManager = SharedIndexManager.shared
     let hierarchyIdPrefix: String
@@ -945,12 +966,12 @@ struct InertiaEditable<Content: View>: View {
                 if inertiaDataModel?.isActionable == true {
                     dragOffset = value.translation
                     inertiaDataModel?.showGrid = true
-                    inertiaDataModel?.selectedNodePosition = dragOffset
+                    inertiaDataModel?.selectedNodePosition = totalOffset
                     inertiaDataModel?.selectedNodeSize = selectedSize
                     manager.sendMessage(
                         InertiaMessage.MessageSelectedNodeProperties(
-                            positionX: dragOffset.width,
-                            positionY: dragOffset.height,
+                            positionX: totalOffset.width,
+                            positionY: totalOffset.height,
                             sizeX: selectedSize.width,
                             sizeY: selectedSize.height
                         )
@@ -960,12 +981,17 @@ struct InertiaEditable<Content: View>: View {
             .onEnded { value in
                 if inertiaDataModel?.isActionable == true {
                     dragOffset = value.translation
+                    // Fold this gesture into the accumulated position so the
+                    // next one starts from where the node actually is.
+                    let settled = totalOffset
+                    startOffset = settled
+                    dragOffset = .zero
                     inertiaDataModel?.showGrid = false
                     if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
                         manager.sendMessage(
                             InertiaMessage.MessageTranslation(
-                                translationX: (dragOffset.width) / (inertiaContainerSize.width),
-                                translationY: (dragOffset.height) / (inertiaContainerSize.height),
+                                translationX: (settled.width) / (inertiaContainerSize.width),
+                                translationY: (settled.height) / (inertiaContainerSize.height),
                                 actionableIds: actionableIdPairs
                             )
                         )
@@ -1025,7 +1051,7 @@ struct InertiaEditable<Content: View>: View {
                     .stroke(Color.green)
             }
         }
-        .offset(dragOffset)
+        .offset(totalOffset)
         .gesture(dragGesture)
     }
     
@@ -1097,10 +1123,11 @@ struct InertiaEditable<Content: View>: View {
                     .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
                     .opacity(values.opacity)
                     .onAppear {
-                        self.dragOffset = CGSize(
+                        self.startOffset = CGSize(
                             width: animation.initialValues.translate.width * inertiaContainerSize.width,
                             height: animation.initialValues.translate.height * inertiaContainerSize.height
                         )
+                        self.dragOffset = .zero
                     }
             } else {
                 wrappedContent
