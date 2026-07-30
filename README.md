@@ -202,6 +202,7 @@ Example `animation.json`:
 - `initialValues`: Starting state for all animation properties
 - `invokeType`: Animation trigger mode (`"auto"` or `"trigger"`)
 - `keyframes`: Array of animation steps with values and durations
+- `duration`: Keyframe duration in seconds
 
 ### Animatable Values
 
@@ -210,7 +211,6 @@ Example `animation.json`:
 - `rotate`: Rotation from top-left anchor (degrees)
 - `rotateCenter`: Rotation from center anchor (degrees)
 - `opacity`: Transparency (0.0 = invisible, 1.0 = opaque)
-- `duration`: Keyframe duration in seconds
 
 ## Invoke Types
 

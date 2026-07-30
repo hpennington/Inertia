@@ -342,7 +342,11 @@ public final class InertiaDataModel{
     var actionableIdToAnimationIdMap: [String: String] = [:]
     var registeredHierarchyIdPrefixes: Set<String> = []
     var showGrid: Bool = false
-    var selectedNodePosition: CGSize = .zero
+    /// The selected node's center in the container's coordinate space, including
+    /// the drag in progress. Guides are drawn from this, so it has to be an
+    /// absolute position rather than a translation — a node need not be laid out
+    /// at the container's center.
+    var selectedNodeCenter: CGPoint = .zero
     var selectedNodeSize: CGSize = .zero
     var isActionable: Bool = false
     var isRunning:Bool = false
@@ -607,16 +611,12 @@ public struct InertiaContainer<Content: View>: View {
     }
     
     /// Dashed guides that track the selected node's edges and center within the container.
-    /// The node's untransformed origin is the container center, so its current center is
-    /// the container center offset by `selectedNodePosition`.
+    /// `selectedNodeCenter` is already in this container's coordinate space, so the
+    /// guides land on the node wherever it happens to be laid out.
     @ViewBuilder
     private func dragAlignmentGuides(in size: CGSize) -> some View {
-        let position = inertiaDataModel.selectedNodePosition
+        let center = inertiaDataModel.selectedNodeCenter
         let selectedSize = inertiaDataModel.selectedNodeSize
-        let center = CGPoint(
-            x: size.width / 2 + position.width,
-            y: size.height / 2 + position.height
-        )
         // SwiftUI traps on non-finite geometry, and any of these can be NaN before
         // the first layout pass or while a drag is being set up.
         let isValid = size.width.isFinite && size.height.isFinite
@@ -670,11 +670,14 @@ public struct InertiaContainer<Content: View>: View {
                     .environment(\.inertiaContainerSize, proxy.size)
                     .environment(\.inertiaContainerId, hierarchyId)
                     .environment(\.inertiaEditor, dev)
-                    .coordinateSpace(.named(hierarchyId))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .scrollDisabled(self.inertiaDataModel.isActionable)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Anchored to the filled container frame — the same frame the guide
+            // canvas draws in — so positions measured in this space and points
+            // drawn in the canvas share an origin.
+            .coordinateSpace(.named(hierarchyId))
             .background {
                 if inertiaDataModel.showGrid {
                     ZStack {
@@ -919,6 +922,35 @@ final class SharedIndexManager {
     var objectIdSet: Set<String> = []
 }
 
+private extension View {
+    /// Reports this view's layout frame in the named coordinate space, ignoring
+    /// any `.offset` applied inside it. The wrapping container is what makes that
+    /// true: an offset is layout-neutral, so the parent's frame stays where the
+    /// child was laid out even as the child draws elsewhere.
+    /// Does nothing without a container id: there is no space to measure against,
+    /// and reporting a frame from some other space would put the guides somewhere
+    /// arbitrary rather than leaving them off.
+    @ViewBuilder
+    func measuringLayoutFrame(
+        in space: String?,
+        _ report: @escaping (CGRect) -> Void
+    ) -> some View {
+        if let space {
+            ZStack { self }
+                .background(
+                    GeometryReader { proxy in
+                        let frame = proxy.frame(in: .named(space))
+                        Color.clear
+                            .onAppear { report(frame) }
+                            .onChange(of: frame) { _, newFrame in report(newFrame) }
+                    }
+                )
+        } else {
+            self
+        }
+    }
+}
+
 struct InertiaEditable<Content: View>: View {
     @State private var dragOffset: CGSize = .zero
     @State private var animation: InertiaAnimationSchema? = nil
@@ -926,6 +958,9 @@ struct InertiaEditable<Content: View>: View {
     @State private var vm = InertiaViewModel()
     @State private var hierarchyId: String? = nil
     @State private var selectedSize: CGSize = .zero
+    /// The node's laid-out center in the container's coordinate space, before any
+    /// drag offset. Measured outside `.offset` so it stays the layout position.
+    @State private var baseCenter: CGPoint = .zero
     /// Where the node sat before the current gesture began. `DragGesture`
     /// reports translation relative to its own start, so without carrying the
     /// accumulated offset every drag after the first snaps back to the origin.
@@ -939,7 +974,16 @@ struct InertiaEditable<Content: View>: View {
             height: startOffset.height + dragOffset.height
         )
     }
-    
+
+    /// Where the node's center currently sits in the container, i.e. its layout
+    /// position moved by the accumulated drag.
+    private var currentCenter: CGPoint {
+        CGPoint(
+            x: baseCenter.x + totalOffset.width,
+            y: baseCenter.y + totalOffset.height
+        )
+    }
+
     private weak var indexManager = SharedIndexManager.shared
     let hierarchyIdPrefix: String
     let content: Content
@@ -966,7 +1010,7 @@ struct InertiaEditable<Content: View>: View {
                 if inertiaDataModel?.isActionable == true {
                     dragOffset = value.translation
                     inertiaDataModel?.showGrid = true
-                    inertiaDataModel?.selectedNodePosition = totalOffset
+                    inertiaDataModel?.selectedNodeCenter = currentCenter
                     inertiaDataModel?.selectedNodeSize = selectedSize
                     manager.sendMessage(
                         InertiaMessage.MessageSelectedNodeProperties(
@@ -1035,16 +1079,6 @@ struct InertiaEditable<Content: View>: View {
             let message = InertiaMessage.MessageActionables(tree: tree, actionableIds: actionableIds)
             manager.sendMessage(message)
         }
-        .background(
-            GeometryReader { proxy in
-                Color.clear.onAppear {
-                    selectedSize = proxy.size
-                }
-                .onChange(of: proxy.size) { oldValue, newValue in
-                    selectedSize = newValue
-                }
-            }
-        )
         .overlay {
             if showSelectedBorder && inertiaDataModel?.isActionable ?? false {
                 Rectangle()
@@ -1053,6 +1087,14 @@ struct InertiaEditable<Content: View>: View {
         }
         .offset(totalOffset)
         .gesture(dragGesture)
+        // Measured one level out: `.offset` is a geometry effect that carries the
+        // view's own background and overlays with it, so anything attached inside
+        // this wrapper reports the *dragged* position. The enclosing ZStack keeps
+        // the layout frame, which is what `currentCenter` adds the drag to.
+        .measuringLayoutFrame(in: inertiaContainerId) { frame in
+            selectedSize = frame.size
+            baseCenter = CGPoint(x: frame.midX, y: frame.midY)
+        }
     }
     
     @ViewBuilder
