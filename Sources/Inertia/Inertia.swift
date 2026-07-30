@@ -477,6 +477,8 @@ public final class InertiaDataModel{
         report(isRunning: true)
 
         let start = ContinuousClock.now
+        var tickCount = 0
+        var lastDriftLogElapsed: Double = 0
         clock = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.clockInterval)
@@ -485,6 +487,20 @@ public final class InertiaDataModel{
                 // Read each tick: the timeline can be resized mid-run.
                 let duration = self.playbackDuration
                 let elapsed = offset + (ContinuousClock.now - start).inSeconds
+
+                // Diagnostic: how far real elapsed time has drifted from what
+                // `tickCount` ticks at `clockInterval` should have taken. If
+                // this grows over a run, the main actor in THIS process (the
+                // app under test) is falling behind — i.e. the app itself is
+                // CPU-starved, not just something in the editor's mirroring
+                // path. Logged at most once every ~2s of playback.
+                tickCount += 1
+                let expectedElapsed = offset + Double(tickCount) * Self.clockInterval.inSeconds
+                let driftMs = (elapsed - expectedElapsed) * 1000
+                if elapsed - lastDriftLogElapsed >= 2 {
+                    lastDriftLogElapsed = elapsed
+                    NSLog("[INERTIA_LOG][diag] clock drift: %.0fms after %.1fs (tick #%d)", driftMs, elapsed, tickCount)
+                }
 
                 if self.isRepeating {
                     self.playheadTime = elapsed.truncatingRemainder(dividingBy: duration)

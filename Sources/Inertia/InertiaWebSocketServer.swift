@@ -28,7 +28,53 @@ public final class InertiaWebSocketServer {
     private let queue = DispatchQueue(label: "com.inertia.websocket.server")
     private let playbackProgressLock = NSLock()
     private var pendingPlaybackProgress: InertiaMessage.MessagePlaybackProgress? = nil
-    private var isPlaybackProgressFlushScheduled = false
+    /// True from the moment a playback-progress send is handed to the network
+    /// until every ready connection's completion for it has actually fired.
+    ///
+    /// The clock ticks every ~16ms regardless of how long a send takes to
+    /// drain, so without this a stall anywhere downstream lets sends queue up
+    /// in the socket layer — and they then drain in a burst once whatever was
+    /// stalling clears, rather than a steady stream. Only one send is ever
+    /// outstanding; anything that arrives while it's in flight overwrites
+    /// `pendingPlaybackProgress` and rides along on the next one.
+    private var isPlaybackProgressSendInFlight = false
+
+    // MARK: - Diagnostics
+    private var diagSentCount = 0
+    private var diagCoalescedCount = 0
+    private var diagSendDurationMsTotal: Double = 0
+    private var diagLastLogMs: UInt64 = 0
+    private static let diagLogIntervalMs: UInt64 = 2_000
+
+    /// Guarded by `playbackProgressLock`: called from the send-completion
+    /// callback, but `diagCoalescedCount` is also written from `sendMessage`,
+    /// which can run on a different thread (whatever calls `report(isRunning:)`).
+    private func logPlaybackProgressDiagnosticsIfDue() {
+        let nowMs = DispatchTime.now().uptimeNanoseconds / 1_000_000
+
+        playbackProgressLock.lock()
+        if diagLastLogMs == 0 {
+            diagLastLogMs = nowMs
+            playbackProgressLock.unlock()
+            return
+        }
+        let elapsedMs = nowMs &- diagLastLogMs
+        guard elapsedMs >= Self.diagLogIntervalMs else {
+            playbackProgressLock.unlock()
+            return
+        }
+        let sent = diagSentCount
+        let coalesced = diagCoalescedCount
+        let avgSendMs = sent > 0 ? diagSendDurationMsTotal / Double(sent) : 0
+        diagSentCount = 0
+        diagCoalescedCount = 0
+        diagSendDurationMsTotal = 0
+        diagLastLogMs = nowMs
+        playbackProgressLock.unlock()
+
+        let elapsedS = Double(elapsedMs) / 1000
+        NSLog("[INERTIA_LOG][diag] playbackProgress sent=%d coalesced=%d over %.1fs avgSendMs=%.2f", sent, coalesced, elapsedS, avgSendMs)
+    }
 
     /// Whether the runtime is allowed to host the editor channel at all.
     ///
@@ -268,12 +314,16 @@ public final class InertiaWebSocketServer {
 
     public func sendMessage(_ message: InertiaMessage.MessagePlaybackProgress) {
         playbackProgressLock.lock()
+        let isOverwritingPending = pendingPlaybackProgress != nil
         pendingPlaybackProgress = message
-        let shouldScheduleFlush = !isPlaybackProgressFlushScheduled
-        isPlaybackProgressFlushScheduled = true
+        let shouldStartSend = !isPlaybackProgressSendInFlight
+        if shouldStartSend {
+            isPlaybackProgressSendInFlight = true
+        }
+        if isOverwritingPending { diagCoalescedCount += 1 }
         playbackProgressLock.unlock()
 
-        guard shouldScheduleFlush else { return }
+        guard shouldStartSend else { return } // A send is already draining; it'll pick up this value once it completes.
 
         queue.async { [weak self] in
             self?.flushPlaybackProgress()
@@ -290,41 +340,67 @@ public final class InertiaWebSocketServer {
         playbackProgressLock.lock()
         let message = pendingPlaybackProgress
         pendingPlaybackProgress = nil
-        isPlaybackProgressFlushScheduled = false
         playbackProgressLock.unlock()
 
-        guard let message else { return }
-
-        broadcastNow(type: .playbackProgress, payload: message)
-
-        playbackProgressLock.lock()
-        let hasPendingMessage = pendingPlaybackProgress != nil
-        let shouldReschedule = hasPendingMessage && !isPlaybackProgressFlushScheduled
-        if shouldReschedule {
-            isPlaybackProgressFlushScheduled = true
+        guard let message else {
+            playbackProgressLock.lock()
+            isPlaybackProgressSendInFlight = false
+            playbackProgressLock.unlock()
+            return
         }
-        playbackProgressLock.unlock()
 
-        guard shouldReschedule else { return }
+        // Only schedules the next flush once every ready connection's send for
+        // this one has actually completed — never more than one playback
+        // progress send outstanding at a time.
+        let sendStartMs = DispatchTime.now().uptimeNanoseconds / 1_000_000
+        broadcastNow(type: .playbackProgress, payload: message) { [weak self] in
+            guard let self else { return }
 
-        queue.async { [weak self] in
-            self?.flushPlaybackProgress()
+            let sendDurationMs = Double((DispatchTime.now().uptimeNanoseconds / 1_000_000) &- sendStartMs)
+
+            self.playbackProgressLock.lock()
+            self.diagSentCount += 1
+            self.diagSendDurationMsTotal += sendDurationMs
+            let hasPendingMessage = self.pendingPlaybackProgress != nil
+            if !hasPendingMessage {
+                self.isPlaybackProgressSendInFlight = false
+            }
+            self.playbackProgressLock.unlock()
+
+            self.logPlaybackProgressDiagnosticsIfDue()
+
+            guard hasPendingMessage else { return }
+
+            self.queue.async { [weak self] in
+                self?.flushPlaybackProgress()
+            }
         }
     }
 
-    private func broadcastNow<T: Encodable>(type: InertiaMessage.MessageType, payload: T) {
+    private func broadcastNow<T: Encodable>(type: InertiaMessage.MessageType, payload: T, completion: (() -> Void)? = nil) {
         guard
             let payloadData = try? JSONEncoder().encode(payload),
             let wrapperData = try? JSONEncoder().encode(InertiaMessage.MessageWrapper(type: type, payload: payloadData))
         else {
             NSLog("[INERTIA_LOG]: ❌ Error encoding message of type \(type)")
+            completion?()
             return
         }
 
         let metadata = NWProtocolWebSocket.Metadata(opcode: .binary)
         let context = NWConnection.ContentContext(identifier: "WebSocketMessage", metadata: [metadata])
 
-        for (clientId, connection) in connections where connection.state == .ready {
+        let readyConnections = connections.filter { $0.value.state == .ready }
+
+        guard !readyConnections.isEmpty else {
+            completion?()
+            return
+        }
+
+        let group = completion.map { _ in DispatchGroup() }
+
+        for (clientId, connection) in readyConnections {
+            group?.enter()
             connection.send(content: wrapperData, contentContext: context, isComplete: true, completion: .contentProcessed({ error in
                 if let error = error {
                     NSLog("[INERTIA_LOG]: ❌ Send error to \(clientId): \(error)")
@@ -332,7 +408,12 @@ public final class InertiaWebSocketServer {
                     // Progress ticks every frame; logging them drowns the log.
                     NSLog("[INERTIA_LOG]: ✅ Sent message of type \(type)")
                 }
+                group?.leave()
             }))
+        }
+
+        if let group, let completion {
+            group.notify(queue: queue, execute: completion)
         }
     }
 }
