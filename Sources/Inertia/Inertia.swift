@@ -411,6 +411,39 @@ public final class InertiaDataModel{
         startClock()
     }
 
+    /// Starts every animation the app does not have to start itself.
+    ///
+    /// `invokeType` says who owns the start: a `trigger` animation waits for the
+    /// app to call `trigger(_:)`, an `auto` one runs as soon as the runtime holds
+    /// its schema — which is why this runs both when an actionable registers and
+    /// when the editor sends a schema, whichever of the two arrives last.
+    ///
+    /// Cancelled animations are left where they are: stopping one is the app's
+    /// call, and picking it back up is `restart(_:)`'s.
+    func startAutoAnimations() {
+        var didStart = false
+
+        for (prefix, schema) in inertiaSchemas where schema.invokeType == .auto {
+            if states[prefix] == nil {
+                states[prefix] = InertiaAnimationState(id: prefix, trigger: false, isCancelled: false)
+            }
+
+            guard let state = states[prefix], !state.isCancelled, state.trigger != true else { continue }
+
+            states[prefix]?.trigger = true
+            didStart = true
+        }
+
+        guard didStart else { return }
+
+        // A parked playhead means the editor is scrubbing, and starting the clock
+        // would pull the run out from under whoever is dragging it.
+        guard seekTime == nil else { return }
+
+        isRunning = true
+        startClock()
+    }
+
     /// Stops the run and reports where it stopped, so a paused playhead sits
     /// exactly where the animation froze.
     ///
@@ -538,6 +571,10 @@ public final class InertiaDataModel{
         if states[prefix] == nil {
             states[prefix] = InertiaAnimationState(id: prefix, trigger: false, isCancelled: false)
         }
+
+        // Schemas loaded off disk are already here by the time an actionable
+        // appears, so this is where an `auto` animation gets going.
+        startAutoAnimations()
     }
 
     public init(containerId: InertiaID, inertiaSchemas: [InertiaID: InertiaAnimationSchema], tree: Tree, actionableIdPairs: Set<ActionableIdPair>) {
@@ -1376,6 +1413,11 @@ struct InertiaEditable<Content: View>: View {
                 InertiaLog.warning("❌ skipped - container mismatch")
             }
         }
+
+        // Schemas arriving from the editor are the other order round: the
+        // actionables are already on screen, and this is the moment the runtime
+        // learns which of them start on their own.
+        inertiaDataModel?.startAutoAnimations()
     }
     
     func handleMessageActionable(isActionable: Bool) {
