@@ -678,7 +678,7 @@ public struct InertiaContainer<Content: View>: View {
             // canvas draws in — so positions measured in this space and points
             // drawn in the canvas share an origin.
             .coordinateSpace(.named(hierarchyId))
-            .background {
+            .overlay {
                 if inertiaDataModel.showGrid {
                     ZStack {
                         dragGrid
