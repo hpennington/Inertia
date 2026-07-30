@@ -11,18 +11,15 @@ https://github.com/user-attachments/assets/b3251bed-75bd-4967-a8c7-8927c85d3f48
 
 ## Intro
 
-Welcome to Inertia, a cross-platform animation library for SwiftUI, Jetpack Compose, and React.
+Welcome to Inertia, a cross-platform animation library for SwiftUI.
 
 Inertia bridges designers and developers with a keyframe editor that exports animation files, which integrate directly into your native UI code.
 
 Unlike other libraries, Inertia lets you animate real UI components on each platform while leveraging native animation engines:
 - SwiftUI → built on iOS 17+ keyframe animations
-- Jetpack Compose → powered by Compose's animation APIs
-- React → hooks and components for smooth keyframe-driven animations
 
 ## Features
 
-🌍 Cross-platform: SwiftUI, Jetpack Compose, React  
 🎨 Keyframe editor with JSON export  
 🔐 Strongly typed IDs for safe animation references  
 🎛️ Control lifecycle: trigger, cancel, restart  
@@ -37,42 +34,6 @@ Unlike other libraries, Inertia lets you animate real UI components on each plat
 import Inertia
 ```
 
-### Jetpack Compose (Android)
-
-Add to your `build.gradle.kts`:
-
-```kotlin
-android {
-    namespace = "org.inertiagraphics.inertia"
-    compileSdk = 34
-
-    defaultConfig {
-        minSdk = 26
-    }
-
-    buildFeatures {
-        compose = true
-    }
-}
-
-dependencies {
-    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.animation:animation")
-
-    // Add Inertia library
-    implementation("org.inertiagraphics:inertia-compose:<version>")
-}
-```
-
-### React (Web)
-
-```bash
-npm install @inertia-graphics/inertia-react
-# or
-yarn add @inertia-graphics/inertia-react
-```
 
 ## Usage
 
@@ -331,7 +292,6 @@ struct InertiaDemoApp: App {
 ## Key Differences from Other Animation Libraries
 
 - **Design-First**: Animations are defined in JSON, enabling designer-developer collaboration
-- **Cross-Platform**: Same animation files work across SwiftUI, Compose, and React
 - **Native Performance**: Uses each platform's native animation engines
 - **Live Editing**: Editor mode enables real-time animation tweaking
 - **Minimal Code**: Apply animations with a single modifier
@@ -339,8 +299,8 @@ struct InertiaDemoApp: App {
 ## Roadmap
 
 ✅ SwiftUI support  
-✅ Jetpack Compose support  
-✅ React support  
+Jetpack Compose support  
+React support  
 
 ---
 
