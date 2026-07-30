@@ -9,17 +9,11 @@
 import Foundation
 import Observation
 
-/// The port the editor listens on for SwiftUI runtimes.
-public let inertiaDefaultPort: UInt16 = 8060
-
 /// Where to find the editor. A simulator shares this Mac's network stack, so
 /// loopback reaches the editor process directly. A runtime on a physical device
 /// needs the Mac's address on the local network instead — pass it to
 /// ``InertiaWebSocketClient/setEnabled(_:host:port:)``.
 public let inertiaDefaultHost: String = "127.0.0.1"
-
-@available(*, deprecated, renamed: "InertiaWebSocketClient")
-public typealias InertiaWebSocketServer = InertiaWebSocketClient
 
 /// Bridges `URLSession`'s delegate callbacks back to the client.
 ///
