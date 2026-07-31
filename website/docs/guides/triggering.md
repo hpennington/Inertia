@@ -4,8 +4,7 @@ An Inertia animation does not start on its own. The runtime plays a view's track
 things are true: the container's clock is running, and that view's id has been triggered.
 Both come from one call.
 
-![An untriggered view sits at its initialValues; a triggered one starts the clock and runs its track, then either repeats on the loop or holds its final pose.](../assets/diagrams/trigger-flow-light.svg#only-light){ .diagram }
-![An untriggered view sits at its initialValues; a triggered one starts the clock and runs its track, then either repeats on the loop or holds its final pose.](../assets/diagrams/trigger-flow-dark.svg#only-dark){ .diagram }
+![An untriggered view sits at its initialValues; a triggered one starts the clock and runs its track, then either repeats on the loop or holds its final pose.](../assets/diagrams/trigger-flow-dark.svg){ .diagram }
 
 ## Triggering from your app
 
@@ -120,8 +119,7 @@ For the same reason, `trigger(_:)` in editor mode does nothing until the editor 
 its schemas: the clock will not start while the container has no animations loaded, which
 in editor mode it does not until an editor attaches.
 
-![In editor mode the runtime waits for schemas, the app triggers the id, and only then does the editor's resume start that animation.](../assets/diagrams/editor-resume-light.svg#only-light){ .diagram }
-![In editor mode the runtime waits for schemas, the app triggers the id, and only then does the editor's resume start that animation.](../assets/diagrams/editor-resume-dark.svg#only-dark){ .diagram }
+![In editor mode the runtime waits for schemas, the app triggers the id, and only then does the editor's resume start that animation.](../assets/diagrams/editor-resume-dark.svg){ .diagram }
 
 ## What triggering does not do
 

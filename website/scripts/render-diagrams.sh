@@ -32,15 +32,27 @@ else
   sources=("$src"/*.mmd)
 fi
 
+# The docs use the dark diagrams on both colour schemes, so the dark surface is
+# baked into the SVG rather than left transparent — light text on a transparent
+# background would disappear against the light scheme's white page. Add `light`
+# here (and the #only-light / #only-dark suffixes back in the markdown) to go
+# back to a per-scheme pair.
+themes=(dark)
+
 for file in "${sources[@]}"; do
   name="$(basename "$file" .mmd)"
-  for theme in light dark; do
+  for theme in "${themes[@]}"; do
+    case "$theme" in
+      dark) background="#1e1f29" ;;
+      *)    background="transparent" ;;
+    esac
+
     echo "rendering $name ($theme)"
     mmdc \
       --input "$file" \
       --output "$out/$name-$theme.svg" \
       --configFile "$src/mermaid.$theme.json" \
-      --backgroundColor transparent \
+      --backgroundColor "$background" \
       --quiet
 
     # mmdc writes width="100%" with no height, which gives an <img> no intrinsic

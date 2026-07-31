@@ -68,8 +68,7 @@ keyframe to this one.
 
 So a track with durations `0, 1, 2` has keyframes at absolute times 0s, 1s, and 3s.
 
-![Three keyframes with durations 0, 1 and 2 land at 0s, 1s and 3s, because each duration is the travel time from the keyframe before it.](../assets/diagrams/keyframe-durations-light.svg#only-light){ .diagram }
-![Three keyframes with durations 0, 1 and 2 land at 0s, 1s and 3s, because each duration is the travel time from the keyframe before it.](../assets/diagrams/keyframe-durations-dark.svg#only-dark){ .diagram }
+![Three keyframes with durations 0, 1 and 2 land at 0s, 1s and 3s, because each duration is the travel time from the keyframe before it.](../assets/diagrams/keyframe-durations-dark.svg){ .diagram }
 
 A leading keyframe with `duration: 0` is therefore a starting pose that takes no time to
 reach, not a keyframe that waits.
@@ -104,8 +103,7 @@ shorter than the loop holds its final pose until the loop comes around; a track 
 than `loopDuration` stretches the loop for every track, so they all still restart
 together.
 
-![A 4-second track stretches the loop past the 3-second loopDuration, and a 2-second track holds its final pose for the remaining 2 seconds.](../assets/diagrams/loop-length-light.svg#only-light){ .diagram }
-![A 4-second track stretches the loop past the 3-second loopDuration, and a 2-second track holds its final pose for the remaining 2 seconds.](../assets/diagrams/loop-length-dark.svg#only-dark){ .diagram }
+![A 4-second track stretches the loop past the 3-second loopDuration, and a 2-second track holds its final pose for the remaining 2 seconds.](../assets/diagrams/loop-length-dark.svg){ .diagram }
 
 So an animation authored on a 5-second timeline plays from the bundle over a 5-second
 loop only if one of its tracks actually runs the full 5 seconds. If the longest ends at

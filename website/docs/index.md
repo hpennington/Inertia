@@ -31,8 +31,7 @@ keyframe animation APIs.
 
 ## How it fits together
 
-![The editor connects to your app over a local WebSocket, trades the view hierarchy for animation schemas, and writes the animation.json your shipped app bundles.](assets/diagrams/architecture-light.svg#only-light){ .diagram }
-![The editor connects to your app over a local WebSocket, trades the view hierarchy for animation schemas, and writes the animation.json your shipped app bundles.](assets/diagrams/architecture-dark.svg#only-dark){ .diagram }
+![The editor connects to your app over a local WebSocket, trades the view hierarchy for animation schemas, and writes the animation.json your shipped app bundles.](assets/diagrams/architecture-dark.svg){ .diagram }
 
 In **editor mode** your app hosts a local WebSocket server and the editor connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
