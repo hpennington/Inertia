@@ -16,9 +16,11 @@ public enum AnimationSignal: Codable {
     /// The playhead was moved by hand; hold the animation at this many seconds
     /// into the loop.
     case seek(CGFloat)
-    /// Carry on from where `pause` or `seek` left off. Only actionables the app
-    /// has already triggered are affected — this never starts one that was not
-    /// running.
+    /// The editor's play button. Carries on from where `pause` or `seek` left
+    /// off, and starts anything not running yet — including a `trigger`
+    /// animation, which the app would otherwise have to start itself. Nothing
+    /// but the editor sends signals, so this does not make a `trigger` animation
+    /// self-starting in the app.
     case resume
 }
 
@@ -421,9 +423,23 @@ public final class InertiaDataModel{
     /// Cancelled animations are left where they are: stopping one is the app's
     /// call, and picking it back up is `restart(_:)`'s.
     func startAutoAnimations() {
+        guard markTriggered(where: { $0.invokeType == .auto }) else { return }
+
+        // A parked playhead means the editor is scrubbing, and starting the clock
+        // would pull the run out from under whoever is dragging it.
+        guard seekTime == nil else { return }
+
+        isRunning = true
+        startClock()
+    }
+
+    /// Marks every animation whose schema `matches` as started, and says whether
+    /// any of them was not already. Cancelled ones are skipped.
+    @discardableResult
+    private func markTriggered(where matches: (InertiaAnimationSchema) -> Bool) -> Bool {
         var didStart = false
 
-        for (prefix, schema) in inertiaSchemas where schema.invokeType == .auto {
+        for (prefix, schema) in inertiaSchemas where matches(schema) {
             if states[prefix] == nil {
                 states[prefix] = InertiaAnimationState(id: prefix, trigger: false, isCancelled: false)
             }
@@ -434,14 +450,7 @@ public final class InertiaDataModel{
             didStart = true
         }
 
-        guard didStart else { return }
-
-        // A parked playhead means the editor is scrubbing, and starting the clock
-        // would pull the run out from under whoever is dragging it.
-        guard seekTime == nil else { return }
-
-        isRunning = true
-        startClock()
+        return didStart
     }
 
     /// Stops the run and reports where it stopped, so a paused playhead sits
@@ -457,14 +466,23 @@ public final class InertiaDataModel{
         report(isRunning: false)
     }
 
-    /// Picks a paused or scrubbed run back up, from where it was left.
+    /// The editor's play button: runs every animation, whatever its
+    /// `invokeType`, picking a paused or scrubbed run back up where it was left.
     ///
-    /// The editor's play button sends schemas; without this nothing on that path
-    /// touches the runtime's playback state, so a pause could only ever be
-    /// undone by the app triggering its animation a second time. Actionables the
-    /// app never triggered stay as they are — starting those is the app's call,
-    /// not the editor's.
+    /// `auto` animations are already going by the time this arrives —
+    /// `startAutoAnimations` starts those as soon as the runtime holds their
+    /// schema. A `trigger` animation is waiting on the app to call `trigger(_:)`,
+    /// which is not something the app does while its animation is being authored,
+    /// so the editor stands in for the app and starts it here. Signals only ever
+    /// come from the editor, so the same animation running without the editor
+    /// attached still waits for its trigger, which is the whole point of the
+    /// `trigger` invoke type.
+    ///
+    /// Cancelled animations are left where they are: stopping one is the app's
+    /// call, and picking it back up is `restart(_:)`'s.
     func resumePlayback() {
+        markTriggered(where: { _ in true })
+
         guard states.values.contains(where: { $0.trigger == true }) else { return }
 
         seekTime = nil
@@ -800,6 +818,7 @@ struct InertiaActionable<Content: View>: View {
     @Environment(\.inertiaContainerId) var inertiaContainerId
     @Environment(\.isInertiaContainer) var isInertiaContainer
     @Environment(\.inertiaContainerSize) var inertiaContainerSize: CGSize
+    @Environment(\.inertiaEditor) var inertiaEditor
     
     var wrappedContent: some View {
         ZStack(alignment: .center) {
@@ -849,39 +868,41 @@ struct InertiaActionable<Content: View>: View {
         inertiaDataModel?.registerHierarchyIdPrefix(hierarchyIdPrefix)
     }
     
+    /// What to show right now, or nil when the animation is neither playing nor
+    /// parked somewhere by the editor.
+    ///
+    /// Read off the runtime's own clock rather than handed to a
+    /// `keyframeAnimator`, which is what this used to do. The runtime already
+    /// runs a wall clock in every mode — it is what `playheadTime` counts, and
+    /// what `startAutoAnimations` gets going the moment an actionable registers
+    /// — so an animator kept a second, independent clock beside it that nothing
+    /// started, synchronised or stopped. With the editor attached that went
+    /// unnoticed, because `InertiaEditable` draws from the playhead and never
+    /// builds an animator at all; a standalone build (`dev: false`) had only the
+    /// animator, and showed nothing moving even while the runtime clock ticked.
+    ///
+    /// Sampling the track at the playhead is the same operation for playing,
+    /// pausing and scrubbing, and it is what the editor's own view does — so an
+    /// app in the field now draws frame for frame what was authored.
+    func displayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues? {
+        guard let inertiaDataModel,
+              inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else { return nil }
+
+        // A parked playhead holds there; a running one advances. Same read.
+        let time = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
+        return timeline(for: animation).value(time: time).sanitized
+    }
+
     var body: some View {
         //        GeometryReader { rootProxy in
         Group {
-            if let animation = animation ?? getAnimation, let seekTime = inertiaDataModel?.seekTime {
-                // Being scrubbed: hold the values this track reaches at the time
-                // the playhead is parked on.
-                let values = timeline(for: animation).value(time: seekTime).sanitized
+            if let animation = animation ?? getAnimation, let values = displayValues(for: animation) {
                 wrappedContent
                     .scaleEffect(values.scale)
                     .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
                     .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
                     .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
                     .opacity(values.opacity)
-            } else if let animation = animation ?? getAnimation, inertiaDataModel?.isRunning == true {
-                wrappedContent
-                    .keyframeAnimator(
-                        initialValue: animation.initialValues.sanitized,
-                        repeating: inertiaDataModel?.isRepeating ?? true,
-                        content: { contentView, rawValues in
-                        let values = rawValues.sanitized
-                        contentView
-                            .scaleEffect(values.scale)
-                            .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
-                            .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
-                            .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
-                            .opacity(values.opacity)
-                    }, keyframes: { _ in
-                        KeyframeTrack {
-                            for keyframe in track(for: animation) {
-                                CubicKeyframe(keyframe.values, duration: keyframe.duration)
-                            }
-                        }
-                    })
             } else {
                 wrappedContent
             }
