@@ -1275,7 +1275,7 @@
 </tr>
 <tr>
 <td><code>dev</code></td>
-<td><code>true</code> takes animations from the editor and opens the editor channel; <code>false</code> loads them from <code>bundle</code> and never listens.</td>
+<td><code>true</code> takes animations from the editor and opens the editor channel; <code>false</code> loads them from <code>bundle</code> and never dials out.</td>
 </tr>
 <tr>
 <td><code>id</code></td>
@@ -1398,13 +1398,16 @@ interpolate it.</p>
 </span></code></pre></div>
 <h2 id="types-you-are-unlikely-to-need">Types you are unlikely to need<a class="headerlink" href="#types-you-are-unlikely-to-need" title="Permanent link">&para;</a></h2>
 <p><code>Node</code>, <code>Tree</code>, <code>AnimationSignal</code>, <code>InertiaMessage</code>, <code>InertiaSchemaWrapper</code> and
-<code>InertiaWebSocketServer</code> are public because the editor talks to them over the wire. They
+<code>InertiaWebSocketClient</code> are public because the editor talks to them over the wire. They
 are part of the editor protocol rather than the app-facing API, and can change without
 that being a breaking change for apps.</p>
-<p><code>InertiaWebSocketServer.shared.setEnabled(_:)</code> opens and closes the editor channel for the
-whole process. <code>InertiaContainer</code> calls it from its <code>dev</code> flag on appear, and the server
-refuses to start a listener until it has been enabled, so you should not need to call it
-yourself unless you are driving the runtime without a container.</p>
+<p><code>InertiaWebSocketClient.shared.setEnabled(_:host:port:)</code> opens and closes the editor
+channel for the whole process. <code>InertiaContainer</code> calls it from its <code>dev</code> flag on appear,
+and the client refuses to dial until it has been enabled, so you should not need to call
+it yourself unless you are driving the runtime without a container.</p>
+<p>The <code>host</code> defaults to <code>127.0.0.1</code>, which is what a simulator needs — it shares the Mac's
+network stack. A runtime on a physical device has to be pointed at the Mac's address on
+the local network instead.</p>
 <p><code>InertiaViewModel</code> is also public and exposes <code>trigger</code>, <code>cancel</code> and <code>restart</code>, but the
 three are currently no-ops left over from an earlier schema, and <code>InertiaContainer</code> does
 not inject it into the environment. Use <code>\.inertiaDataModel</code> instead.</p>

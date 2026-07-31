@@ -20,7 +20,7 @@ InertiaContainer(
 | Parameter | Meaning |
 | --- | --- |
 | `bundle` | Where to look for the animation resource. Defaults to the main bundle. |
-| `dev` | `true` takes animations from the editor and opens the editor channel; `false` loads them from `bundle` and never listens. |
+| `dev` | `true` takes animations from the editor and opens the editor channel; `false` loads them from `bundle` and never dials out. |
 | `id` | Resource name of the animation file, without `.json`. Also the container id the editor addresses its schemas to — see the warning below. |
 | `hierarchyId` | Id of the root node in the view hierarchy the editor draws. |
 
@@ -192,14 +192,18 @@ public typealias InertiaID = String
 ## Types you are unlikely to need
 
 `Node`, `Tree`, `AnimationSignal`, `InertiaMessage`, `InertiaSchemaWrapper` and
-`InertiaWebSocketServer` are public because the editor talks to them over the wire. They
+`InertiaWebSocketClient` are public because the editor talks to them over the wire. They
 are part of the editor protocol rather than the app-facing API, and can change without
 that being a breaking change for apps.
 
-`InertiaWebSocketServer.shared.setEnabled(_:)` opens and closes the editor channel for the
-whole process. `InertiaContainer` calls it from its `dev` flag on appear, and the server
-refuses to start a listener until it has been enabled, so you should not need to call it
-yourself unless you are driving the runtime without a container.
+`InertiaWebSocketClient.shared.setEnabled(_:host:port:)` opens and closes the editor
+channel for the whole process. `InertiaContainer` calls it from its `dev` flag on appear,
+and the client refuses to dial until it has been enabled, so you should not need to call
+it yourself unless you are driving the runtime without a container.
+
+The `host` defaults to `127.0.0.1`, which is what a simulator needs — it shares the Mac's
+network stack. A runtime on a physical device has to be pointed at the Mac's address on
+the local network instead.
 
 `InertiaViewModel` is also public and exposes `trigger`, `cancel` and `restart`, but the
 three are currently no-ops left over from an earlier schema, and `InertiaContainer` does

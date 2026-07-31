@@ -1,5 +1,5 @@
 flowchart LR
-    B["Inertia editor<br/>(macOS)"] -->|"connects to ws://127.0.0.1:8060"| A["Your SwiftUI app<br/>.inertia(#quot;card0#quot;)"]
+    A["Your SwiftUI app<br/>.inertia(#quot;card0#quot;)"] -->|"connects to ws://127.0.0.1:8060"| B["Inertia editor<br/>(macOS)"]
     A -->|"view hierarchy"| B
     B -->|"animation schemas"| A
     B -->|"writes"| C["animation.json"]

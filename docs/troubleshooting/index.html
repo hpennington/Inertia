@@ -1217,7 +1217,8 @@ initialization and traps if it is missing or does not decode.</p>
 <li>Is the app running in the foreground on the simulator the editor is attached to?</li>
 <li>Does the app have at least one <code>.inertia(_:)</code> view? A container with no tagged views
   reports a tree with only its root.</li>
-<li>Is anything else holding port <strong>8060</strong>?</li>
+<li>Is anything else holding port <strong>8060</strong>? The editor is the one listening there, so
+  another process on that port stops the app from ever reaching it.</li>
 </ul>
 <p>Console output from the runtime is prefixed <code>[INERTIA_LOG]</code>, which makes it easy to filter
 in Console.app or <code>xcrun simctl spawn booted log stream</code>.</p>

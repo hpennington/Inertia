@@ -31,16 +31,16 @@ keyframe animation APIs.
 
 ## How it fits together
 
-![The editor connects to your app over a local WebSocket, trades the view hierarchy for animation schemas, and writes the animation.json your shipped app bundles.](assets/diagrams/architecture-dark.svg){ .diagram }
+![Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.json your shipped app bundles.](assets/diagrams/architecture-dark.svg){ .diagram }
 
-In **editor mode** your app hosts a local WebSocket server and the editor connects to it.
+In **editor mode** the editor hosts a local WebSocket server and your app connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
 back as you edit, so what you see in the simulator is the animation as it currently
 stands.
 
 In **release mode** none of that is running. The container loads `animation.json` out of
-your app bundle and plays it through SwiftUI's keyframe animator. The WebSocket server is
-gated on the same `dev` flag, so a shipped build never opens a listening socket.
+your app bundle and plays it through SwiftUI's keyframe animator. The WebSocket client is
+gated on the same `dev` flag, so a shipped build never dials out.
 
 ## What you can animate
 

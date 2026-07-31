@@ -1073,14 +1073,14 @@ keyframe animation APIs.</p>
 </ul>
 </div>
 <h2 id="how-it-fits-together">How it fits together<a class="headerlink" href="#how-it-fits-together" title="Permanent link">&para;</a></h2>
-<p><img alt="The editor connects to your app over a local WebSocket, trades the view hierarchy for animation schemas, and writes the animation.json your shipped app bundles." class="diagram" src="assets/diagrams/architecture-dark.svg" /></p>
-<p>In <strong>editor mode</strong> your app hosts a local WebSocket server and the editor connects to it.
+<p><img alt="Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.json your shipped app bundles." class="diagram" src="assets/diagrams/architecture-dark.svg" /></p>
+<p>In <strong>editor mode</strong> the editor hosts a local WebSocket server and your app connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
 back as you edit, so what you see in the simulator is the animation as it currently
 stands.</p>
 <p>In <strong>release mode</strong> none of that is running. The container loads <code>animation.json</code> out of
-your app bundle and plays it through SwiftUI's keyframe animator. The WebSocket server is
-gated on the same <code>dev</code> flag, so a shipped build never opens a listening socket.</p>
+your app bundle and plays it through SwiftUI's keyframe animator. The WebSocket client is
+gated on the same <code>dev</code> flag, so a shipped build never dials out.</p>
 <h2 id="what-you-can-animate">What you can animate<a class="headerlink" href="#what-you-can-animate" title="Permanent link">&para;</a></h2>
 <p>Each tagged view gets a track of keyframes over five values:</p>
 <table>

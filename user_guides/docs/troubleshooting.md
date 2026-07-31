@@ -21,7 +21,8 @@ The tree is reported by the running app, so an empty panel means no app has conn
 - Is the app running in the foreground on the simulator the editor is attached to?
 - Does the app have at least one `.inertia(_:)` view? A container with no tagged views
   reports a tree with only its root.
-- Is anything else holding port **8060**?
+- Is anything else holding port **8060**? The editor is the one listening there, so
+  another process on that port stops the app from ever reaching it.
 
 Console output from the runtime is prefixed `[INERTIA_LOG]`, which makes it easy to filter
 in Console.app or `xcrun simctl spawn booted log stream`.
