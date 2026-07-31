@@ -82,4 +82,68 @@ final class StandalonePlaybackTests: XCTestCase {
         XCTAssertEqual(model.states["card1"]?.trigger, true)
         XCTAssertNotEqual(model.states["card0"]?.trigger, true)
     }
+
+    /// Cancelling stops the animation and leaves it stopped: `trigger(_:)` does
+    /// not pick it back up.
+    func testCancelStopsAndSticks() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.trigger("card0")
+
+        model.cancel("card0")
+        XCTAssertTrue(model.isCancelled("card0"))
+        XCTAssertNotEqual(model.states["card0"]?.trigger, true)
+
+        model.trigger("card0")
+        XCTAssertTrue(model.isCancelled("card0"))
+        XCTAssertNotEqual(model.states["card0"]?.trigger, true)
+    }
+
+    /// The clock stops with the last animation running off it. Registering
+    /// `card0` starts `card1` too — `auto` animations do not wait to be
+    /// registered — so both have to go before the playhead has nothing to follow.
+    func testCancellingTheLastAnimationStopsTheClock() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.trigger("card0")
+        XCTAssertTrue(model.isRunning)
+
+        model.cancel("card0")
+        model.cancel("card1")
+
+        XCTAssertFalse(model.isRunning)
+    }
+
+    /// The clock keeps going for whatever is still running when one of several
+    /// animations is cancelled.
+    func testCancelLeavesOtherAnimationsRunning() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.registerHierarchyIdPrefix("card1")
+        model.trigger("card0")
+
+        model.cancel("card0")
+
+        XCTAssertEqual(model.states["card1"]?.trigger, true)
+        XCTAssertTrue(model.isRunning)
+    }
+
+    /// Restarting is what picks a cancelled animation back up, and what plays a
+    /// running one from the top.
+    func testRestartClearsCancellationAndRewinds() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.trigger("card0")
+        model.cancel("card0")
+
+        model.restart("card0")
+        XCTAssertFalse(model.isCancelled("card0"))
+        XCTAssertEqual(model.states["card0"]?.trigger, true)
+        XCTAssertTrue(model.isRunning)
+        XCTAssertEqual(model.playheadTime, .zero)
+    }
 }

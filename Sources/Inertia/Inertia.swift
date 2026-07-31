@@ -252,30 +252,10 @@ public final class InertiaViewModel: ObservableObject {
     
     public init() {
     }
-    
-    public func updateState(id: InertiaID, isCancelled: Bool? = nil, trigger: Bool? = nil) {
-//        if let currentState = self.dataModel.states[id] {
-//            if let isCancelled, let trigger {
-//                self.dataModel.states.updateValue(InertiaAnimationState(id: currentState.id, trigger: trigger, isCancelled: isCancelled), forKey: currentState.id)
-//            } else if let isCancelled {
-//                self.dataModel.states.updateValue(InertiaAnimationState(id: currentState.id, trigger: currentState.trigger, isCancelled: isCancelled), forKey: currentState.id)
-//            } else if let trigger {
-//                self.dataModel.states.updateValue(InertiaAnimationState(id: currentState.id, trigger: trigger, isCancelled: currentState.isCancelled), forKey: currentState.id)
-//            }
-//        }
-    }
-    
-    public func trigger(_ id: InertiaID) {
-        self.updateState(id: id, trigger: true)
-    }
 
-    public func cancel(_ id: InertiaID) {
-        self.updateState(id: id, isCancelled: true)
-    }
-
-    public func restart(_ id: InertiaID) {
-        self.updateState(id: id, isCancelled: false)
-    }
+    // Playback lives on `InertiaDataModel`, which is what `\.inertiaDataModel`
+    // hands the app. This type used to carry `trigger`/`cancel`/`restart` of its
+    // own against a data model it does not hold, so they did nothing at all.
 }
 
 #if os(iOS)
@@ -406,10 +386,59 @@ public final class InertiaDataModel{
     /// clears it and hands the screen back to the animators.
     public private(set) var seekTime: CGFloat? = nil
 
+    // MARK: - App-facing controls
+
+    /// Starts an animation that was waiting on its `trigger` invoke type.
+    ///
+    /// A trigger arriving while the animation is already running joins the run in
+    /// progress rather than cutting it short — `restart(_:)` is the one that
+    /// starts over. Cancelled animations are left where they are: stopping one is
+    /// the app's call, and picking it back up is `restart(_:)`'s.
     public func trigger(_ id: InertiaID) {
+        let state = states[id]
+        guard state?.isCancelled != true, state?.trigger != true else { return }
+
+        start(id)
+    }
+
+    /// Stops an animation and returns it to its initial values, where it stays
+    /// until `restart(_:)`.
+    ///
+    /// The clock stops with the last animation running off it, since a playhead
+    /// with nothing left to follow is one the editor should see parked.
+    public func cancel(_ id: InertiaID) {
+        states[id] = InertiaAnimationState(id: id, trigger: false, isCancelled: true)
+
+        guard !states.values.contains(where: { $0.trigger == true }) else { return }
+
+        isRunning = false
+        clock?.cancel()
+        clock = nil
+        report(isRunning: false)
+    }
+
+    /// Clears a cancellation and plays from the top of the timeline.
+    ///
+    /// Every actionable in a container is drawn from the one clock, so this
+    /// rewinds the playhead for all of them rather than for this animation alone
+    /// — the same shared clock that makes a trigger mid-run join the run in
+    /// progress instead of restarting it.
+    public func restart(_ id: InertiaID) {
+        clock?.cancel()
+        clock = nil
+        playheadTime = .zero
+
+        start(id)
+    }
+
+    public func isCancelled(_ id: InertiaID) -> Bool {
+        states[id]?.isCancelled == true
+    }
+
+    private func start(_ id: InertiaID) {
+        states[id] = InertiaAnimationState(id: id, trigger: true, isCancelled: false)
         seekTime = nil
         isRunning = true
-        states[id]?.trigger = true
         startClock()
     }
 
