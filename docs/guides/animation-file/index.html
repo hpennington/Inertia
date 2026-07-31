@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1209,25 +1209,37 @@ writes it; the runtime reads it out of your app bundle.</p>
 not the length of the whole animation — it is the time taken to travel from the preceding
 keyframe to this one.</p>
 <p>So a track with durations <code>0, 1, 2</code> has keyframes at absolute times 0s, 1s, and 3s.</p>
+<p><img alt="Three keyframes with durations 0, 1 and 2 land at 0s, 1s and 3s, because each duration is the travel time from the keyframe before it." class="diagram" src="../../assets/diagrams/keyframe-durations-dark.svg" /></p>
 <p>A leading keyframe with <code>duration: 0</code> is therefore a starting pose that takes no time to
 reach, not a keyframe that waits.</p>
-<div class="admonition warning">
-<p class="admonition-title">Durations must be positive after the first</p>
-<p>Interpolation divides by the keyframe's duration. A zero or negative duration on any
-keyframe other than an initial pose produces <code>NaN</code> and a view that vanishes. The
-editor enforces a small positive minimum; if you hand-edit a file, keep durations
-above zero.</p>
+<div class="admonition note">
+<p class="admonition-title">Non-positive durations are repaired, not honoured</p>
+<p>Interpolation divides by the keyframe's duration, so the runtime rewrites any
+duration that is zero, negative or non-finite to 1ms before playing the track. That
+keeps a hand-edited file from producing <code>NaN</code> and a view that vanishes, but the
+keyframe reads as an instant jump, and every keyframe after it lands 1ms later than
+the file implies. The editor keeps its own durations above the same minimum.</p>
+<p>A leading keyframe at <code>duration: 0</code> is the normal case and behaves as intended: the
+view is at its starting pose 1ms in, which is not something you can see.</p>
 </div>
 <h3 id="values"><code>values</code><a class="headerlink" href="#values" title="Permanent link">&para;</a></h3>
 <p>Every keyframe carries all five values — there is no notion of animating only one
 property and leaving the others alone. See <a href="../../reference/values/">Animatable values</a>.</p>
 <h2 id="loop-length">Loop length<a class="headerlink" href="#loop-length" title="Permanent link">&para;</a></h2>
-<p>The file does not record how long the loop is. A track shorter than the loop holds its
-final pose until the loop comes around, and the loop length used at runtime is the
-runtime's default of 3 seconds unless the editor tells it otherwise.</p>
-<p>If you author against a different loop duration in the editor, an animation played from
-the bundle still loops over the runtime default. Keep the editor's loop duration at 3
-seconds unless you are also driving the loop length yourself.</p>
+<p>The file does not record how long the loop is. At runtime the loop is</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>max(loopDuration, longest track in the file)
+</span></code></pre></div>
+<p>where <code>loopDuration</code> starts at the runtime default of 3 seconds and changes only when
+your app sets <code>inertia.loopDuration</code> or the editor sends a new timeline length. A track
+shorter than the loop holds its final pose until the loop comes around; a track longer
+than <code>loopDuration</code> stretches the loop for every track, so they all still restart
+together.</p>
+<p><img alt="A 4-second track stretches the loop past the 3-second loopDuration, and a 2-second track holds its final pose for the remaining 2 seconds." class="diagram" src="../../assets/diagrams/loop-length-dark.svg" /></p>
+<p>So an animation authored on a 5-second timeline plays from the bundle over a 5-second
+loop only if one of its tracks actually runs the full 5 seconds. If the longest ends at
+4 seconds the bundled loop is 4 seconds; if it ends at 2 seconds the loop falls back to
+the 3-second default. Either keep the editor's loop duration at 3 seconds, or set
+<code>inertia.loopDuration</code> in your app to the length you authored against.</p>
 <h2 id="naming-and-lookup">Naming and lookup<a class="headerlink" href="#naming-and-lookup" title="Permanent link">&para;</a></h2>
 <p>The container's <code>id</code> is the resource name: <code>InertiaContainer(id: "animation", …)</code> loads
 <code>animation.json</code> from the bundle. One file holds every animation for that container.</p>
@@ -1345,7 +1357,7 @@ initialization and traps if it cannot. An empty array is a valid file.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

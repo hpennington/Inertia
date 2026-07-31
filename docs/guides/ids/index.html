@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1119,6 +1119,7 @@ same animation.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// one animation, three views</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">}</span>
 </span></code></pre></div>
+<p><img alt="Three instances of the plane prefix get their own hierarchy ids but resolve to one track, and triggering the prefix starts all three." class="diagram" src="../../assets/diagrams/id-instances-dark.svg" /></p>
 <p>If you want the three planes moving differently, give them different ids:</p>
 <div class="language-swift highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;planeTop&quot;</span><span class="p">)</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;planeMiddle&quot;</span><span class="p">)</span>
@@ -1177,6 +1178,10 @@ will differ accordingly.</p>
 <p>They can be the same string — the example app uses <code>"animation"</code> for both — but they mean
 different things. Change <code>id</code> and you change which file loads; change <code>hierarchyId</code> and you
 rename the root of the hierarchy.</p>
+<p><code>id</code> is also the container id the editor addresses its schemas to, and the editor always
+sends <code>"animation"</code>. A container with a different <code>id</code> still loads its bundled file, but
+receives nothing in editor mode — so keep <code>id: "animation"</code> for anything you author in the
+editor.</p>
 
 
 
@@ -1289,7 +1294,7 @@ rename the root of the hierarchy.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

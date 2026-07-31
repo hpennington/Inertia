@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -947,10 +947,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#a-view-disappears-mid-animation" class="md-nav__link">
+  <a href="#pressing-play-in-the-editor-does-nothing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        A view disappears mid-animation
+        Pressing play in the editor does nothing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-view-jumps-between-poses-instead-of-moving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A view jumps between poses instead of moving
       
     </span>
   </a>
@@ -1091,10 +1102,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#a-view-disappears-mid-animation" class="md-nav__link">
+  <a href="#pressing-play-in-the-editor-does-nothing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        A view disappears mid-animation
+        Pressing play in the editor does nothing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-view-jumps-between-poses-instead-of-moving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A view jumps between poses instead of moving
       
     </span>
   </a>
@@ -1211,11 +1233,26 @@ off, dragging repositions the view in the viewport but writes no keyframe. See
 that field. See <a href="../guides/triggering/">Triggering animations</a>.</p>
 <p>If it is triggered and still still, check the id matches exactly. <code>.inertia("Card0")</code> and
 an animation with <code>"id": "card0"</code> never find each other, and nothing warns you.</p>
-<h2 id="a-view-disappears-mid-animation">A view disappears mid-animation<a class="headerlink" href="#a-view-disappears-mid-animation" title="Permanent link">&para;</a></h2>
-<p>Almost always a zero or negative keyframe <code>duration</code>. The cubic interpolation divides by
-the duration, producing <code>NaN</code>, and a view offset by <code>NaN</code> is not drawn.</p>
-<p>The editor keeps durations above a small positive minimum, so this generally comes from
-hand-edited files. Leading keyframes at <code>duration: 0</code> are fine — they are starting poses.</p>
+<h2 id="pressing-play-in-the-editor-does-nothing">Pressing play in the editor does nothing<a class="headerlink" href="#pressing-play-in-the-editor-does-nothing" title="Permanent link">&para;</a></h2>
+<p>The editor's play button resumes a run; it cannot start one. Resume only affects
+actionables the app has already triggered, so a view your app never calls <code>trigger(_:)</code>
+on stays still no matter what the transport does.</p>
+<p>Give the app a way to trigger while you author — a button, or <code>.onAppear</code> — then use the
+editor's transport to play, pause and scrub it.</p>
+<p>If nothing at all moves and the hierarchy panel is populated, check the container's <code>id</code>:
+the editor sends its schemas to the container id <code>animation</code>, and the runtime drops
+schemas addressed to any other container.</p>
+<h2 id="a-view-jumps-between-poses-instead-of-moving">A view jumps between poses instead of moving<a class="headerlink" href="#a-view-jumps-between-poses-instead-of-moving" title="Permanent link">&para;</a></h2>
+<p>A keyframe <code>duration</code> that is zero, negative or non-finite. The cubic interpolation
+divides by the duration, so the runtime rewrites any such duration to 1ms before playing
+the track — the view still animates, but that segment is over instantly.</p>
+<p>The editor keeps durations above the same minimum, so this generally comes from
+hand-edited files. Leading keyframes at <code>duration: 0</code> are fine — they are starting poses,
+and 1ms of it is not visible.</p>
+<p>A view that vanishes outright is a different problem: check <code>opacity</code>, <code>scale: 0</code>, and a
+<code>translate</code> big enough to put it outside the container. The runtime replaces any pose it
+cannot draw with the neutral one rather than passing it to SwiftUI, so a non-finite value
+leaves the view sitting still, not missing.</p>
 <h2 id="the-animation-is-in-the-wrong-place-on-a-different-device">The animation is in the wrong place on a different device<a class="headerlink" href="#the-animation-is-in-the-wrong-place-on-a-different-device" title="Permanent link">&para;</a></h2>
 <p><code>translate</code> is a fraction of the <strong>container's</strong> size. If the container is not the region
 you thought it was, every offset in it is scaled against the wrong box.</p>
@@ -1223,15 +1260,12 @@ you thought it was, every offset in it is scaled against the wrong box.</p>
 screen — and that nothing between it and the animated view constrains the frame in a way
 you did not mean.</p>
 <h2 id="playback-in-the-editor-does-not-match-the-app">Playback in the editor does not match the app<a class="headerlink" href="#playback-in-the-editor-does-not-match-the-app" title="Permanent link">&para;</a></h2>
-<p>Two likely causes:</p>
-<ul>
-<li><strong>Loop duration.</strong> The editor's loop length is not stored in the animation file. An
-  animation authored on a 5-second timeline still loops over the runtime's 3-second
-  default when loaded from the bundle. Either keep the editor at 3 seconds or set
-  <code>inertia.loopDuration</code> in your app to match.</li>
-<li><strong><code>rotate</code>.</strong> The editor's live preview draws <code>rotateCenter</code> but not <code>rotate</code>. A
-  top-left rotation shows up in a <code>dev: false</code> build and not in the editor.</li>
-</ul>
+<p>The likely cause is <strong>loop duration</strong>. The editor's loop length is not stored in the
+animation file, so a bundled animation loops over <code>max(3 seconds, its longest track)</code>
+however long the timeline you authored on was. An animation built against a 5-second
+timeline whose longest track ends at 4 seconds loops over 4 seconds in the app.</p>
+<p>Either keep the editor at 3 seconds, or set <code>inertia.loopDuration</code> in your app to the
+length you authored against.</p>
 <h2 id="scrubbing-the-playhead-does-nothing">Scrubbing the playhead does nothing<a class="headerlink" href="#scrubbing-the-playhead-does-nothing" title="Permanent link">&para;</a></h2>
 <p>Scrubbing is disabled during playback — pause first with <kbd>Space</kbd> or the transport
 button. While playing, the playhead is reporting the runtime's clock rather than driving
@@ -1341,7 +1375,7 @@ directory in version control if the animations matter.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

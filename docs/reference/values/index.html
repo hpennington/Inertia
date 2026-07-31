@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1185,26 +1185,30 @@ the way.</p>
 <li><code>rotate</code> swings it about its top-left corner, which moves the view as well as turning
   it.</li>
 </ul>
-<p>Both are in degrees, positive clockwise.</p>
-<div class="admonition note">
-<p class="admonition-title"><code>rotate</code> in editor mode</p>
-<p>The editor's live preview currently applies <code>rotateCenter</code> only — <code>rotate</code> is not
-drawn while you are authoring, though it is honoured when the animation plays from a
-bundled file. If a top-left rotation looks wrong in the editor, check it in a build
-with <code>dev: false</code> before chasing it.</p>
-</div>
+<p>Both are in degrees, positive clockwise, and both are applied on every path — editor
+mode, bundled playback, and a frame held by the playhead — in that order: <code>rotate</code> about
+the top-left first, then <code>rotateCenter</code> about the center of the result.</p>
+<p>Neither is recorded by dragging — a drag in the viewport writes <code>translate</code> only, and a
+recorded keyframe starts with both rotations at <code>0</code>. To rotate, type a value into the
+<strong>Rotate</strong> or <strong>Rotate Center</strong> field of the keyframe editor, or write it into the file
+by hand.</p>
 <h2 id="opacity"><code>opacity</code><a class="headerlink" href="#opacity" title="Permanent link">&para;</a></h2>
 <p>Straight <code>opacity</code> modifier. Values outside <code>0...1</code> are not meaningful; the runtime
 sanitizes non-finite values rather than passing them to SwiftUI, which would trap.</p>
 <h2 id="interpolation">Interpolation<a class="headerlink" href="#interpolation" title="Permanent link">&para;</a></h2>
 <p>Keyframes interpolate with a cubic spline (<code>CubicKeyframe</code>), so motion eases through
-intermediate keyframes rather than moving in straight segments between them. Two
+intermediate keyframes rather than moving in straight segments between them. Three
 consequences worth knowing:</p>
 <ul>
 <li>A spline can overshoot. Three keyframes moving a view right, then further right, then
   back can swing past the last position before settling.</li>
-<li>Durations must be positive. The spline divides by the keyframe's duration, so a zero
-  duration on anything but a leading pose produces <code>NaN</code>.</li>
+<li>Durations must be positive, because the spline divides by the keyframe's duration. The
+  runtime rewrites any duration that is zero, negative or non-finite to <strong>1ms</strong> before
+  handing the track to SwiftUI, so such a keyframe reads as an instant jump rather than
+  producing <code>NaN</code>.</li>
+<li>A keyframe whose <code>values</code> are non-finite is dropped from the track altogether, taking
+  its duration with it — the keyframes after it therefore land earlier than the file
+  says.</li>
 </ul>
 <p>There is no per-keyframe easing curve in the format. If you need a different feel, add
 intermediate keyframes.</p>
@@ -1331,7 +1335,7 @@ start and end tracks on.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

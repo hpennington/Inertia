@@ -26,6 +26,19 @@
   white-space: nowrap;
 }
 
+/* Diagrams, pre-rendered from website/diagrams/ by scripts/render-diagrams.sh.
+   They are dark on both colour schemes and carry their own background, so they
+   read as a card on the light scheme's white page too. */
+.md-typeset img.diagram {
+  display: block;
+  margin: 1.5em auto;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.4rem;
+  background-color: #1e1f29;
+  padding: 0.9rem;
+}
+
 /* Keyboard hints in the editor docs. */
 .md-typeset kbd {
   font-size: 0.85em;

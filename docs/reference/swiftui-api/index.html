@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1279,7 +1279,7 @@
 </tr>
 <tr>
 <td><code>id</code></td>
-<td>Resource name of the animation file, without <code>.json</code>.</td>
+<td>Resource name of the animation file, without <code>.json</code>. Also the container id the editor addresses its schemas to — see the warning below.</td>
 </tr>
 <tr>
 <td><code>hierarchyId</code></td>
@@ -1295,6 +1295,14 @@
 <p class="admonition-title">The resource must exist when <code>dev</code> is <code>false</code></p>
 <p>With <code>dev: false</code> the initializer reads <code>id</code>.json from <code>bundle</code> and traps if the
 resource is missing or fails to decode. <code>[]</code> is a valid file.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">The editor only addresses the container id <code>animation</code></p>
+<p>The runtime drops any schema whose container id does not match its own, and the
+editor sends every schema against the container id <code>"animation"</code>. A container with a
+different <code>id</code> therefore loads its bundled file normally but receives nothing from
+the editor — the app connects, the hierarchy appears, and playback does nothing.</p>
+<p>Use <code>id: "animation"</code> for any container you intend to author in the editor.</p>
 </div>
 <h3 id="modifier-form">Modifier form<a class="headerlink" href="#modifier-form" title="Permanent link">&para;</a></h3>
 <div class="language-swift highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">func</span><span class="w"> </span><span class="nf">inertiaContainer</span><span class="p">(</span><span class="n">dev</span><span class="p">:</span><span class="w"> </span><span class="nb">Bool</span><span class="p">,</span><span class="w"> </span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="n">InertiaID</span><span class="p">,</span><span class="w"> </span><span class="n">hierarchyId</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">View</span>
@@ -1332,10 +1340,18 @@ parameter; use this only if you need to override it for part of a hierarchy.</p>
 <p>Starts the container's clock and marks <code>id</code>'s track as running. Nothing animates until an
 id is triggered — see <a href="../../guides/triggering/">Triggering animations</a>.</p>
 <div class="language-swift highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kd">var</span><span class="w"> </span><span class="nv">isRepeating</span><span class="p">:</span><span class="w"> </span><span class="nb">Bool</span><span class="w">             </span><span class="c1">// default true</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kd">var</span><span class="w"> </span><span class="nv">loopDuration</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="w">         </span><span class="c1">// seconds; clamped to InertiaPlayback.loopDurationRange</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kd">var</span><span class="w"> </span><span class="nv">loopDuration</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="w">         </span><span class="c1">// seconds; NOT clamped on assignment</span>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kd">private</span><span class="p">(</span><span class="kr">set</span><span class="p">)</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">playheadTime</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="w">   </span><span class="c1">// seconds into the current loop</span>
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="kd">private</span><span class="p">(</span><span class="kr">set</span><span class="p">)</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">seekTime</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="p">?</span><span class="w">      </span><span class="c1">// non-nil while the editor is holding a frame</span>
 </span></code></pre></div>
+<p>Assigning to <code>loopDuration</code> stores the value as given. <code>InertiaPlayback.loopDurationRange</code>
+is what the editor clamps its timeline to, and what <code>clampLoopDuration(_:)</code> applies to
+lengths arriving from the editor — pass your own values through it yourself if they are
+not already trusted.</p>
+<p>The loop the runtime plays is <code>max(loopDuration, longest track)</code>, so a track longer than
+<code>loopDuration</code> stretches the loop for every track rather than being truncated.</p>
+<p><code>pause</code>, <code>seek</code> and <code>resume</code> are driven by the editor over the socket and are not part of
+the public API — an app can only start playback, not stop it.</p>
 <h3 id="hierarchy">Hierarchy<a class="headerlink" href="#hierarchy" title="Permanent link">&para;</a></h3>
 <div class="language-swift highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kd">func</span><span class="w"> </span><span class="nf">registerHierarchyIdPrefix</span><span class="p">(</span><span class="kc">_</span><span class="w"> </span><span class="kr">prefix</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">)</span>
 </span></code></pre></div>
@@ -1371,7 +1387,7 @@ interpolate it.</p>
 <div class="language-swift highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="nc">InertiaAnimationValues</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">scale</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">translate</span><span class="p">:</span><span class="w"> </span><span class="n">CGSize</span><span class="w">   </span><span class="c1">// fraction of the container&#39;s size</span>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">rotate</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="w">     </span><span class="c1">// degrees, top-left anchor</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">rotate</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="w">     </span><span class="c1">// degrees, top-left anchor, applied first</span>
 </span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">rotateCenter</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="w">  </span><span class="c1">// degrees, center anchor</span>
 </span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">opacity</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span>
 </span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="p">}</span>
@@ -1389,9 +1405,9 @@ that being a breaking change for apps.</p>
 whole process. <code>InertiaContainer</code> calls it from its <code>dev</code> flag on appear, and the server
 refuses to start a listener until it has been enabled, so you should not need to call it
 yourself unless you are driving the runtime without a container.</p>
-<p><code>InertiaViewModel</code> is also public and exposes <code>trigger</code>, <code>cancel</code> and <code>restart</code>, but
-<code>InertiaContainer</code> does not inject it into the environment — use
-<code>\.inertiaDataModel</code> instead.</p>
+<p><code>InertiaViewModel</code> is also public and exposes <code>trigger</code>, <code>cancel</code> and <code>restart</code>, but the
+three are currently no-ops left over from an earlier schema, and <code>InertiaContainer</code> does
+not inject it into the environment. Use <code>\.inertiaDataModel</code> instead.</p>
 
 
 
@@ -1504,7 +1520,7 @@ yourself unless you are driving the runtime without a container.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

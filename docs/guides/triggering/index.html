@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -784,6 +784,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#triggering-in-editor-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triggering in editor mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-triggering-does-not-do" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1062,6 +1073,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#triggering-in-editor-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triggering in editor mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-triggering-does-not-do" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1096,6 +1118,7 @@
 <p>An Inertia animation does not start on its own. The runtime plays a view's track once two
 things are true: the container's clock is running, and that view's id has been triggered.
 Both come from one call.</p>
+<p><img alt="An untriggered view sits at its initialValues; a triggered one starts the clock and runs its track, then either repeats on the loop or holds its final pose." class="diagram" src="../../assets/diagrams/trigger-flow-dark.svg" /></p>
 <h2 id="triggering-from-your-app">Triggering from your app<a class="headerlink" href="#triggering-from-your-app" title="Permanent link">&para;</a></h2>
 <p>Reach the container's data model through the environment and call <code>trigger(_:)</code> with the
 same id you passed to <code>.inertia(_:)</code>:</p>
@@ -1141,8 +1164,8 @@ turn of the run loop starts them together:</p>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>Every track is padded to the loop length, so tracks of different lengths still restart in
-step with each other.</p>
+<p>While repeating, every track is padded to the loop length, so tracks of different lengths
+still restart in step with each other.</p>
 <h2 id="repeating">Repeating<a class="headerlink" href="#repeating" title="Permanent link">&para;</a></h2>
 <p>Animations repeat by default. Turn it off on the data model:</p>
 <div class="language-swift highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">isRepeating</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span>
@@ -1151,19 +1174,39 @@ step with each other.</p>
 <p>With repeating off, each track plays its own keyframes once and stops on its final pose.
 With it on, tracks are held out to the full loop duration and start over together.</p>
 <h2 id="loop-duration">Loop duration<a class="headerlink" href="#loop-duration" title="Permanent link">&para;</a></h2>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">loopDuration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">1.5</span><span class="w">   </span><span class="c1">// seconds, clamped to 0.1...60</span>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">loopDuration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">1.5</span><span class="w">   </span><span class="c1">// seconds</span>
+</span></code></pre></div>
+<p>Assigning to <code>loopDuration</code> does <strong>not</strong> clamp — the property takes whatever you give it,
+including a value outside the usable range. Only the editor's timeline messages are
+clamped on the way in. Run your own values through the same helper if they come from
+somewhere you do not control:</p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">loopDuration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">clampLoopDuration</span><span class="p">(</span><span class="n">userValue</span><span class="p">)</span>
 </span></code></pre></div>
 <p><code>InertiaPlayback</code> exposes the same constants the editor uses:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">defaultLoopDuration</span><span class="w">   </span><span class="c1">// 3.0</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">loopDurationRange</span><span class="w">     </span><span class="c1">// 0.1...60.0</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">clampLoopDuration</span><span class="p">(</span><span class="kc">_</span><span class="p">:)</span><span class="w"> </span><span class="c1">// brings a value into range</span>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">defaultLoopDuration</span><span class="w">   </span><span class="c1">// 3.0</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">loopDurationRange</span><span class="w">     </span><span class="c1">// 0.1...60.0</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">clampLoopDuration</span><span class="p">(</span><span class="kc">_</span><span class="p">:)</span><span class="w"> </span><span class="c1">// brings a value into range, non-finite included</span>
 </span></code></pre></div>
+<p>The loop the runtime actually plays is <code>max(loopDuration, longest track)</code>, so a track
+longer than the value you set stretches the loop rather than being cut off.</p>
+<h2 id="triggering-in-editor-mode">Triggering in editor mode<a class="headerlink" href="#triggering-in-editor-mode" title="Permanent link">&para;</a></h2>
+<p>The editor's transport does not trigger anything. Its play button pushes the current
+schemas and sends a <em>resume</em>, and resume deliberately only picks up actionables your app
+has already triggered — starting one is the app's call, not the editor's.</p>
+<p>So a view that is never triggered stays still in the editor too, however many times you
+press play. Give the app a way to trigger while you are authoring — a button, or an
+<code>.onAppear</code> — or you will be recording against a view that never moves.</p>
+<p>For the same reason, <code>trigger(_:)</code> in editor mode does nothing until the editor has sent
+its schemas: the clock will not start while the container has no animations loaded, which
+in editor mode it does not until an editor attaches.</p>
+<p><img alt="In editor mode the runtime waits for schemas, the app triggers the id, and only then does the editor's resume start that animation." class="diagram" src="../../assets/diagrams/editor-resume-dark.svg" /></p>
 <h2 id="what-triggering-does-not-do">What triggering does not do<a class="headerlink" href="#what-triggering-does-not-do" title="Permanent link">&para;</a></h2>
-<p><code>trigger(_:)</code> sets a view's track running and starts the container's clock. It does not
-reset a track that is already playing, and there is no public "stop this one view" on the
-data model. If you need a view to be able to restart from the beginning, structure it so
-the view is removed and re-added, or keep the animation on a track short enough that the
-loop does the work.</p>
+<p><code>trigger(_:)</code> sets a view's track running, clears any frame the editor has the playhead
+parked on, and starts the container's clock. It does not reset a track that is already
+playing, and there is no public "stop this one view" on the data model — pause, seek and
+resume exist, but only the editor can reach them. If you need a view to be able to restart
+from the beginning, structure it so the view is removed and re-added, or keep the
+animation on a track short enough that the loop does the work.</p>
 
 
 
@@ -1276,7 +1319,7 @@ loop does the work.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
