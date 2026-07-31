@@ -15,6 +15,9 @@ import Observation
 /// ``InertiaWebSocketClient/setEnabled(_:host:port:)``.
 public let inertiaDefaultHost: String = "127.0.0.1"
 
+/// The port the editor listens on.
+public let inertiaDefaultPort: UInt16 = 8060
+
 /// Bridges `URLSession`'s delegate callbacks back to the client.
 ///
 /// `URLSessionWebSocketDelegate` requires `NSObject` inheritance, which the
