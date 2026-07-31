@@ -1,0 +1,7 @@
+flowchart TD
+    V["View tagged<br/>.inertia(#quot;card0#quot;)"] --> Q{"Has card0 been<br/>triggered?"}
+    Q -->|"no"| S["Sits at initialValues.<br/>The editor's play button<br/>will not start it."]
+    Q -->|"yes"| C["Clock starts,<br/>track runs"]
+    C --> R{"inertia.isRepeating"}
+    R -->|"true"| L["Padded to the loop length,<br/>restarts in step with<br/>every other track"]
+    R -->|"false"| F["Plays its keyframes once,<br/>holds its final pose"]

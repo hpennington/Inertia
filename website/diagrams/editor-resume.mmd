@@ -1,0 +1,12 @@
+sequenceDiagram
+    autonumber
+    participant App as Your app
+    participant RT as Inertia runtime
+    participant Ed as Inertia editor
+
+    Ed->>RT: animation schemas
+    Note over RT: The clock will not start<br/>until schemas have arrived
+    App->>RT: trigger("card0")
+    Ed->>RT: play (resume)
+    Note over RT: Resume only picks up ids<br/>the app already triggered
+    RT-->>App: card0 animates

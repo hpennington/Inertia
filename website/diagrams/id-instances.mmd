@@ -1,0 +1,9 @@
+flowchart TD
+    TR["inertia.trigger(#quot;plane#quot;)"] -.->|"triggers all three"| P
+    P["Prefix <b>plane</b><br/>.inertia(#quot;plane#quot;)"]
+    P --> I0["plane--0"]
+    P --> I1["plane--1"]
+    P --> I2["plane--2"]
+    I0 --> T["One track, keyed by prefix,<br/>in animation.json"]
+    I1 --> T
+    I2 --> T

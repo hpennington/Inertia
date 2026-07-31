@@ -1,0 +1,15 @@
+gantt
+    title Loop = max(loopDuration, longest track)
+    dateFormat X
+    axisFormat %Ss
+    tickInterval 1second
+
+    section card0
+    keyframes (2s)          :active, 0, 2
+    holds final pose        :done, 2, 4
+
+    section plane
+    keyframes (4s)          :active, 0, 4
+
+    section loopDuration
+    3s, shorter than plane  :crit, 0, 3

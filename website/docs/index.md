@@ -31,14 +31,8 @@ keyframe animation APIs.
 
 ## How it fits together
 
-```mermaid
-flowchart LR
-    B["Inertia editor<br/>(macOS)"] -->|connects to ws://127.0.0.1:8060| A["Your SwiftUI app<br/>.inertia(\"card0\")"]
-    A -->|view hierarchy| B
-    B -->|animation schemas| A
-    B -->|writes| C["animation.json"]
-    C -->|bundled| D["Your shipped app"]
-```
+![The editor connects to your app over a local WebSocket, trades the view hierarchy for animation schemas, and writes the animation.json your shipped app bundles.](assets/diagrams/architecture-light.svg#only-light){ .diagram }
+![The editor connects to your app over a local WebSocket, trades the view hierarchy for animation schemas, and writes the animation.json your shipped app bundles.](assets/diagrams/architecture-dark.svg#only-dark){ .diagram }
 
 In **editor mode** your app hosts a local WebSocket server and the editor connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas

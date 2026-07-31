@@ -40,6 +40,9 @@ ForEach(0..<3) { _ in
 }
 ```
 
+![Three instances of the plane prefix get their own hierarchy ids but resolve to one track, and triggering the prefix starts all three.](../assets/diagrams/id-instances-light.svg#only-light){ .diagram }
+![Three instances of the plane prefix get their own hierarchy ids but resolve to one track, and triggering the prefix starts all three.](../assets/diagrams/id-instances-dark.svg#only-dark){ .diagram }
+
 If you want the three planes moving differently, give them different ids:
 
 ```swift

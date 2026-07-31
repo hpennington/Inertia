@@ -26,6 +26,16 @@
   white-space: nowrap;
 }
 
+/* Diagrams, pre-rendered from website/diagrams/ by scripts/render-diagrams.sh.
+   Each one ships as a light and a dark SVG; the theme picks between them with
+   Material's #only-light / #only-dark suffixes. */
+.md-typeset img.diagram {
+  display: block;
+  margin: 1.5em auto;
+  max-width: 100%;
+  height: auto;
+}
+
 /* Keyboard hints in the editor docs. */
 .md-typeset kbd {
   font-size: 0.85em;
