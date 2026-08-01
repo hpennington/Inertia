@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A keyframe animation editor and SwiftUI runtime for animating real UI.">
+        <meta name="description" content="A keyframe animation editor with SwiftUI, Jetpack Compose and React runtimes for animating real UI.">
       
       
       
@@ -353,6 +353,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../getting-started/runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../getting-started/installation/" class="md-nav__link">
         
   
@@ -641,10 +669,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#installing-your-app" class="md-nav__link">
+  <a href="#getting-your-app-in-front-of-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Installing your app
+        Getting your app in front of it
       
     </span>
   </a>
@@ -953,6 +981,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/compose-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compose API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/react-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    React API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/values/" class="md-nav__link">
         
   
@@ -1118,10 +1202,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#installing-your-app" class="md-nav__link">
+  <a href="#getting-your-app-in-front-of-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Installing your app
+        Getting your app in front of it
       
     </span>
   </a>
@@ -1149,34 +1233,59 @@
 
 
 <h1 id="editor-tour">Editor tour<a class="headerlink" href="#editor-tour" title="Permanent link">&para;</a></h1>
-<p>The Inertia editor is a macOS app. It hosts a live iOS Simulator, shows you the
-Inertia-tagged view hierarchy of the app running inside it, and records what you drag
-as keyframes on a timeline.</p>
+<p>The Inertia editor is a macOS app. It hosts a live copy of your app — an iOS Simulator, an
+Android emulator, or a web page — shows you the Inertia-tagged view hierarchy the app
+reports, and records what you drag as keyframes on a timeline.</p>
 <h2 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌───────────────┬─────────────────────────────┬───────────────┐
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│               │                             │               │
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   Hierarchy   │          Viewport           │  Animations   │
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│               │      (live simulator)       │  Properties   │
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│               │      (your live app)        │  Properties   │
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│               │                             │               │
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├───────────────┴─────────────────────────────┴───────────────┤
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│                          Timeline                            │
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>└──────────────────────────────────────────────────────────────┘
 </span></code></pre></div>
 <h3 id="hierarchy">Hierarchy<a class="headerlink" href="#hierarchy" title="Permanent link">&para;</a></h3>
-<p>The tree of every view in your app that has an <code>.inertia(_:)</code> modifier, as reported by
-the running app. Selecting a node here selects it in the simulator; selecting in the
-simulator selects it here. Nodes only appear once the app has connected — an empty tree
-means no connection.</p>
+<p>The tree of every tagged view in your app, as reported by the running app. Selecting a node
+here selects it in the viewport; selecting in the viewport selects it here. Nodes only
+appear once the app has connected — an empty tree means no connection.</p>
 <h3 id="viewport">Viewport<a class="headerlink" href="#viewport" title="Permanent link">&para;</a></h3>
-<p>The actual simulator, streamed. You interact with it directly: taps and gestures go
-through to the app, so you can navigate to the screen you want to animate before you
-start recording.</p>
-<p>Above it sits the toolbar, with a <strong>Home</strong> button, the simulator's connection status,
-and the geometry of the current selection — its position and size, which is useful when
-you want to know what a normalized <code>translate</code> value works out to in points.</p>
-<p>While a selection is active, guides are drawn over the viewport: the container's center
-lines, plus dashed lines tracking the selected view's edges and center. They make it
-possible to line something up against the container rather than by eye.</p>
+<p>Your app, live. You interact with it directly: taps and gestures go through to the app, so
+you can navigate to the screen you want to animate before you start recording. What is
+actually in the pane depends on the target:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Viewport</th>
+<th>Toolbar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>iOS</td>
+<td>The simulator, streamed from its <code>IOSurface</code></td>
+<td><strong>Home</strong>, connection status, and the geometry of the current selection</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>The emulator, streamed as H.264 over <code>adb</code></td>
+<td><strong>Back</strong>, <strong>Home</strong>, <strong>Recents</strong>, and connection status</td>
+</tr>
+<tr>
+<td>Web</td>
+<td>Your dev server, in a web view</td>
+<td>An address bar above the pane, defaulting to <code>http://localhost:3000</code></td>
+</tr>
+</tbody>
+</table>
+<p>The selection geometry readout — the position and size of the selected view, useful for
+working out what a normalized <code>translate</code> comes to in points — is reported by the SwiftUI
+and React runtimes. Compose does not send it, so it stays blank on the Android target.</p>
+<p>While you drag a selected view, guides are drawn over the viewport: the container's center
+lines, plus dashed lines tracking the view's edges and center. They make it possible to
+line something up against the container rather than by eye. All three runtimes draw them.</p>
 <h3 id="animations-panel">Animations panel<a class="headerlink" href="#animations-panel" title="Permanent link">&para;</a></h3>
 <p>The animations available in the project, and which of them are attached to the selected
 node. A view with no attached animation has nothing to record into; attaching one gives
@@ -1185,21 +1294,43 @@ it a track on the timeline.</p>
 <p>The playhead, the transport controls, and one row of keypoints per animated view. This
 is where authoring happens — see <a href="../timeline/">Timeline and keyframes</a>.</p>
 <h2 id="framework-picker">Framework picker<a class="headerlink" href="#framework-picker" title="Permanent link">&para;</a></h2>
-<p>The editor has a segmented control for the target framework. <strong>SwiftUI</strong> is the
-supported option; the others are present but not documented here.</p>
+<p>A segmented control above the animations panel chooses the target: <strong>Web</strong>, <strong>iOS</strong> or
+<strong>Android</strong>. Switching it swaps the viewport and points the editor at that runtime's
+listener — 8080, 8060 and 8070 respectively.</p>
+<p>The three listeners run independently, so an app on each can be connected at once and
+switching the picker moves between them without anything reconnecting. What the picker does
+<em>not</em> do is convert a project: the animations are the same file either way, but you record
+them against whichever app is in the viewport.</p>
+<p>See <a href="../../getting-started/runtimes/">Choosing a runtime</a> for what each target supports.</p>
 <h2 id="autosave">Autosave<a class="headerlink" href="#autosave" title="Permanent link">&para;</a></h2>
 <p>The editor saves the open project every 10 seconds while you work, and on close. It will
 not overwrite a project with an empty animation store, so a connection that drops before
 the app reports anything cannot wipe work you already recorded.</p>
 <p>You can still lose the last few seconds of edits to a crash. Nothing here replaces
 having the project directory under version control if the animations matter.</p>
-<h2 id="installing-your-app">Installing your app<a class="headerlink" href="#installing-your-app" title="Permanent link">&para;</a></h2>
+<h2 id="getting-your-app-in-front-of-it">Getting your app in front of it<a class="headerlink" href="#getting-your-app-in-front-of-it" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">SwiftUI</label><label for="__tabbed_1_2">Compose</label><label for="__tabbed_1_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <p>The editor can install and launch a build on the simulator for you, rather than round
 tripping through Xcode. Point it at a built <code>.app</code> bundle and it runs <code>simctl install</code>
 followed by a launch, reading the bundle identifier out of the bundle itself.</p>
 <p>Builds you install this way still need the <code>INERTIA_EDITOR</code> flag compiled in — the
-editor cannot turn on editor mode in an app that was not built for it. See
-<a href="../../getting-started/editor-mode/">Editor mode</a>.</p>
+editor cannot turn on editor mode in an app that was not built for it.</p>
+</div>
+<div class="tabbed-block">
+<p>Start an emulator yourself — the editor attaches to a running one but never boots one
+— then install the app from Android Studio or with <code>adb install -r</code>.</p>
+<p>Once a device appears, the editor opens the <code>adb reverse</code> tunnel and starts the screen
+stream on its own. Relaunching the app reconnects; you do not need to touch the editor.</p>
+</div>
+<div class="tabbed-block">
+<p>Start your dev server and put its URL in the address bar above the viewport. The editor
+loads it in a web view. Reloading the page redials the editor.</p>
+</div>
+</div>
+</div>
+<p>See <a href="../../getting-started/editor-mode/">Editor mode</a> for the connection details.</p>
 
 
 

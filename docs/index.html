@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A keyframe animation editor and SwiftUI runtime for animating real UI.">
+        <meta name="description" content="A keyframe animation editor with SwiftUI, Jetpack Compose and React runtimes for animating real UI.">
       
       
       
@@ -14,7 +14,7 @@
       
       
       
-        <link rel="next" href="getting-started/installation/">
+        <link rel="next" href="getting-started/runtimes/">
       
       
         
@@ -434,6 +434,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="getting-started/runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -899,6 +927,62 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/compose-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compose API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/react-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    React API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/values/" class="md-nav__link">
         
   
@@ -1045,18 +1129,46 @@
 
 
 <h1 id="inertia">Inertia<a class="headerlink" href="#inertia" title="Permanent link">&para;</a></h1>
-<p>Inertia is a keyframe animation editor and SwiftUI runtime for animating the UI you
-already built. You wire a modifier onto the views you want to move, run your app in
-the editor, drag those views around on a timeline, and Inertia writes the result to a
-JSON file that ships in your app bundle.</p>
+<p>Inertia is a keyframe animation editor for animating the UI you already built. You wrap
+the views you want to move, run your app inside the editor, drag those views around on a
+timeline, and Inertia writes the result to a JSON file your app loads.</p>
 <p>There is no separate rendering surface and no exported video. The thing you animate in
-the editor is the real SwiftUI view, and at runtime it animates through SwiftUI's own
-keyframe animation APIs.</p>
+the editor is the real view in your real app.</p>
+<p>Three runtimes read the animations the editor writes:</p>
+<table>
+<thead>
+<tr>
+<th>Runtime</th>
+<th>Package</th>
+<th>Editor target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SwiftUI</strong></td>
+<td><code>Inertia</code> (Swift package)</td>
+<td><strong>iOS</strong> — a live iOS Simulator</td>
+</tr>
+<tr>
+<td><strong>Jetpack Compose</strong></td>
+<td><code>com.github.hpennington:inertia-compose</code></td>
+<td><strong>Android</strong> — a running emulator</td>
+</tr>
+<tr>
+<td><strong>React</strong></td>
+<td><code>inertia-react</code> + <code>inertia-base</code></td>
+<td><strong>Web</strong> — your dev server in a web view</td>
+</tr>
+</tbody>
+</table>
+<p>They implement the same model against the same file format. <a href="getting-started/runtimes/">Choosing a
+runtime</a> is the page to read if you want to know where they
+still differ — and they do, in ways worth knowing before you start.</p>
 <div class="grid cards">
 <ul>
 <li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z"/></svg></span> <strong><a href="getting-started/installation/">Install the runtime</a></strong></p>
-<p>Add the Swift package to your app and wrap your root view.</p>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z"/></svg></span> <strong><a href="getting-started/installation/">Install a runtime</a></strong></p>
+<p>Add the package to your app and wrap your root view.</p>
 </li>
 <li>
 <p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m13.13 22.19-1.63-3.83c1.57-.58 3.04-1.36 4.4-2.27zM5.64 12.5l-3.83-1.63 6.1-2.77C7 9.46 6.22 10.93 5.64 12.5M21.61 2.39S16.66.269 11 5.93c-2.19 2.19-3.5 4.6-4.35 6.71-.28.75-.09 1.57.46 2.13l2.13 2.12c.55.56 1.37.74 2.12.46A19.1 19.1 0 0 0 18.07 13c5.66-5.66 3.54-10.61 3.54-10.61m-7.07 7.07c-.78-.78-.78-2.05 0-2.83s2.05-.78 2.83 0c.77.78.78 2.05 0 2.83s-2.05.78-2.83 0m-5.66 7.07-1.41-1.41zM6.24 22l3.64-3.64c-.34-.09-.67-.24-.97-.45L4.83 22zM2 22h1.41l4.77-4.76-1.42-1.41L2 20.59zm0-2.83 4.09-4.08c-.21-.3-.36-.62-.45-.97L2 17.76z"/></svg></span> <strong><a href="getting-started/quickstart/">Quickstart</a></strong></p>
@@ -1064,11 +1176,11 @@ keyframe animation APIs.</p>
 </li>
 <li>
 <p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 2v6H2V2zM2 22v-6h2v6zm3-10c0 1.11-.89 2-2 2a2 2 0 1 1 2-2m11-8c4.42 0 8 3.58 8 8s-3.58 8-8 8c-3.6 0-6.64-2.38-7.65-5.65L6 12l2.35-2.35C9.36 6.38 12.4 4 16 4m-1 9 4.53 2.79.8-1.29-3.83-2.3V7H15z"/></svg></span> <strong><a href="editor/overview/">Use the editor</a></strong></p>
-<p>Record keyframes against a live simulator.</p>
+<p>Record keyframes against a live app.</p>
 </li>
 <li>
 <p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 3h2v2H5v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5h2v2H5c-1.07-.27-2-.9-2-2v-4a2 2 0 0 0-2-2H0v-2h1a2 2 0 0 0 2-2V5a2 2 0 0 1 2-2m14 0a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1v2h-1a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-2v-2h2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5h-2V3zm-7 12a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1m-4 0a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1m8 0a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1"/></svg></span> <strong><a href="guides/animation-file/">Animation file format</a></strong></p>
-<p>What the editor writes, and what the runtime reads.</p>
+<p>What the editor writes, and what the runtimes read.</p>
 </li>
 </ul>
 </div>
@@ -1076,11 +1188,12 @@ keyframe animation APIs.</p>
 <p><img alt="Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.json your shipped app bundles." class="diagram" src="assets/diagrams/architecture-dark.svg" /></p>
 <p>In <strong>editor mode</strong> the editor hosts a local WebSocket server and your app connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
-back as you edit, so what you see in the simulator is the animation as it currently
-stands.</p>
-<p>In <strong>release mode</strong> none of that is running. The container loads <code>animation.json</code> out of
-your app bundle and plays it through SwiftUI's keyframe animator. The WebSocket client is
-gated on the same <code>dev</code> flag, so a shipped build never dials out.</p>
+back as you edit, so what you see running is the animation as it currently stands.</p>
+<p>In <strong>release mode</strong> none of that is running. The container loads <code>animation.json</code> for
+itself — out of the app bundle in SwiftUI, over HTTP in React — and plays it on its own
+clock. In SwiftUI the WebSocket client is gated on the same <code>dev</code> flag, so a shipped build
+never dials out. (The Compose runtime does not yet have a release path; see
+<a href="getting-started/runtimes/">Choosing a runtime</a>.)</p>
 <h2 id="what-you-can-animate">What you can animate<a class="headerlink" href="#what-you-can-animate" title="Permanent link">&para;</a></h2>
 <p>Each tagged view gets a track of keyframes over five values:</p>
 <table>
@@ -1116,19 +1229,42 @@ gated on the same <code>dev</code> flag, so a shipped build never dials out.</p>
 <p>See <a href="reference/values/">Animatable values</a> for the details, including why <code>translate</code>
 is normalized rather than in points.</p>
 <h2 id="platform-support">Platform support<a class="headerlink" href="#platform-support" title="Permanent link">&para;</a></h2>
-<p>Inertia's runtime is SwiftUI, targeting iOS 17 and later — the keyframe animation APIs
-it builds on landed in iOS 17. The editor is a macOS app and drives the iOS Simulator
-through <code>simctl</code>.</p>
-<div class="admonition note">
-<p class="admonition-title">Other platforms</p>
-<p>There are React and Jetpack Compose runtimes in the repository, but they are not
-documented here. This site covers the SwiftUI path only.</p>
-</div>
+<p>The editor is a macOS app. What it drives depends on the target you pick in its framework
+picker:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Runtime requirement</th>
+<th>How the editor reaches it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>iOS</td>
+<td>iOS 17+ / Swift 5.9+</td>
+<td>An iOS Simulator, driven through <code>simctl</code></td>
+</tr>
+<tr>
+<td>Android</td>
+<td><code>minSdk</code> 26, Compose</td>
+<td>A running emulator, streamed over <code>adb</code></td>
+</tr>
+<tr>
+<td>Web</td>
+<td>React 18.3</td>
+<td>Your dev server, loaded in a <code>WKWebView</code></td>
+</tr>
+</tbody>
+</table>
+<p>The iOS 17 floor is not arbitrary: the SwiftUI runtime plays tracks through
+<code>KeyframeAnimator</code>, an iOS 17 API. The Compose and React runtimes sample their tracks
+themselves and have no equivalent floor.</p>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Permanent link">&para;</a></h2>
-<p>Start with <a href="getting-started/installation/">Installation</a> if you have an app you want to
-animate. If you would rather read about the workflow before touching your project, the
-<a href="editor/overview/">editor tour</a> is the shortest route to understanding what Inertia
-actually does.</p>
+<p>Start with <a href="getting-started/runtimes/">Choosing a runtime</a> to see what each one can do
+today, then <a href="getting-started/installation/">Installation</a>. If you would rather read
+about the workflow before touching your project, the <a href="editor/overview/">editor tour</a> is
+the shortest route to understanding what Inertia actually does.</p>
 
 
 
@@ -1167,13 +1303,13 @@ actually does.</p>
         
         
           
-          <a href="getting-started/installation/" class="md-footer__link md-footer__link--next" aria-label="Next: Installation">
+          <a href="getting-started/runtimes/" class="md-footer__link md-footer__link--next" aria-label="Next: Choosing a runtime">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Installation
+                Choosing a runtime
               </div>
             </div>
             <div class="md-footer__button md-icon">

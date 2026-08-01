@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A keyframe animation editor and SwiftUI runtime for animating real UI.">
+        <meta name="description" content="A keyframe animation editor with SwiftUI, Jetpack Compose and React runtimes for animating real UI.">
       
       
       
@@ -16,7 +16,7 @@
         <link rel="prev" href="../../guides/ids/">
       
       
-        <link rel="next" href="../values/">
+        <link rel="next" href="../compose-api/">
       
       
         
@@ -345,6 +345,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1003,6 +1031,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../compose-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compose API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../react-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    React API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../values/" class="md-nav__link">
         
   
@@ -1249,7 +1333,8 @@
 
 
 <h1 id="swiftui-api">SwiftUI API<a class="headerlink" href="#swiftui-api" title="Permanent link">&para;</a></h1>
-<p>Everything in this page comes from <code>import Inertia</code>.</p>
+<p>Everything in this page comes from <code>import Inertia</code>. The equivalents for the other
+runtimes are on <a href="../compose-api/">Compose API</a> and <a href="../react-api/">React API</a>.</p>
 <h2 id="inertiacontainer"><code>InertiaContainer</code><a class="headerlink" href="#inertiacontainer" title="Permanent link">&para;</a></h2>
 <p>The root of an Inertia hierarchy. It owns the animation data, defines the coordinate space
 <code>translate</code> values are measured against, and provides the environment its children read.</p>
@@ -1465,13 +1550,13 @@ not inject it into the environment. Use <code>\.inertiaDataModel</code> instead.
         
         
           
-          <a href="../values/" class="md-footer__link md-footer__link--next" aria-label="Next: Animatable values">
+          <a href="../compose-api/" class="md-footer__link md-footer__link--next" aria-label="Next: Compose API">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Animatable values
+                Compose API
               </div>
             </div>
             <div class="md-footer__button md-icon">

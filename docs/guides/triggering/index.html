@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A keyframe animation editor and SwiftUI runtime for animating real UI.">
+        <meta name="description" content="A keyframe animation editor with SwiftUI, Jetpack Compose and React runtimes for animating real UI.">
       
       
       
@@ -345,6 +345,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -762,6 +790,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#stopping-and-restarting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stopping and restarting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#repeating" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -936,6 +975,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/compose-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compose API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/react-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    React API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/values/" class="md-nav__link">
         
   
@@ -1051,6 +1146,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#stopping-and-restarting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stopping and restarting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#repeating" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1120,8 +1226,11 @@ things are true: the container's clock is running, and that view's id has been t
 Both come from one call.</p>
 <p><img alt="An untriggered view sits at its initialValues; a triggered one starts the clock and runs its track, then either repeats on the loop or holds its final pose." class="diagram" src="../../assets/diagrams/trigger-flow-dark.svg" /></p>
 <h2 id="triggering-from-your-app">Triggering from your app<a class="headerlink" href="#triggering-from-your-app" title="Permanent link">&para;</a></h2>
-<p>Reach the container's data model through the environment and call <code>trigger(_:)</code> with the
-same id you passed to <code>.inertia(_:)</code>:</p>
+<p>Reach the container's playback handle and call <code>trigger</code> with the same id you tagged the
+view with:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">SwiftUI</label><label for="__tabbed_1_2">Compose</label><label for="__tabbed_1_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="language-swift highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">struct</span><span class="w"> </span><span class="nc">ContentView</span><span class="p">:</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="p">@</span><span class="n">Environment</span><span class="p">(</span><span class="err">\</span><span class="p">.</span><span class="n">inertiaDataModel</span><span class="p">)</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">inertia</span><span class="p">:</span><span class="w"> </span><span class="n">InertiaDataModel</span><span class="p">!</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
@@ -1142,71 +1251,264 @@ same id you passed to <code>.inertia(_:)</code>:</p>
 <p>The environment value is only populated inside an <code>InertiaContainer</code> — it is <code>nil</code>
 anywhere else, which is why the force-unwrapped type above is safe in practice and
 crashes loudly if you put the view outside a container.</p>
+</div>
+<div class="tabbed-block">
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nd">@Composable</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">ContentView</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">inertia</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LocalInertia</span><span class="p">.</span><span class="na">current</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">Column</span><span class="p">(</span><span class="n">verticalArrangement</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Arrangement</span><span class="p">.</span><span class="na">spacedBy</span><span class="p">(</span><span class="m">24.</span><span class="n">dp</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">        </span><span class="n">Inertiaable</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;card0&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">            </span><span class="n">Box</span><span class="p">(</span><span class="n">Modifier</span><span class="p">.</span><span class="na">size</span><span class="p">(</span><span class="m">200.</span><span class="n">dp</span><span class="p">,</span><span class="w"> </span><span class="m">120.</span><span class="n">dp</span><span class="p">).</span><span class="na">background</span><span class="p">(</span><span class="n">Color</span><span class="p">.</span><span class="na">Blue</span><span class="p">))</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">        </span><span class="n">Button</span><span class="p">(</span><span class="n">onClick</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">inertia</span><span class="p">.</span><span class="na">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">})</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">            </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;Animate&quot;</span><span class="p">)</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>LocalInertia</code> has no default — reading it outside an <code>InertiaContainer</code> throws with
+<em>"LocalInertia was read outside of an InertiaContainer."</em></p>
+</div>
+<div class="tabbed-block">
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">function</span><span class="w"> </span><span class="nx">ContentView</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">inertia</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useInertia</span><span class="p">();</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="p">&lt;</span><span class="nt">div</span><span class="p">&gt;</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">      </span><span class="p">&lt;</span><span class="nt">Inertiaable</span><span class="w"> </span><span class="na">hierarchyIdPrefix</span><span class="o">=</span><span class="s">&quot;card0&quot;</span><span class="p">&gt;</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">        </span><span class="p">&lt;</span><span class="nt">div</span><span class="w"> </span><span class="na">style</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">width</span><span class="o">:</span><span class="w"> </span><span class="kt">200</span><span class="p">,</span><span class="w"> </span><span class="nx">height</span><span class="o">:</span><span class="w"> </span><span class="kt">120</span><span class="p">,</span><span class="w"> </span><span class="nx">background</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;blue&quot;</span><span class="w"> </span><span class="p">}}</span><span class="w"> </span><span class="p">/&gt;</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="p">&lt;/</span><span class="nt">Inertiaable</span><span class="p">&gt;</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">      </span><span class="p">&lt;</span><span class="nt">button</span><span class="w"> </span><span class="na">onClick</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">inertia</span><span class="p">.</span><span class="nx">trigger</span><span class="p">(</span><span class="s2">&quot;card0&quot;</span><span class="p">)}&gt;</span><span class="nx">Animate</span><span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">  </span><span class="p">);</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>useInertia</code> throws <em>"useInertia must be used within an InertiaContainer"</em> if there is
+no container above it.</p>
+</div>
+</div>
+</div>
 <h2 id="playing-on-appear">Playing on appear<a class="headerlink" href="#playing-on-appear" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">SwiftUI</label><label for="__tabbed_2_2">Compose</label><label for="__tabbed_2_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <p>There is no declarative "play on appear". Trigger it yourself:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">RoundedRectangle</span><span class="p">(</span><span class="n">cornerRadius</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">)</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="p">.</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p">.</span><span class="n">onAppear</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">RoundedRectangle</span><span class="p">(</span><span class="n">cornerRadius</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="p">.</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p">.</span><span class="n">onAppear</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title"><code>invokeType</code> in the file</p>
-<p>Animation files carry an <code>invokeType</code> of <code>"auto"</code> or <code>"trigger"</code>. The SwiftUI runtime
-stores it but does not currently act on it: a track with <code>"auto"</code> still waits for
-<code>trigger(_:)</code>. Treat the field as metadata the editor round-trips, and drive playback
-from your own code.</p>
+<p>Animation files carry an <code>invokeType</code> of <code>"auto"</code> or <code>"trigger"</code>. The SwiftUI
+runtime stores it but does not act on it: a track with <code>"auto"</code> still waits for
+<code>trigger(_:)</code>. Treat the field as metadata the editor round-trips, and drive
+playback from your own code.</p>
+</div>
+</div>
+<div class="tabbed-block">
+<p>An animation whose <code>invokeType</code> is <code>"auto"</code> starts as soon as the runtime holds its
+schema — you do not have to trigger it.</p>
+<p>For a <code>"trigger"</code> animation, do it yourself:</p>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">LaunchedEffect</span><span class="p">(</span><span class="kt">Unit</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="na">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="p">}</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>An animation whose <code>invokeType</code> is <code>"auto"</code> starts as soon as the runtime holds its
+schema — you do not have to trigger it.</p>
+<p>For a <code>"trigger"</code> animation, do it yourself:</p>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">React</span><span class="p">.</span><span class="nx">useEffect</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nx">inertia</span><span class="p">.</span><span class="nx">trigger</span><span class="p">(</span><span class="s2">&quot;card0&quot;</span><span class="p">);</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="nx">inertia</span><span class="p">]);</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title"><code>invokeType: auto</code> is not honoured everywhere</p>
+<p>Compose and React start <code>auto</code> animations for you. <strong>SwiftUI does not</strong> — it stores
+the field and ignores it. An animation authored as <code>auto</code> and shipped on iOS still
+needs a <code>trigger(_:)</code> call.</p>
 </div>
 <h2 id="triggering-several-views-together">Triggering several views together<a class="headerlink" href="#triggering-several-views-together" title="Permanent link">&para;</a></h2>
 <p>Each id is triggered separately, but they share one clock, so triggering them in the same
-turn of the run loop starts them together:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">Button</span><span class="p">(</span><span class="s">&quot;Animate all&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card1&quot;</span><span class="p">)</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">}</span>
+turn starts them together:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:3"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">SwiftUI</label><label for="__tabbed_3_2">Compose</label><label for="__tabbed_3_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">Button</span><span class="p">(</span><span class="s">&quot;Animate all&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card1&quot;</span><span class="p">)</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">}</span>
 </span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">Button</span><span class="p">(</span><span class="n">onClick</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="na">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="na">trigger</span><span class="p">(</span><span class="s">&quot;card1&quot;</span><span class="p">)</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="na">trigger</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">})</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;Animate all&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">&lt;</span><span class="nt">button</span><span class="w"> </span><span class="na">onClick</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nx">inertia</span><span class="p">.</span><span class="nx">trigger</span><span class="p">(</span><span class="s2">&quot;card0&quot;</span><span class="p">);</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nx">inertia</span><span class="p">.</span><span class="nx">trigger</span><span class="p">(</span><span class="s2">&quot;card1&quot;</span><span class="p">);</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nx">inertia</span><span class="p">.</span><span class="nx">trigger</span><span class="p">(</span><span class="s2">&quot;plane&quot;</span><span class="p">);</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">}}&gt;</span><span class="nx">Animate</span><span class="w"> </span><span class="nx">all</span><span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
 <p>While repeating, every track is padded to the loop length, so tracks of different lengths
 still restart in step with each other.</p>
-<h2 id="repeating">Repeating<a class="headerlink" href="#repeating" title="Permanent link">&para;</a></h2>
-<p>Animations repeat by default. Turn it off on the data model:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">isRepeating</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
+<h2 id="stopping-and-restarting">Stopping and restarting<a class="headerlink" href="#stopping-and-restarting" title="Permanent link">&para;</a></h2>
+<p><code>trigger</code> does not reset a track that is already playing — a trigger arriving mid-run
+joins the run in progress.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:3"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><input id="__tabbed_4_3" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">SwiftUI</label><label for="__tabbed_4_2">Compose</label><label for="__tabbed_4_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>There is no public way to stop or rewind a single animation. <code>pause</code>, <code>seek</code> and
+<code>resume</code> exist, but only the editor can reach them.</p>
+<p>If you need a view to be able to restart from the beginning, structure it so the view
+is removed and re-added, or keep the animation on a track short enough that the loop
+does the work.</p>
+</div>
+<div class="tabbed-block">
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">inertia</span><span class="p">.</span><span class="na">cancel</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// back to initialValues, and stays there</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">inertia</span><span class="p">.</span><span class="na">restart</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span><span class="w">  </span><span class="c1">// clears the cancel and plays from the top</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">inertia</span><span class="p">.</span><span class="na">isCancelled</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
 </span></code></pre></div>
+<p><code>restart</code> rewinds the shared clock, so it starts <em>every</em> animation in the container
+over, not just this one. That is the same shared clock that makes a mid-run trigger
+join the run in progress.</p>
+</div>
+<div class="tabbed-block">
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nx">inertia</span><span class="p">.</span><span class="nx">cancel</span><span class="p">(</span><span class="s2">&quot;card0&quot;</span><span class="p">);</span><span class="w">   </span><span class="c1">// back to initialValues, and stays there</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nx">inertia</span><span class="p">.</span><span class="nx">restart</span><span class="p">(</span><span class="s2">&quot;card0&quot;</span><span class="p">);</span><span class="w">  </span><span class="c1">// clears the cancel and plays from the top</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="nx">inertia</span><span class="p">.</span><span class="nx">isCancelled</span><span class="p">(</span><span class="s2">&quot;card0&quot;</span><span class="p">);</span>
+</span></code></pre></div>
+<p><code>restart</code> rewinds the shared clock, so it starts <em>every</em> animation in the container
+over, not just this one. That is the same shared clock that makes a mid-run trigger
+join the run in progress.</p>
+</div>
+</div>
+</div>
+<h2 id="repeating">Repeating<a class="headerlink" href="#repeating" title="Permanent link">&para;</a></h2>
+<p>Animations repeat by default. Turn it off:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:3"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><input id="__tabbed_5_3" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">SwiftUI</label><label for="__tabbed_5_2">Compose</label><label for="__tabbed_5_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">isRepeating</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">LaunchedEffect</span><span class="p">(</span><span class="n">inertia</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="na">isRepeating</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="p">}</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nx">React</span><span class="p">.</span><span class="nx">useEffect</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span><span class="nx">inertia</span><span class="p">.</span><span class="nx">setRepeating</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="nx">inertia</span><span class="p">]);</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
 <p>With repeating off, each track plays its own keyframes once and stops on its final pose.
 With it on, tracks are held out to the full loop duration and start over together.</p>
 <h2 id="loop-duration">Loop duration<a class="headerlink" href="#loop-duration" title="Permanent link">&para;</a></h2>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">loopDuration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">1.5</span><span class="w">   </span><span class="c1">// seconds</span>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:3"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><input id="__tabbed_6_3" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">SwiftUI</label><label for="__tabbed_6_2">Compose</label><label for="__tabbed_6_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">loopDuration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">1.5</span><span class="w">   </span><span class="c1">// seconds</span>
 </span></code></pre></div>
-<p>Assigning to <code>loopDuration</code> does <strong>not</strong> clamp — the property takes whatever you give it,
-including a value outside the usable range. Only the editor's timeline messages are
-clamped on the way in. Run your own values through the same helper if they come from
-somewhere you do not control:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">loopDuration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">clampLoopDuration</span><span class="p">(</span><span class="n">userValue</span><span class="p">)</span>
+<p>Assigning to <code>loopDuration</code> does <strong>not</strong> clamp — the property takes whatever you give
+it, including a value outside the usable range. Only the editor's timeline messages
+are clamped on the way in. Run your own values through the same helper if they come
+from somewhere you do not control:</p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">loopDuration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">clampLoopDuration</span><span class="p">(</span><span class="n">userValue</span><span class="p">)</span>
 </span></code></pre></div>
 <p><code>InertiaPlayback</code> exposes the same constants the editor uses:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">defaultLoopDuration</span><span class="w">   </span><span class="c1">// 3.0</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">loopDurationRange</span><span class="w">     </span><span class="c1">// 0.1...60.0</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">clampLoopDuration</span><span class="p">(</span><span class="kc">_</span><span class="p">:)</span><span class="w"> </span><span class="c1">// brings a value into range, non-finite included</span>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">defaultLoopDuration</span><span class="w">   </span><span class="c1">// 3.0</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">loopDurationRange</span><span class="w">     </span><span class="c1">// 0.1...60.0</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">InertiaPlayback</span><span class="p">.</span><span class="n">clampLoopDuration</span><span class="p">(</span><span class="kc">_</span><span class="p">:)</span><span class="w"> </span><span class="c1">// brings a value into range, non-finite included</span>
 </span></code></pre></div>
-<p>The loop the runtime actually plays is <code>max(loopDuration, longest track)</code>, so a track
-longer than the value you set stretches the loop rather than being cut off.</p>
+</div>
+<div class="tabbed-block">
+<p><code>loopDuration</code> is read-only to the app — it starts at 3 seconds and changes only when
+the editor sends a new timeline length:</p>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">inertia</span><span class="p">.</span><span class="na">loopDuration</span><span class="w">     </span><span class="c1">// 3.0f by default</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">inertia</span><span class="p">.</span><span class="na">playbackDuration</span><span class="w"> </span><span class="c1">// max(loopDuration, longest track)</span>
+</span></code></pre></div>
+<p>The constants are on <code>InertiaPlaybackDefaults</code>:</p>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">InertiaPlaybackDefaults</span><span class="p">.</span><span class="na">defaultLoopDuration</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="n">InertiaPlaybackDefaults</span><span class="p">.</span><span class="na">clampLoopDuration</span><span class="p">(</span><span class="n">seconds</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Since a Compose app has no bundled-file path, this only matters while the editor is
+attached — and the editor sets it from the timeline.</p>
+</div>
+<div class="tabbed-block">
+<p><code>useInertia()</code> does not expose loop duration; it starts at 3 seconds and changes only
+when the editor sends a new timeline length. The same constants live on
+<code>InertiaPlayback</code> in <code>inertia-base</code>:</p>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">InertiaPlayback</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;inertia-base&quot;</span><span class="p">;</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="nx">InertiaPlayback</span><span class="p">.</span><span class="nx">defaultLoopDuration</span><span class="p">;</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="nx">InertiaPlayback</span><span class="p">.</span><span class="nx">clampLoopDuration</span><span class="p">(</span><span class="nx">seconds</span><span class="p">);</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<p>The loop the runtime actually plays is <code>max(loopDuration, longest track)</code> on every
+runtime, so a track longer than the loop stretches it rather than being cut off.</p>
 <h2 id="triggering-in-editor-mode">Triggering in editor mode<a class="headerlink" href="#triggering-in-editor-mode" title="Permanent link">&para;</a></h2>
+<p>This is one of the sharper differences between the runtimes.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:3"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><input id="__tabbed_7_3" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">SwiftUI</label><label for="__tabbed_7_2">Compose</label><label for="__tabbed_7_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <p>The editor's transport does not trigger anything. Its play button pushes the current
-schemas and sends a <em>resume</em>, and resume deliberately only picks up actionables your app
-has already triggered — starting one is the app's call, not the editor's.</p>
-<p>So a view that is never triggered stays still in the editor too, however many times you
-press play. Give the app a way to trigger while you are authoring — a button, or an
-<code>.onAppear</code> — or you will be recording against a view that never moves.</p>
-<p>For the same reason, <code>trigger(_:)</code> in editor mode does nothing until the editor has sent
-its schemas: the clock will not start while the container has no animations loaded, which
-in editor mode it does not until an editor attaches.</p>
+schemas and sends a <em>resume</em>, and resume deliberately only picks up actionables your
+app has already triggered — starting one is the app's call, not the editor's.</p>
+<p>So a view that is never triggered stays still in the editor too, however many times
+you press play. Give the app a way to trigger while you are authoring — a button, or
+an <code>.onAppear</code> — or you will be recording against a view that never moves.</p>
+<p>For the same reason, <code>trigger(_:)</code> in editor mode does nothing until the editor has
+sent its schemas: the clock will not start while the container has no animations
+loaded, which in editor mode it does not until an editor attaches.</p>
 <p><img alt="In editor mode the runtime waits for schemas, the app triggers the id, and only then does the editor's resume start that animation." class="diagram" src="../../assets/diagrams/editor-resume-dark.svg" /></p>
+</div>
+<div class="tabbed-block">
+<p>The editor's play button starts <strong>every</strong> registered animation, whatever its
+<code>invokeType</code>. Authoring a <code>trigger</code> animation is exactly the moment nothing is going
+to call <code>trigger</code> for it, so the editor stands in for the app.</p>
+<p>You therefore do not need a trigger button in the app just to author against it —
+though one is still useful for checking how the animation reads on a real interaction.</p>
+<p>Signals only ever come from the editor, so the same animation running with no editor
+attached still waits for its trigger.</p>
+</div>
+<div class="tabbed-block">
+<p>The editor's play button starts <strong>every</strong> animation whose schema the runtime holds,
+whatever its <code>invokeType</code>. Authoring a <code>trigger</code> animation is exactly the moment
+nothing is going to call <code>trigger</code> for it, so the editor stands in for the app.</p>
+<p>You therefore do not need a trigger button in the app just to author against it —
+though one is still useful for checking how the animation reads on a real interaction.</p>
+<p>Signals only ever come from the editor, so the same animation running with no editor
+attached still waits for its trigger.</p>
+</div>
+</div>
+</div>
 <h2 id="what-triggering-does-not-do">What triggering does not do<a class="headerlink" href="#what-triggering-does-not-do" title="Permanent link">&para;</a></h2>
-<p><code>trigger(_:)</code> sets a view's track running, clears any frame the editor has the playhead
-parked on, and starts the container's clock. It does not reset a track that is already
-playing, and there is no public "stop this one view" on the data model — pause, seek and
-resume exist, but only the editor can reach them. If you need a view to be able to restart
-from the beginning, structure it so the view is removed and re-added, or keep the
-animation on a track short enough that the loop does the work.</p>
+<p><code>trigger</code> sets a view's track running, clears any frame the editor has the playhead parked
+on, and starts the container's clock. It does not reset a track that is already playing —
+on Compose and React that is what <code>restart</code> is for, and on SwiftUI there is no equivalent.</p>
 
 
 

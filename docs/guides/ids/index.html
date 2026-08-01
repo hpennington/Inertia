@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A keyframe animation editor and SwiftUI runtime for animating real UI.">
+        <meta name="description" content="A keyframe animation editor with SwiftUI, Jetpack Compose and React runtimes for animating real UI.">
       
       
       
@@ -345,6 +345,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -925,6 +953,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/compose-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compose API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/react-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    React API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/values/" class="md-nav__link">
         
   
@@ -1096,17 +1180,38 @@
 <p>An id is the only link between a view in your code and a track in an animation file. This
 page covers how they behave, including the part that catches people out: what happens when
 the same tagged view appears more than once.</p>
+<p>Everything here applies to all three runtimes: the id model is one of the pieces they
+implement identically.</p>
 <h2 id="the-id-you-write">The id you write<a class="headerlink" href="#the-id-you-write" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">SwiftUI</label><label for="__tabbed_1_2">Compose</label><label for="__tabbed_1_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="language-swift highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span>
 </span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">Inertiaable</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;✈&quot;</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="p">}</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">&lt;</span><span class="nt">Inertiaable</span><span class="w"> </span><span class="na">hierarchyIdPrefix</span><span class="o">=</span><span class="s">&quot;plane&quot;</span><span class="p">&gt;</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span><span class="err">✈</span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">&lt;/</span><span class="nt">Inertiaable</span><span class="p">&gt;</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
 <p><code>"plane"</code> is a <strong>prefix</strong>. It is what you look up in the animation file, what you pass to
-<code>trigger(_:)</code>, and what appears as an animation's <code>id</code> in <code>animation.json</code>.</p>
+<code>trigger</code>, and what appears as an animation's <code>id</code> in <code>animation.json</code>. The Compose and
+React APIs name the parameter <code>hierarchyIdPrefix</code> for exactly this reason.</p>
 <h2 id="the-id-in-the-hierarchy">The id in the hierarchy<a class="headerlink" href="#the-id-in-the-hierarchy" title="Permanent link">&para;</a></h2>
 <p>Internally each <em>instance</em> of a tagged view gets a distinct hierarchy id, formed by
 appending an index to the prefix:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>plane--0
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>plane--1
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>plane--2
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>plane--0
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>plane--1
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>plane--2
 </span></code></pre></div>
 <p>Indices are handed out in the order the instances first appear. This is what lets the
 editor's hierarchy panel distinguish three copies of the same view, and what lets you
@@ -1115,35 +1220,86 @@ select one of them in the simulator.</p>
 <p>Animations are stored per prefix. When the runtime looks up which track a view should
 play, an unmapped instance falls back to the prefix — so all instances of <code>plane</code> play the
 same animation.</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">ForEach</span><span class="p">(</span><span class="mf">0.</span><span class="p">.&lt;</span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kc">_</span><span class="w"> </span><span class="k">in</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// one animation, three views</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">}</span>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">SwiftUI</label><label for="__tabbed_2_2">Compose</label><label for="__tabbed_2_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">ForEach</span><span class="p">(</span><span class="mf">0.</span><span class="p">.&lt;</span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kc">_</span><span class="w"> </span><span class="k">in</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// one animation, three views</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="p">}</span>
 </span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">repeat</span><span class="p">(</span><span class="m">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="n">Inertiaable</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;✈&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// one animation, three views</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">}</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{[</span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">].</span><span class="nx">map</span><span class="p">(</span><span class="nx">i</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">(</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="p">&lt;</span><span class="nt">Inertiaable</span><span class="w"> </span><span class="na">key</span><span class="o">=</span><span class="p">{</span><span class="nx">i</span><span class="p">}</span><span class="w"> </span><span class="na">hierarchyIdPrefix</span><span class="o">=</span><span class="s">&quot;plane&quot;</span><span class="p">&gt;</span><span class="w">   </span><span class="p">{</span><span class="cm">/* one animation, three views */</span><span class="p">}</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span><span class="err">✈</span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="p">&lt;/</span><span class="nt">Inertiaable</span><span class="p">&gt;</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">))}</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
 <p><img alt="Three instances of the plane prefix get their own hierarchy ids but resolve to one track, and triggering the prefix starts all three." class="diagram" src="../../assets/diagrams/id-instances-dark.svg" /></p>
-<p>If you want the three planes moving differently, give them different ids:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;planeTop&quot;</span><span class="p">)</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;planeMiddle&quot;</span><span class="p">)</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">Image</span><span class="p">(</span><span class="n">systemName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;airplane&quot;</span><span class="p">).</span><span class="n">inertia</span><span class="p">(</span><span class="s">&quot;planeBottom&quot;</span><span class="p">)</span>
-</span></code></pre></div>
-<p>Triggering works on the prefix too: <code>inertia.trigger("plane")</code> starts all three.</p>
+<p>If you want the three planes moving differently, give them different ids — <code>planeTop</code>,
+<code>planeMiddle</code>, <code>planeBottom</code>.</p>
+<p>Triggering works on the prefix too: <code>inertia.trigger("plane")</code> starts all three. Playback
+is keyed by prefix on every runtime, which is what makes that true.</p>
 <h2 id="choosing-ids">Choosing ids<a class="headerlink" href="#choosing-ids" title="Permanent link">&para;</a></h2>
 <p>Ids are strings, and nothing validates them against your code. A typo is a view that
 silently never animates, so it is worth keeping the two ends together:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">enum</span><span class="w"> </span><span class="nc">AnimationID</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"> </span><span class="n">CaseIterable</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">card0</span><span class="p">,</span><span class="w"> </span><span class="n">card1</span><span class="p">,</span><span class="w"> </span><span class="n">planeTop</span><span class="p">,</span><span class="w"> </span><span class="n">planeBottom</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">rawValue</span><span class="w"> </span><span class="p">}</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="p">}</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">RoundedRectangle</span><span class="p">(</span><span class="n">cornerRadius</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">)</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="p">.</span><span class="n">inertia</span><span class="p">(</span><span class="n">AnimationID</span><span class="p">.</span><span class="n">card0</span><span class="p">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1">// ...</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="n">AnimationID</span><span class="p">.</span><span class="n">card0</span><span class="p">.</span><span class="n">id</span><span class="p">)</span>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:3"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">SwiftUI</label><label for="__tabbed_3_2">Compose</label><label for="__tabbed_3_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">enum</span><span class="w"> </span><span class="nc">AnimationID</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"> </span><span class="n">CaseIterable</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">card0</span><span class="p">,</span><span class="w"> </span><span class="n">card1</span><span class="p">,</span><span class="w"> </span><span class="n">planeTop</span><span class="p">,</span><span class="w"> </span><span class="n">planeBottom</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">rawValue</span><span class="w"> </span><span class="p">}</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">}</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">RoundedRectangle</span><span class="p">(</span><span class="n">cornerRadius</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">)</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="p">.</span><span class="n">inertia</span><span class="p">(</span><span class="n">AnimationID</span><span class="p">.</span><span class="n">card0</span><span class="p">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1">// ...</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="n">AnimationID</span><span class="p">.</span><span class="n">card0</span><span class="p">.</span><span class="n">id</span><span class="p">)</span>
 </span></code></pre></div>
-<p>The enum also gives you a list to check an animation file against in a test, if you want
-a build to fail rather than a view to sit still.</p>
+</div>
+<div class="tabbed-block">
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kd">enum</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">AnimationID</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="n">CARD0</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">CARD1</span><span class="p">(</span><span class="s">&quot;card1&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">PLANE_TOP</span><span class="p">(</span><span class="s">&quot;planeTop&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">PLANE_BOTTOM</span><span class="p">(</span><span class="s">&quot;planeBottom&quot;</span><span class="p">)</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="p">}</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">Inertiaable</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AnimationID</span><span class="p">.</span><span class="na">CARD0</span><span class="p">.</span><span class="na">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// ...</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">inertia</span><span class="p">.</span><span class="na">trigger</span><span class="p">(</span><span class="n">AnimationID</span><span class="p">.</span><span class="na">CARD0</span><span class="p">.</span><span class="na">id</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">AnimationID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nx">card0</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;card0&quot;</span><span class="p">,</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nx">card1</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;card1&quot;</span><span class="p">,</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span><span class="nx">planeTop</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;planeTop&quot;</span><span class="p">,</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nx">planeBottom</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;planeBottom&quot;</span><span class="p">,</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">}</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="kd">const</span><span class="p">;</span>
+</span></code></pre></div>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">&lt;</span><span class="nt">Inertiaable</span><span class="w"> </span><span class="na">hierarchyIdPrefix</span><span class="o">=</span><span class="p">{</span><span class="nx">AnimationID</span><span class="p">.</span><span class="nx">card0</span><span class="p">}&gt;{</span><span class="cm">/* … */</span><span class="p">}&lt;/</span><span class="nt">Inertiaable</span><span class="p">&gt;</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1">// ...</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nx">inertia</span><span class="p">.</span><span class="nx">trigger</span><span class="p">(</span><span class="nx">AnimationID</span><span class="p">.</span><span class="nx">card0</span><span class="p">);</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<p>The enumeration also gives you a list to check an animation file against in a test, if you
+want a build to fail rather than a view to sit still.</p>
 <h2 id="index-stability">Index stability<a class="headerlink" href="#index-stability" title="Permanent link">&para;</a></h2>
 <p>Instance indices depend on appearance order, not on anything in your source. A view that
 appears conditionally can take a different index between runs, and the editor's hierarchy
@@ -1156,6 +1312,9 @@ will differ accordingly.</p>
   the app again finds the animations regardless of how indices came out.</li>
 </ul>
 <h2 id="the-containers-ids">The container's ids<a class="headerlink" href="#the-containers-ids" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:3"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><input id="__tabbed_4_3" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">SwiftUI</label><label for="__tabbed_4_2">Compose</label><label for="__tabbed_4_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <p><code>InertiaContainer</code> takes two:</p>
 <table>
 <thead>
@@ -1175,13 +1334,25 @@ will differ accordingly.</p>
 </tr>
 </tbody>
 </table>
-<p>They can be the same string — the example app uses <code>"animation"</code> for both — but they mean
-different things. Change <code>id</code> and you change which file loads; change <code>hierarchyId</code> and you
-rename the root of the hierarchy.</p>
-<p><code>id</code> is also the container id the editor addresses its schemas to, and the editor always
-sends <code>"animation"</code>. A container with a different <code>id</code> still loads its bundled file, but
-receives nothing in editor mode — so keep <code>id: "animation"</code> for anything you author in the
-editor.</p>
+<p>They can be the same string — the example app uses <code>"animation"</code> for both — but they
+mean different things. Change <code>id</code> and you change which file loads; change
+<code>hierarchyId</code> and you rename the root of the hierarchy.</p>
+</div>
+<div class="tabbed-block">
+<p><code>InertiaContainer</code> takes one: <code>id</code>. It is both the container id the editor addresses,
+and the id of the root node in the tree the editor draws.</p>
+</div>
+<div class="tabbed-block">
+<p><code>InertiaContainer</code> takes one: <code>id</code>. It is the container id the editor addresses, the id
+of the root node in the tree the editor draws, and the basename of the JSON fetched
+from <code>baseURL</code> outside editor mode.</p>
+</div>
+</div>
+</div>
+<p>On every runtime, <code>id</code> is the container id the editor addresses its schemas to, and the
+editor always sends <code>"animation"</code>. A container with a different <code>id</code> connects and reports
+its hierarchy but receives nothing — so keep <code>id</code> as <code>"animation"</code> for anything you author
+in the editor.</p>
 
 
 

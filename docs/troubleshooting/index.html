@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A keyframe animation editor and SwiftUI runtime for animating real UI.">
+        <meta name="description" content="A keyframe animation editor with SwiftUI, Jetpack Compose and React runtimes for animating real UI.">
       
       
       
@@ -343,6 +343,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -808,6 +836,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/compose-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compose API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/react-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    React API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/values/" class="md-nav__link">
         
   
@@ -947,6 +1031,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#an-android-build-shows-nothing-with-the-editor-closed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An Android build shows nothing with the editor closed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-react-build-shows-nothing-with-dev-false" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A React build shows nothing with dev false
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pressing-play-in-the-editor-does-nothing" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -973,6 +1079,17 @@
     <span class="md-ellipsis">
       
         The animation is in the wrong place on a different device
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-animation-reads-differently-on-ios-than-on-android-or-the-web" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The animation reads differently on iOS than on Android or the web
       
     </span>
   </a>
@@ -1102,6 +1219,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#an-android-build-shows-nothing-with-the-editor-closed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An Android build shows nothing with the editor closed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-react-build-shows-nothing-with-dev-false" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A React build shows nothing with dev false
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pressing-play-in-the-editor-does-nothing" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1128,6 +1267,17 @@
     <span class="md-ellipsis">
       
         The animation is in the wrong place on a different device
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-animation-reads-differently-on-ios-than-on-android-or-the-web" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The animation reads differently on iOS than on Android or the web
       
     </span>
   </a>
@@ -1200,7 +1350,7 @@
 
 <h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
 <h2 id="the-app-crashes-on-launch-in-a-release-build">The app crashes on launch in a release build<a class="headerlink" href="#the-app-crashes-on-launch-in-a-release-build" title="Permanent link">&para;</a></h2>
-<p><code>InertiaContainer</code> with <code>dev: false</code> reads <code>&lt;id&gt;.json</code> from the bundle during
+<p>SwiftUI only. <code>InertiaContainer</code> with <code>dev: false</code> reads <code>&lt;id&gt;.json</code> from the bundle during
 initialization and traps if it is missing or does not decode.</p>
 <p>Check, in order:</p>
 <ol>
@@ -1209,72 +1359,152 @@ initialization and traps if it is missing or does not decode.</p>
 <li>It is listed under <strong>Target → Build Phases → Copy Bundle Resources</strong>.</li>
 <li>It parses. <code>[]</code> is valid; a trailing comma is not.</li>
 </ol>
+<p>The other two runtimes do not crash on a missing file: React logs a failed fetch and carries
+on, and Compose has no file to miss.</p>
 <h2 id="the-editors-hierarchy-panel-is-empty">The editor's hierarchy panel is empty<a class="headerlink" href="#the-editors-hierarchy-panel-is-empty" title="Permanent link">&para;</a></h2>
 <p>The tree is reported by the running app, so an empty panel means no app has connected.</p>
+<p>First check the obvious one: <strong>is the framework picker on the right target?</strong> Each runtime
+has its own listener, and the panel only shows the one currently selected.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">SwiftUI</label><label for="__tabbed_1_2">Compose</label><label for="__tabbed_1_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <ul>
 <li>Is the app built with the <code>INERTIA_EDITOR</code> flag, and is <code>dev</code> actually <code>true</code>? An app
   built without it connects to nothing, however it was installed.</li>
 <li>Is the app running in the foreground on the simulator the editor is attached to?</li>
 <li>Does the app have at least one <code>.inertia(_:)</code> view? A container with no tagged views
   reports a tree with only its root.</li>
-<li>Is anything else holding port <strong>8060</strong>? The editor is the one listening there, so
-  another process on that port stops the app from ever reaching it.</li>
+<li>Is anything else holding port <strong>8060</strong>?</li>
 </ul>
-<p>Console output from the runtime is prefixed <code>[INERTIA_LOG]</code>, which makes it easy to filter
-in Console.app or <code>xcrun simctl spawn booted log stream</code>.</p>
+<p>Console output from the runtime is prefixed <code>[INERTIA_LOG]</code>, which makes it easy to
+filter in Console.app or <code>xcrun simctl spawn booted log stream</code>.</p>
+</div>
+<div class="tabbed-block">
+<ul>
+<li>Is <code>baseURL</code> right? From an emulator it should be <code>ws://127.0.0.1:8070</code>, which works
+  because the editor opens <code>adb reverse tcp:8070 tcp:8070</code>. If the editor never saw the
+  device, that tunnel does not exist and <code>127.0.0.1</code> is the emulator itself. A stock
+  emulator can also reach the host at <code>10.0.2.2</code>.</li>
+<li>Is cleartext traffic permitted for that host? Android denies <code>ws://</code> by default from
+  <code>targetSdk</code> 28 on — see <a href="../getting-started/installation/">Installation</a>.</li>
+<li>Does the manifest have <code>android.permission.INTERNET</code>?</li>
+<li>Is <code>adb</code> reachable by the editor? It looks on <code>PATH</code>, at <code>ANDROID_HOME</code>, at
+  <code>~/Library/Android/sdk/platform-tools</code>, and in the Homebrew prefixes.</li>
+<li>Is anything else holding port <strong>8070</strong>?</li>
+</ul>
+<p>The runtime logs under the <code>Inertia</code> tag: <code>adb logcat -s Inertia</code>.</p>
+</div>
+<div class="tabbed-block">
+<ul>
+<li>Is <code>dev</code> actually <code>true</code>? With it false the container never opens a socket.</li>
+<li>Is the page loaded in the editor's own web view? The runtime dials
+  <code>ws://127.0.0.1:8080</code>, so a page served from another machine cannot reach it.</li>
+<li>Is the page served over <code>https</code>? A secure page refuses a <code>ws://</code> dial outright.</li>
+<li>Does the app have at least one <code>&lt;Inertiaable&gt;</code>? A container with no tagged views
+  reports a tree with only its root.</li>
+<li>Is anything else holding port <strong>8080</strong>?</li>
+</ul>
+<p>Console output is prefixed <code>[INERTIA_LOG]</code>, which filters cleanly in devtools.</p>
+</div>
+</div>
+</div>
 <h2 id="dragging-a-view-records-nothing">Dragging a view records nothing<a class="headerlink" href="#dragging-a-view-records-nothing" title="Permanent link">&para;</a></h2>
 <p>Recording has to be armed — the record button on the timeline, red when active. With it
 off, dragging repositions the view in the viewport but writes no keyframe. See
 <a href="../editor/timeline/">Timeline and keyframes</a>.</p>
 <h2 id="a-view-does-not-animate">A view does not animate<a class="headerlink" href="#a-view-does-not-animate" title="Permanent link">&para;</a></h2>
 <p>The runtime plays a track only once its id has been triggered:</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">inertia</span><span class="p">.</span><span class="n">trigger</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">)</span>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>inertia.trigger(&quot;card0&quot;)
 </span></code></pre></div>
-<p><code>invokeType: "auto"</code> in the file does not do this — the SwiftUI runtime does not act on
-that field. See <a href="../guides/triggering/">Triggering animations</a>.</p>
+<p>On SwiftUI, <code>invokeType: "auto"</code> in the file does not do this — that runtime does not act
+on the field. Compose and React do start <code>auto</code> animations for you. See
+<a href="../guides/triggering/">Triggering animations</a>.</p>
 <p>If it is triggered and still still, check the id matches exactly. <code>.inertia("Card0")</code> and
 an animation with <code>"id": "card0"</code> never find each other, and nothing warns you.</p>
+<h2 id="an-android-build-shows-nothing-with-the-editor-closed">An Android build shows nothing with the editor closed<a class="headerlink" href="#an-android-build-shows-nothing-with-the-editor-closed" title="Permanent link">&para;</a></h2>
+<p>Expected, for now. The Compose container never loads an animation file for itself — schemas
+only ever arrive from the editor over the socket, so a build with no editor attached leaves
+every tagged view at its initial pose while retrying the dial in the background.</p>
+<p>See <a href="../getting-started/runtimes/">Choosing a runtime</a>, and keep the container out of
+release builds.</p>
+<h2 id="a-react-build-shows-nothing-with-dev-false">A React build shows nothing with <code>dev</code> false<a class="headerlink" href="#a-react-build-shows-nothing-with-dev-false" title="Permanent link">&para;</a></h2>
+<p>The container fetches <code>&lt;baseURL&gt;/&lt;id&gt;.json</code> and logs the failure rather than crashing, so
+this is almost always a fetch that did not land. In the console, look for
+<code>[INERTIA_LOG]: Failed to load animation file</code> and check:</p>
+<ol>
+<li>Something is actually serving that path.</li>
+<li>It sends <code>Access-Control-Allow-Origin</code> if it is not the same origin as your page.</li>
+<li><code>baseURL</code> has no trailing slash — the URL is built as <code>`${baseURL}/${id}.json`</code>.</li>
+</ol>
 <h2 id="pressing-play-in-the-editor-does-nothing">Pressing play in the editor does nothing<a class="headerlink" href="#pressing-play-in-the-editor-does-nothing" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">SwiftUI</label><label for="__tabbed_2_2">Compose</label><label for="__tabbed_2_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <p>The editor's play button resumes a run; it cannot start one. Resume only affects
 actionables the app has already triggered, so a view your app never calls <code>trigger(_:)</code>
 on stays still no matter what the transport does.</p>
-<p>Give the app a way to trigger while you author — a button, or <code>.onAppear</code> — then use the
-editor's transport to play, pause and scrub it.</p>
-<p>If nothing at all moves and the hierarchy panel is populated, check the container's <code>id</code>:
-the editor sends its schemas to the container id <code>animation</code>, and the runtime drops
-schemas addressed to any other container.</p>
+<p>Give the app a way to trigger while you author — a button, or <code>.onAppear</code> — then use
+the editor's transport to play, pause and scrub it.</p>
+</div>
+<div class="tabbed-block">
+<p>Play starts every registered animation regardless of <code>invokeType</code>, so a view that stays
+still is usually one whose schema never arrived rather than one that was never
+triggered. Check that it has an animation attached in the animations panel.</p>
+</div>
+<div class="tabbed-block">
+<p>Play starts every animation whose schema the runtime holds, regardless of <code>invokeType</code>,
+so a view that stays still is usually one whose schema never arrived rather than one
+that was never triggered. Check that it has an animation attached in the animations
+panel.</p>
+</div>
+</div>
+</div>
+<p>If nothing at all moves and the hierarchy panel is populated, check the container's <code>id</code> on
+any runtime: the editor sends its schemas to the container id <code>animation</code>, and the runtime
+drops schemas addressed to any other container.</p>
 <h2 id="a-view-jumps-between-poses-instead-of-moving">A view jumps between poses instead of moving<a class="headerlink" href="#a-view-jumps-between-poses-instead-of-moving" title="Permanent link">&para;</a></h2>
-<p>A keyframe <code>duration</code> that is zero, negative or non-finite. The cubic interpolation
-divides by the duration, so the runtime rewrites any such duration to 1ms before playing
-the track — the view still animates, but that segment is over instantly.</p>
+<p>A keyframe <code>duration</code> that is zero, negative or non-finite. Interpolation divides by the
+duration, so every runtime rewrites any such duration to 1ms before playing the track — the
+view still animates, but that segment is over instantly.</p>
 <p>The editor keeps durations above the same minimum, so this generally comes from
 hand-edited files. Leading keyframes at <code>duration: 0</code> are fine — they are starting poses,
 and 1ms of it is not visible.</p>
 <p>A view that vanishes outright is a different problem: check <code>opacity</code>, <code>scale: 0</code>, and a
-<code>translate</code> big enough to put it outside the container. The runtime replaces any pose it
-cannot draw with the neutral one rather than passing it to SwiftUI, so a non-finite value
-leaves the view sitting still, not missing.</p>
+<code>translate</code> big enough to put it outside the container. Every runtime replaces a pose it
+cannot draw with the neutral one, so a non-finite value leaves the view sitting still, not
+missing.</p>
 <h2 id="the-animation-is-in-the-wrong-place-on-a-different-device">The animation is in the wrong place on a different device<a class="headerlink" href="#the-animation-is-in-the-wrong-place-on-a-different-device" title="Permanent link">&para;</a></h2>
 <p><code>translate</code> is a fraction of the <strong>container's</strong> size. If the container is not the region
 you thought it was, every offset in it is scaled against the wrong box.</p>
-<p>Check that <code>InertiaContainer</code> wraps what you intend — usually the root view, filling the
-screen — and that nothing between it and the animated view constrains the frame in a way
-you did not mean.</p>
+<p>Check that the container wraps what you intend — usually the root view, filling the screen
+— and that nothing between it and the animated view constrains the frame in a way you did
+not mean.</p>
+<p>This bites hardest on Compose, where <code>InertiaContainer</code> measures itself with
+<code>wrapContentSize()</code>: give it content that fills the screen, or every <code>translate</code> in it
+resolves against a smaller box than the one you authored against.</p>
+<h2 id="the-animation-reads-differently-on-ios-than-on-android-or-the-web">The animation reads differently on iOS than on Android or the web<a class="headerlink" href="#the-animation-reads-differently-on-ios-than-on-android-or-the-web" title="Permanent link">&para;</a></h2>
+<p>Expected, within limits. SwiftUI fits a cubic spline across the whole track, so motion can
+overshoot a keyframe on the way to the next one. Compose and React solve each segment
+independently with a cubic ease-in-out, which never overshoots.</p>
+<p>The poses at the keyframes are identical on all three; only the paths between them differ.
+If a track depends on the overshoot for its feel, add intermediate keyframes so the shape
+is in the file rather than in the interpolator.</p>
 <h2 id="playback-in-the-editor-does-not-match-the-app">Playback in the editor does not match the app<a class="headerlink" href="#playback-in-the-editor-does-not-match-the-app" title="Permanent link">&para;</a></h2>
 <p>The likely cause is <strong>loop duration</strong>. The editor's loop length is not stored in the
-animation file, so a bundled animation loops over <code>max(3 seconds, its longest track)</code>
+animation file, so a standalone animation loops over <code>max(3 seconds, its longest track)</code>
 however long the timeline you authored on was. An animation built against a 5-second
 timeline whose longest track ends at 4 seconds loops over 4 seconds in the app.</p>
-<p>Either keep the editor at 3 seconds, or set <code>inertia.loopDuration</code> in your app to the
-length you authored against.</p>
+<p>Either keep the editor at 3 seconds, or — on SwiftUI, the runtime that exposes it — set
+<code>inertia.loopDuration</code> in your app to the length you authored against.</p>
 <h2 id="scrubbing-the-playhead-does-nothing">Scrubbing the playhead does nothing<a class="headerlink" href="#scrubbing-the-playhead-does-nothing" title="Permanent link">&para;</a></h2>
 <p>Scrubbing is disabled during playback — pause first with <kbd>Space</kbd> or the transport
 button. While playing, the playhead is reporting the runtime's clock rather than driving
 it.</p>
 <h2 id="space-does-not-play-or-pause"><kbd>Space</kbd> does not play or pause<a class="headerlink" href="#space-does-not-play-or-pause" title="Permanent link">&para;</a></h2>
 <p>The shortcut is suppressed while a text field has focus, so a space you type in the loop
-duration field or a search box inserts a space instead of toggling playback. Click into the
-viewport and try again. It is also suppressed while the install sheet is open.</p>
+duration field, the web address bar, or a search box inserts a space instead of toggling
+playback. Click into the viewport and try again. It is also suppressed while the install
+sheet is open.</p>
 <h2 id="edits-vanished-after-a-crash">Edits vanished after a crash<a class="headerlink" href="#edits-vanished-after-a-crash" title="Permanent link">&para;</a></h2>
 <p>The editor autosaves every 10 seconds and on close, so a crash can cost the last few
 seconds of work. It deliberately will not save an empty animation store over a project

@@ -6,14 +6,14 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A keyframe animation editor and SwiftUI runtime for animating real UI.">
+        <meta name="description" content="A keyframe animation editor with SwiftUI, Jetpack Compose and React runtimes for animating real UI.">
       
       
       
         <link rel="canonical" href="https://inertiagraphics.org/reference/values/">
       
       
-        <link rel="prev" href="../swiftui-api/">
+        <link rel="prev" href="../react-api/">
       
       
         <link rel="next" href="../../troubleshooting/">
@@ -345,6 +345,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -809,6 +837,62 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../compose-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compose API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../react-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    React API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1095,6 +1179,8 @@
 <h1 id="animatable-values">Animatable values<a class="headerlink" href="#animatable-values" title="Permanent link">&para;</a></h1>
 <p>Every keyframe carries all five values. There is no partial keyframe — you cannot animate
 only opacity and leave position to whatever another track is doing.</p>
+<p>All three runtimes read the same five values and compose them into the same matrix. Where
+they differ is how they get <em>between</em> keyframes — see <a href="#interpolation">Interpolation</a>.</p>
 <table>
 <thead>
 <tr>
@@ -1172,12 +1258,13 @@ in points. The runtime multiplies by the container's measured width and height:<
 <p>This is why one animation file works on a 375pt phone and a 430pt one: an animation that
 slides a card in from off-screen left stays off-screen left on both.</p>
 <p>It also means the container's size matters. A container that is not the full screen makes
-every <code>translate</code> in it relative to that smaller box.</p>
-<p>Positive <code>y</code> is down, matching SwiftUI's coordinate space.</p>
+every <code>translate</code> in it relative to that smaller box. This is easiest to get wrong on
+Compose, where <code>InertiaContainer</code> wraps its content rather than filling the screen.</p>
+<p>Positive <code>y</code> is down, which is the coordinate space of all three platforms.</p>
 <h2 id="scale"><code>scale</code><a class="headerlink" href="#scale" title="Permanent link">&para;</a></h2>
-<p>Uniform — there is no separate <code>scaleX</code>/<code>scaleY</code>. Applied via <code>scaleEffect</code>, so it scales
-about the view's center and does not affect layout: neighbouring views do not move out of
-the way.</p>
+<p>Uniform — there is no separate <code>scaleX</code>/<code>scaleY</code>. It scales about the view's center and
+does not affect layout: neighbouring views do not move out of the way. Applied through
+<code>scaleEffect</code> on SwiftUI, a <code>graphicsLayer</code> on Compose, and a CSS <code>scale()</code> on the web.</p>
 <h2 id="rotation">Rotation<a class="headerlink" href="#rotation" title="Permanent link">&para;</a></h2>
 <p>Two rotation values, applied together, differing only in anchor:</p>
 <ul>
@@ -1186,29 +1273,54 @@ the way.</p>
   it.</li>
 </ul>
 <p>Both are in degrees, positive clockwise, and both are applied on every path — editor
-mode, bundled playback, and a frame held by the playhead — in that order: <code>rotate</code> about
+mode, standalone playback, and a frame held by the playhead — in that order: <code>rotate</code> about
 the top-left first, then <code>rotateCenter</code> about the center of the result.</p>
+<p>Two anchors need two transforms, since a layer carries one origin. Compose stacks a
+<code>graphicsLayer</code> per anchor; the web wraps <code>rotate</code> in a half-box shift and its inverse,
+which walks the pivot out to the corner and back. Both compose the same matrix SwiftUI's
+<code>anchor: .topLeading</code> produces.</p>
 <p>Neither is recorded by dragging — a drag in the viewport writes <code>translate</code> only, and a
 recorded keyframe starts with both rotations at <code>0</code>. To rotate, type a value into the
 <strong>Rotate</strong> or <strong>Rotate Center</strong> field of the keyframe editor, or write it into the file
 by hand.</p>
 <h2 id="opacity"><code>opacity</code><a class="headerlink" href="#opacity" title="Permanent link">&para;</a></h2>
-<p>Straight <code>opacity</code> modifier. Values outside <code>0...1</code> are not meaningful; the runtime
-sanitizes non-finite values rather than passing them to SwiftUI, which would trap.</p>
+<p>Straight opacity. Values outside <code>0...1</code> are not meaningful; every runtime sanitizes
+non-finite values rather than passing them on, which on SwiftUI would trap.</p>
 <h2 id="interpolation">Interpolation<a class="headerlink" href="#interpolation" title="Permanent link">&para;</a></h2>
-<p>Keyframes interpolate with a cubic spline (<code>CubicKeyframe</code>), so motion eases through
-intermediate keyframes rather than moving in straight segments between them. Three
-consequences worth knowing:</p>
+<p>This is the one place the runtimes visibly disagree. The poses <em>at</em> the keyframes are
+identical; the paths between them are not.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">SwiftUI</label><label for="__tabbed_1_2">Compose</label><label for="__tabbed_1_3">React</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Keyframes interpolate with a cubic spline (<code>CubicKeyframe</code>) fitted across the track, so
+motion eases through intermediate keyframes rather than moving in straight segments
+between them.</p>
+<p>A spline can <strong>overshoot</strong>. Three keyframes moving a view right, then further right,
+then back can swing past the last position before settling.</p>
+</div>
+<div class="tabbed-block">
+<p>Each segment is solved independently with a cubic ease-in-out — accelerating out of the
+keyframe before and decelerating into the keyframe after.</p>
+<p>This approximates the SwiftUI runtime's spline but does not overshoot: a value never
+goes past the keyframe it is heading for.</p>
+</div>
+<div class="tabbed-block">
+<p>Each segment is solved independently with a cubic ease-in-out — accelerating out of the
+keyframe before and decelerating into the keyframe after.</p>
+<p>This approximates the SwiftUI runtime's spline but does not overshoot: a value never
+goes past the keyframe it is heading for.</p>
+</div>
+</div>
+</div>
+<p>Two things hold on every runtime:</p>
 <ul>
-<li>A spline can overshoot. Three keyframes moving a view right, then further right, then
-  back can swing past the last position before settling.</li>
-<li>Durations must be positive, because the spline divides by the keyframe's duration. The
-  runtime rewrites any duration that is zero, negative or non-finite to <strong>1ms</strong> before
-  handing the track to SwiftUI, so such a keyframe reads as an instant jump rather than
-  producing <code>NaN</code>.</li>
-<li>A keyframe whose <code>values</code> are non-finite is dropped from the track altogether, taking
-  its duration with it — the keyframes after it therefore land earlier than the file
-  says.</li>
+<li>Durations must be positive, because interpolation divides by the keyframe's duration.
+  Any duration that is zero, negative or non-finite is rewritten to <strong>1ms</strong> before the
+  track is played, so such a keyframe reads as an instant jump rather than producing <code>NaN</code>.</li>
+<li>A pose the runtime cannot draw is replaced rather than passed on. SwiftUI drops a
+  keyframe whose <code>values</code> are non-finite from the track altogether, taking its duration
+  with it, so the keyframes after it land earlier than the file says; Compose and React
+  substitute the neutral pose for that keyframe and keep its timing.</li>
 </ul>
 <p>There is no per-keyframe easing curve in the format. If you need a different feel, add
 intermediate keyframes.</p>
@@ -1221,8 +1333,9 @@ intermediate keyframes.</p>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">&quot;opacity&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>A keyframe of exactly this leaves the view as SwiftUI laid it out. It is a useful value to
-start and end tracks on.</p>
+<p>A keyframe of exactly this leaves the view exactly where layout put it. It is a useful
+value to start and end tracks on, and it is what every runtime falls back to when a pose
+turns out to be undrawable.</p>
 
 
 
@@ -1260,7 +1373,7 @@ start and end tracks on.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../swiftui-api/" class="md-footer__link md-footer__link--prev" aria-label="Previous: SwiftUI API">
+          <a href="../react-api/" class="md-footer__link md-footer__link--prev" aria-label="Previous: React API">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1270,7 +1383,7 @@ start and end tracks on.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                SwiftUI API
+                React API
               </div>
             </div>
           </a>
