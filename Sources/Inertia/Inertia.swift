@@ -1174,15 +1174,31 @@ struct InertiaEditable<Content: View>: View {
     @Environment(\.isInertiaContainer) var isInertiaContainer
     @Environment(\.inertiaContainerSize) var inertiaContainerSize: CGSize
     
+    /// Whether this node is one of the editor's current selection. A node with
+    /// no hierarchy id yet is never selected: `hierarchyId` is assigned on
+    /// appear, and a pair always carries a concrete one.
+    var isSelected: Bool {
+        guard let hierarchyId else { return false }
+        return inertiaDataModel?.actionableIdPairs.contains(where: { $0.hierarchyId == hierarchyId }) ?? false
+    }
+
     var showSelectedBorder: Bool {
         InertiaLog.verbose("\(String(describing: hierarchyId)) \(hierarchyIdPrefix)")
-        return inertiaDataModel!.actionableIdPairs.contains(where: { $0.hierarchyId == hierarchyId })
+        return isSelected
     }
-    
+
+    /// Only a selected node moves. Dragging is how the editor edits the
+    /// selection, and `onEnded` sends the translation against *all* selected
+    /// pairs — so letting an unselected node drag both moves something the user
+    /// never picked and attributes its translation to the wrong nodes.
+    private var isDraggable: Bool {
+        (inertiaDataModel?.isActionable ?? false) && isSelected
+    }
+
     var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if inertiaDataModel?.isActionable == true {
+                if isDraggable {
                     dragOffset = value.translation
                     inertiaDataModel?.showGrid = true
                     inertiaDataModel?.selectedNodeCenter = currentCenter
@@ -1198,7 +1214,7 @@ struct InertiaEditable<Content: View>: View {
                 }
             }
             .onEnded { value in
-                if inertiaDataModel?.isActionable == true {
+                if isDraggable {
                     dragOffset = value.translation
                     // Fold this gesture into the accumulated position so the
                     // next one starts from where the node actually is.
@@ -1265,7 +1281,11 @@ struct InertiaEditable<Content: View>: View {
             }
         }
         .offset(totalOffset)
-        .gesture(dragGesture)
+        // Masked off rather than merely inert when this node isn't selected: an
+        // attached DragGesture claims the drag even when its handlers do
+        // nothing, which would stop a selected ancestor from being dragged. The
+        // tap that selects lives on the subviews, so `.subviews` keeps it live.
+        .gesture(dragGesture, including: isDraggable ? .all : .subviews)
         // Measured one level out: `.offset` is a geometry effect that carries the
         // view's own background and overlays with it, so anything attached inside
         // this wrapper reports the *dragged* position. The enclosing ZStack keeps
