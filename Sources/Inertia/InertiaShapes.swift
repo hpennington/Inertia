@@ -28,25 +28,18 @@ public struct InertiaShape: Codable, Equatable, CustomStringConvertible {
         self.vertices = vertices
     }
 
-    /// The same shape restated against the container, which is the frame the
-    /// canvas actually fills: `frame` is where the actionable sits inside that
-    /// container, and `containerSize` how big it is.
-    ///
-    /// This is the whole of "relative to the actionable, drawn across the
-    /// container" — authored in the view's box, rendered in the container's, so
-    /// a shape keeps its relationship to the view it belongs to while being
-    /// free to spill out of it. A container with no area yet has nothing to
-    /// project onto and leaves the shape alone; the canvas is not drawn at all
-    /// in that state.
-    func projected(from frame: CGRect, into containerSize: CGSize) -> InertiaShape {
-        guard containerSize.width > 0, containerSize.height > 0 else { return self }
+    /// The same shape restated against `bounds` — the canvas's own box — so
+    /// (0, 0) is the canvas's top-left corner and (1, 1) its bottom-right,
+    /// which is the space the renderer draws in.
+    func normalized(to bounds: CGRect) -> InertiaShape {
+        guard bounds.width > 0, bounds.height > 0 else { return self }
 
         return InertiaShape(
             vertices: vertices.map { vertex in
                 Vertex(
                     position: InertiaPoint(
-                        x: (frame.origin.x + vertex.position.x * frame.width) / containerSize.width,
-                        y: (frame.origin.y + vertex.position.y * frame.height) / containerSize.height
+                        x: (vertex.position.x - bounds.minX) / bounds.width,
+                        y: (vertex.position.y - bounds.minY) / bounds.height
                     ),
                     color: vertex.color
                 )
@@ -63,6 +56,43 @@ public struct InertiaShape: Codable, Equatable, CustomStringConvertible {
         return (1..<(vertices.count - 1)).flatMap {
             [vertices[0], vertices[$0], vertices[$0 + 1]]
         }
+    }
+}
+
+public extension Collection where Element == InertiaShape {
+    /// The smallest box holding every corner of these shapes, in the units they
+    /// are authored in — multiples of the actionable's own frame, so
+    /// `(0, 0, 1, 1)` is exactly the actionable and `(0, 0, 3, 3)` three times
+    /// it.
+    ///
+    /// This is what the canvas is sized and placed by. Sizing it to the shapes
+    /// rather than to the container is what keeps a shape whole: a canvas is a
+    /// rectangle that rotates with the view it backs, so anything reaching past
+    /// its edge is cut — and a canvas fitted to the container was already
+    /// cutting a shape bigger than the container, then sweeping that straight
+    /// edge through the artwork as the view turned. Fitted to the shapes, there
+    /// is nothing outside it to lose.
+    ///
+    /// Nil when the shapes enclose no area, which is also when there is nothing
+    /// to draw.
+    var bounds: CGRect? {
+        let positions = flatMap { $0.vertices.map(\.position) }
+        guard let first = positions.first else { return nil }
+
+        var minX = first.x
+        var maxX = first.x
+        var minY = first.y
+        var maxY = first.y
+
+        for position in positions {
+            minX = Swift.min(minX, position.x)
+            maxX = Swift.max(maxX, position.x)
+            minY = Swift.min(minY, position.y)
+            maxY = Swift.max(maxY, position.y)
+        }
+
+        let bounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+        return bounds.width > 0 && bounds.height > 0 ? bounds : nil
     }
 }
 

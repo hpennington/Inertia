@@ -89,51 +89,57 @@ final class ShapeTests: XCTestCase {
         XCTAssertEqual(triangles.map(\.position.x), [0, 1, 2, 0, 2, 3])
     }
 
-    /// A shape is authored against the actionable's box but drawn on the
-    /// container's canvas, so a corner at (1, 1) has to come out at the
-    /// actionable's bottom-right corner as a fraction of the container.
-    func testShapeIsProjectedFromTheActionableOntoTheContainer() {
-        let shape = InertiaShape(vertices: [corner(0, 0), corner(1, 1)])
+    /// A shape that fits the actionable exactly gives a canvas that is the
+    /// actionable: the unit box, at its origin.
+    func testBoundsOfAShapeFillingTheActionable() {
+        let shape = InertiaShape(vertices: [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)])
 
-        let projected = shape.projected(
-            from: CGRect(x: 100, y: 50, width: 200, height: 100),
-            into: CGSize(width: 400, height: 200)
-        )
-
-        XCTAssertEqual(projected.vertices[0].position, InertiaPoint(x: 0.25, y: 0.25))
-        XCTAssertEqual(projected.vertices[1].position, InertiaPoint(x: 0.75, y: 0.75))
+        XCTAssertEqual([shape].bounds, CGRect(x: 0, y: 0, width: 1, height: 1))
     }
 
-    /// The point of projecting rather than clipping: a shape larger than the
-    /// actionable keeps going, and only runs out at the container's edge.
-    ///
-    /// Every coordinate is a multiple of the actionable's own size — 1.2 is a
-    /// fifth of its width past its right edge, 3 is three times its width — so
-    /// what a shape is measuring against never changes with the container it
-    /// happens to be drawn on.
-    func testShapeMayReachOutsideTheActionable() {
-        let actionable = CGRect(x: 0, y: 0, width: 100, height: 100)
-        let container = CGSize(width: 300, height: 300)
+    /// The point of fitting the canvas to the shapes: one reaching past the
+    /// actionable grows the canvas instead of being cut off at its edge — at the
+    /// actionable's own edge, or at the container's, which is what stopped a
+    /// shape at the window before. 1.2 is a fifth of the actionable's width past
+    /// its right edge, and -0.5 half its width before its left, so the canvas
+    /// spans 1.7 of it.
+    func testBoundsGrowToHoldShapesOutsideTheActionable() throws {
+        let shape = InertiaShape(vertices: [corner(-0.5, 0), corner(1.2, 0), corner(1.2, 3)])
 
-        let overhang = InertiaShape(vertices: [corner(1.2, 1.2)]).projected(from: actionable, into: container)
-        let treble = InertiaShape(vertices: [corner(3, 3)]).projected(from: actionable, into: container)
+        let bounds = try XCTUnwrap([shape].bounds)
 
-        // 120 points across a 300-point container.
-        XCTAssertEqual(overhang.vertices[0].position, InertiaPoint(x: 0.4, y: 0.4))
-        XCTAssertEqual(treble.vertices[0].position, InertiaPoint(x: 1, y: 1))
+        XCTAssertEqual(bounds.minX, -0.5, accuracy: 0.0001)
+        XCTAssertEqual(bounds.width, 1.7, accuracy: 0.0001)
+        XCTAssertEqual(bounds.height, 3, accuracy: 0.0001)
     }
 
-    /// The same shape on a bigger actionable is bigger, and does not care that
-    /// the container is the same size in both cases.
-    func testShapeScalesWithTheActionableNotTheContainer() {
-        let container = CGSize(width: 400, height: 400)
-        let shape = InertiaShape(vertices: [corner(1.2, 0)])
+    /// Several shapes share one canvas, so the box has to hold all of them.
+    func testBoundsSpanEveryShape() {
+        let left = InertiaShape(vertices: [corner(-1, 0), corner(0, 0), corner(0, 1)])
+        let right = InertiaShape(vertices: [corner(1, 0), corner(2, 0), corner(2, 0.5)])
 
-        let small = shape.projected(from: CGRect(x: 0, y: 0, width: 100, height: 100), into: container)
-        let large = shape.projected(from: CGRect(x: 0, y: 0, width: 200, height: 200), into: container)
+        XCTAssertEqual([left, right].bounds, CGRect(x: -1, y: 0, width: 3, height: 1))
+    }
 
-        XCTAssertEqual(small.vertices[0].position.x, 0.3)
-        XCTAssertEqual(large.vertices[0].position.x, 0.6)
+    /// Shapes enclosing no area have no canvas, which is also the state in which
+    /// there is nothing to draw.
+    func testBoundsOfEmptyOrDegenerateShapesAreNil() {
+        XCTAssertNil([InertiaShape]().bounds)
+        XCTAssertNil([InertiaShape(vertices: [])].bounds)
+        XCTAssertNil([InertiaShape(vertices: [corner(1, 0), corner(1, 1)])].bounds)
+    }
+
+    /// Whatever box the canvas ends up being, the renderer is handed the shape
+    /// in the canvas's own 0...1 space — so the corner that defined the far edge
+    /// of the bounds lands exactly on it.
+    func testShapeIsNormalizedIntoTheCanvasBounds() {
+        let shape = InertiaShape(vertices: [corner(-0.5, 0), corner(1.5, 0), corner(1.5, 2)])
+
+        let normalized = shape.normalized(to: CGRect(x: -0.5, y: 0, width: 2, height: 2))
+
+        XCTAssertEqual(normalized.vertices[0].position, InertiaPoint(x: 0, y: 0))
+        XCTAssertEqual(normalized.vertices[1].position, InertiaPoint(x: 1, y: 0))
+        XCTAssertEqual(normalized.vertices[2].position, InertiaPoint(x: 1, y: 1))
     }
 
     /// Fewer than three corners enclose nothing, and handing the renderer a

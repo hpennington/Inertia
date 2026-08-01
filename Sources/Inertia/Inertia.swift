@@ -898,45 +898,43 @@ struct InertiaActionable<Content: View>: View {
 
     /// The actionable's canvas: its shapes, drawn in Metal, behind its content.
     ///
-    /// The shapes are authored against `frame` — this actionable's box — and
-    /// projected onto the container, which is what the canvas fills. That is
-    /// what lets a shape reach past the view it belongs to: a background is not
-    /// clipped to its subject, so the canvas has the whole container to draw
-    /// across while still sitting behind this one view.
+    /// Sized and placed by the box the shapes themselves occupy — `size` is the
+    /// actionable, and the shapes are multiples of it — so one reaching past the
+    /// view it belongs to grows the canvas rather than being cut at any edge.
+    /// The container is not in this: a canvas fitted to it stopped a shape at
+    /// the window, and turned into a straight edge sweeping through the artwork
+    /// as the view rotated.
     ///
-    /// Takes no hits: it covers everything the container holds, and would
-    /// otherwise swallow taps meant for the views it overlaps. Left out
-    /// entirely when there is nothing to draw — this is one `MTKView` per
-    /// actionable, and most have no shapes at all.
+    /// Takes no hits: it is a backdrop, and would otherwise swallow taps meant
+    /// for the views it overlaps. Left out entirely when there is nothing to
+    /// draw — this is one `MTKView` per actionable, and most have no shapes at
+    /// all.
     @ViewBuilder
-    private func backgroundView(for frame: CGRect) -> some View {
+    private func backgroundView(for size: CGSize) -> some View {
         let shapes = self.shapes
-        if !shapes.isEmpty,
-           frame.width > 0, frame.height > 0,
-           inertiaContainerSize.width > 0, inertiaContainerSize.height > 0 {
+        if let bounds = shapes.bounds, size.width > 0, size.height > 0 {
             InertiaCanvas(
                 vm: vm,
-                shapes: shapes.map { $0.projected(from: frame, into: inertiaContainerSize) }
+                shapes: shapes.map { $0.normalized(to: bounds) }
             )
+            .frame(width: bounds.width * size.width, height: bounds.height * size.height)
+            .offset(x: bounds.minX * size.width, y: bounds.minY * size.height)
             .allowsHitTesting(false)
         }
     }
 
-    /// The canvas laid over the container's frame: sized to it, and pushed back
-    /// up by wherever this actionable sits inside it, so what the shapes were
-    /// projected into is the frame they are drawn in.
+    /// The canvas behind this actionable, measured against the size layout gave
+    /// it and anchored to its top-left corner — which is where the shapes'
+    /// own box is offset from.
     ///
-    /// Both the projection and the placement read the measured layout frame
-    /// rather than a `GeometryReader` of their own. One inside here would be
-    /// reading from within the animation: `frame(in:)` under a rotation reports
-    /// the *bounding box* of the rotated view, which swells and shrinks as the
-    /// angle turns, and re-projecting against it made the shapes pulse in step
-    /// with the spin.
+    /// The size is the measured layout frame's rather than a `GeometryReader`'s
+    /// of its own. One inside here would be reading from within the animation:
+    /// `frame(in:)` under a rotation reports the *bounding box* of the rotated
+    /// view, which swells and shrinks as the angle turns, and re-measuring
+    /// against it made the shapes pulse in step with the spin.
     @ViewBuilder
     private var containerCanvas: some View {
-        backgroundView(for: layoutFrame)
-            .frame(width: inertiaContainerSize.width, height: inertiaContainerSize.height)
-            .offset(x: -layoutFrame.origin.x, y: -layoutFrame.origin.y)
+        backgroundView(for: layoutFrame.size)
     }
 
     /// The track the animator plays: held out to the full loop when repeating,
@@ -1288,29 +1286,27 @@ struct InertiaEditable<Content: View>: View {
     /// The same canvas the shipped runtime draws behind an actionable, so what
     /// is authored here is what the app renders. See `InertiaActionable`.
     @ViewBuilder
-    private func backgroundView(for frame: CGRect) -> some View {
+    private func backgroundView(for size: CGSize) -> some View {
         let shapes = self.shapes
-        if !shapes.isEmpty,
-           frame.width > 0, frame.height > 0,
-           inertiaContainerSize.width > 0, inertiaContainerSize.height > 0 {
+        if let bounds = shapes.bounds, size.width > 0, size.height > 0 {
             InertiaCanvas(
                 vm: vm,
-                shapes: shapes.map { $0.projected(from: frame, into: inertiaContainerSize) }
+                shapes: shapes.map { $0.normalized(to: bounds) }
             )
+            .frame(width: bounds.width * size.width, height: bounds.height * size.height)
+            .offset(x: bounds.minX * size.width, y: bounds.minY * size.height)
             .allowsHitTesting(false)
         }
     }
 
-    /// The canvas over the container's frame. Sized and anchored exactly as the
-    /// shipped runtime does it — see `InertiaActionable.containerCanvas`, which
-    /// also has the reason both of them project from a measured layout frame
-    /// instead of a `GeometryReader` in here — so a shape sits where the editor
-    /// shows it sitting.
+    /// The canvas fitted to the shapes' own box. Sized and anchored exactly as
+    /// the shipped runtime does it — see `InertiaActionable.containerCanvas`,
+    /// which also has the reason both of them measure from a measured layout
+    /// frame instead of a `GeometryReader` in here — so a shape sits where the
+    /// editor shows it sitting.
     @ViewBuilder
     private var containerCanvas: some View {
-        backgroundView(for: layoutFrame)
-            .frame(width: inertiaContainerSize.width, height: inertiaContainerSize.height)
-            .offset(x: -layoutFrame.origin.x, y: -layoutFrame.origin.y)
+        backgroundView(for: layoutFrame.size)
     }
 
     /// The track the animator plays: held out to the full loop when repeating,
