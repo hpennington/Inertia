@@ -3,6 +3,9 @@
 Every keyframe carries all five values. There is no partial keyframe — you cannot animate
 only opacity and leave position to whatever another track is doing.
 
+All three runtimes read the same five values and compose them into the same matrix. Where
+they differ is how they get *between* keyframes — see [Interpolation](#interpolation).
+
 | Key | Type | Neutral value | Meaning |
 | --- | --- | --- | --- |
 | `translate` | `[x, y]` | `[0, 0]` | Offset as a fraction of the container's size |
@@ -32,15 +35,16 @@ This is why one animation file works on a 375pt phone and a 430pt one: an animat
 slides a card in from off-screen left stays off-screen left on both.
 
 It also means the container's size matters. A container that is not the full screen makes
-every `translate` in it relative to that smaller box.
+every `translate` in it relative to that smaller box. This is easiest to get wrong on
+Compose, where `InertiaContainer` wraps its content rather than filling the screen.
 
-Positive `y` is down, matching SwiftUI's coordinate space.
+Positive `y` is down, which is the coordinate space of all three platforms.
 
 ## `scale`
 
-Uniform — there is no separate `scaleX`/`scaleY`. Applied via `scaleEffect`, so it scales
-about the view's center and does not affect layout: neighbouring views do not move out of
-the way.
+Uniform — there is no separate `scaleX`/`scaleY`. It scales about the view's center and
+does not affect layout: neighbouring views do not move out of the way. Applied through
+`scaleEffect` on SwiftUI, a `graphicsLayer` on Compose, and a CSS `scale()` on the web.
 
 ## Rotation
 
@@ -51,8 +55,13 @@ Two rotation values, applied together, differing only in anchor:
   it.
 
 Both are in degrees, positive clockwise, and both are applied on every path — editor
-mode, bundled playback, and a frame held by the playhead — in that order: `rotate` about
+mode, standalone playback, and a frame held by the playhead — in that order: `rotate` about
 the top-left first, then `rotateCenter` about the center of the result.
+
+Two anchors need two transforms, since a layer carries one origin. Compose stacks a
+`graphicsLayer` per anchor; the web wraps `rotate` in a half-box shift and its inverse,
+which walks the pivot out to the corner and back. Both compose the same matrix SwiftUI's
+`anchor: .topLeading` produces.
 
 Neither is recorded by dragging — a drag in the viewport writes `translate` only, and a
 recorded keyframe starts with both rotations at `0`. To rotate, type a value into the
@@ -61,24 +70,48 @@ by hand.
 
 ## `opacity`
 
-Straight `opacity` modifier. Values outside `0...1` are not meaningful; the runtime
-sanitizes non-finite values rather than passing them to SwiftUI, which would trap.
+Straight opacity. Values outside `0...1` are not meaningful; every runtime sanitizes
+non-finite values rather than passing them on, which on SwiftUI would trap.
 
 ## Interpolation
 
-Keyframes interpolate with a cubic spline (`CubicKeyframe`), so motion eases through
-intermediate keyframes rather than moving in straight segments between them. Three
-consequences worth knowing:
+This is the one place the runtimes visibly disagree. The poses *at* the keyframes are
+identical; the paths between them are not.
 
-- A spline can overshoot. Three keyframes moving a view right, then further right, then
-  back can swing past the last position before settling.
-- Durations must be positive, because the spline divides by the keyframe's duration. The
-  runtime rewrites any duration that is zero, negative or non-finite to **1ms** before
-  handing the track to SwiftUI, so such a keyframe reads as an instant jump rather than
-  producing `NaN`.
-- A keyframe whose `values` are non-finite is dropped from the track altogether, taking
-  its duration with it — the keyframes after it therefore land earlier than the file
-  says.
+=== "SwiftUI"
+
+    Keyframes interpolate with a cubic spline (`CubicKeyframe`) fitted across the track, so
+    motion eases through intermediate keyframes rather than moving in straight segments
+    between them.
+
+    A spline can **overshoot**. Three keyframes moving a view right, then further right,
+    then back can swing past the last position before settling.
+
+=== "Compose"
+
+    Each segment is solved independently with a cubic ease-in-out — accelerating out of the
+    keyframe before and decelerating into the keyframe after.
+
+    This approximates the SwiftUI runtime's spline but does not overshoot: a value never
+    goes past the keyframe it is heading for.
+
+=== "React"
+
+    Each segment is solved independently with a cubic ease-in-out — accelerating out of the
+    keyframe before and decelerating into the keyframe after.
+
+    This approximates the SwiftUI runtime's spline but does not overshoot: a value never
+    goes past the keyframe it is heading for.
+
+Two things hold on every runtime:
+
+- Durations must be positive, because interpolation divides by the keyframe's duration.
+  Any duration that is zero, negative or non-finite is rewritten to **1ms** before the
+  track is played, so such a keyframe reads as an instant jump rather than producing `NaN`.
+- A pose the runtime cannot draw is replaced rather than passed on. SwiftUI drops a
+  keyframe whose `values` are non-finite from the track altogether, taking its duration
+  with it, so the keyframes after it land earlier than the file says; Compose and React
+  substitute the neutral pose for that keyframe and keep its timing.
 
 There is no per-keyframe easing curve in the format. If you need a different feel, add
 intermediate keyframes.
@@ -95,5 +128,6 @@ intermediate keyframes.
 }
 ```
 
-A keyframe of exactly this leaves the view as SwiftUI laid it out. It is a useful value to
-start and end tracks on.
+A keyframe of exactly this leaves the view exactly where layout put it. It is a useful
+value to start and end tracks on, and it is what every runtime falls back to when a pose
+turns out to be undrawable.

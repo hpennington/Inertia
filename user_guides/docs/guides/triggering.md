@@ -8,124 +8,341 @@ Both come from one call.
 
 ## Triggering from your app
 
-Reach the container's data model through the environment and call `trigger(_:)` with the
-same id you passed to `.inertia(_:)`:
+Reach the container's playback handle and call `trigger` with the same id you tagged the
+view with:
 
-```swift
-struct ContentView: View {
-    @Environment(\.inertiaDataModel) private var inertia: InertiaDataModel!
+=== "SwiftUI"
 
-    var body: some View {
-        VStack(spacing: 24) {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.blue)
-                .frame(width: 200, height: 120)
-                .inertia("card0")
+    ```swift
+    struct ContentView: View {
+        @Environment(\.inertiaDataModel) private var inertia: InertiaDataModel!
 
-            Button("Animate") {
-                inertia.trigger("card0")
+        var body: some View {
+            VStack(spacing: 24) {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.blue)
+                    .frame(width: 200, height: 120)
+                    .inertia("card0")
+
+                Button("Animate") {
+                    inertia.trigger("card0")
+                }
             }
         }
     }
-}
-```
+    ```
 
-The environment value is only populated inside an `InertiaContainer` — it is `nil`
-anywhere else, which is why the force-unwrapped type above is safe in practice and
-crashes loudly if you put the view outside a container.
+    The environment value is only populated inside an `InertiaContainer` — it is `nil`
+    anywhere else, which is why the force-unwrapped type above is safe in practice and
+    crashes loudly if you put the view outside a container.
+
+=== "Compose"
+
+    ```kotlin
+    @Composable
+    fun ContentView() {
+        val inertia = LocalInertia.current
+
+        Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+            Inertiaable(hierarchyIdPrefix = "card0") {
+                Box(Modifier.size(200.dp, 120.dp).background(Color.Blue))
+            }
+
+            Button(onClick = { inertia.trigger("card0") }) {
+                Text("Animate")
+            }
+        }
+    }
+    ```
+
+    `LocalInertia` has no default — reading it outside an `InertiaContainer` throws with
+    *"LocalInertia was read outside of an InertiaContainer."*
+
+=== "React"
+
+    ```tsx
+    function ContentView() {
+      const inertia = useInertia();
+
+      return (
+        <div>
+          <Inertiaable hierarchyIdPrefix="card0">
+            <div style={{ width: 200, height: 120, background: "blue" }} />
+          </Inertiaable>
+
+          <button onClick={() => inertia.trigger("card0")}>Animate</button>
+        </div>
+      );
+    }
+    ```
+
+    `useInertia` throws *"useInertia must be used within an InertiaContainer"* if there is
+    no container above it.
 
 ## Playing on appear
 
-There is no declarative "play on appear". Trigger it yourself:
+=== "SwiftUI"
 
-```swift
-RoundedRectangle(cornerRadius: 12)
-    .inertia("card0")
-    .onAppear { inertia.trigger("card0") }
-```
+    There is no declarative "play on appear". Trigger it yourself:
 
-!!! note "`invokeType` in the file"
+    ```swift
+    RoundedRectangle(cornerRadius: 12)
+        .inertia("card0")
+        .onAppear { inertia.trigger("card0") }
+    ```
 
-    Animation files carry an `invokeType` of `"auto"` or `"trigger"`. The SwiftUI runtime
-    stores it but does not currently act on it: a track with `"auto"` still waits for
-    `trigger(_:)`. Treat the field as metadata the editor round-trips, and drive playback
-    from your own code.
+    !!! note "`invokeType` in the file"
+
+        Animation files carry an `invokeType` of `"auto"` or `"trigger"`. The SwiftUI
+        runtime stores it but does not act on it: a track with `"auto"` still waits for
+        `trigger(_:)`. Treat the field as metadata the editor round-trips, and drive
+        playback from your own code.
+
+=== "Compose"
+
+    An animation whose `invokeType` is `"auto"` starts as soon as the runtime holds its
+    schema — you do not have to trigger it.
+
+    For a `"trigger"` animation, do it yourself:
+
+    ```kotlin
+    LaunchedEffect(Unit) {
+        inertia.trigger("card0")
+    }
+    ```
+
+=== "React"
+
+    An animation whose `invokeType` is `"auto"` starts as soon as the runtime holds its
+    schema — you do not have to trigger it.
+
+    For a `"trigger"` animation, do it yourself:
+
+    ```tsx
+    React.useEffect(() => {
+      inertia.trigger("card0");
+    }, [inertia]);
+    ```
+
+!!! warning "`invokeType: auto` is not honoured everywhere"
+
+    Compose and React start `auto` animations for you. **SwiftUI does not** — it stores
+    the field and ignores it. An animation authored as `auto` and shipped on iOS still
+    needs a `trigger(_:)` call.
 
 ## Triggering several views together
 
 Each id is triggered separately, but they share one clock, so triggering them in the same
-turn of the run loop starts them together:
+turn starts them together:
 
-```swift
-Button("Animate all") {
-    inertia.trigger("card0")
-    inertia.trigger("card1")
-    inertia.trigger("plane")
-}
-```
+=== "SwiftUI"
+
+    ```swift
+    Button("Animate all") {
+        inertia.trigger("card0")
+        inertia.trigger("card1")
+        inertia.trigger("plane")
+    }
+    ```
+
+=== "Compose"
+
+    ```kotlin
+    Button(onClick = {
+        inertia.trigger("card0")
+        inertia.trigger("card1")
+        inertia.trigger("plane")
+    }) { Text("Animate all") }
+    ```
+
+=== "React"
+
+    ```tsx
+    <button onClick={() => {
+      inertia.trigger("card0");
+      inertia.trigger("card1");
+      inertia.trigger("plane");
+    }}>Animate all</button>
+    ```
 
 While repeating, every track is padded to the loop length, so tracks of different lengths
 still restart in step with each other.
 
+## Stopping and restarting
+
+`trigger` does not reset a track that is already playing — a trigger arriving mid-run
+joins the run in progress.
+
+=== "SwiftUI"
+
+    There is no public way to stop or rewind a single animation. `pause`, `seek` and
+    `resume` exist, but only the editor can reach them.
+
+    If you need a view to be able to restart from the beginning, structure it so the view
+    is removed and re-added, or keep the animation on a track short enough that the loop
+    does the work.
+
+=== "Compose"
+
+    ```kotlin
+    inertia.cancel("card0")   // back to initialValues, and stays there
+    inertia.restart("card0")  // clears the cancel and plays from the top
+    inertia.isCancelled("card0")
+    ```
+
+    `restart` rewinds the shared clock, so it starts *every* animation in the container
+    over, not just this one. That is the same shared clock that makes a mid-run trigger
+    join the run in progress.
+
+=== "React"
+
+    ```tsx
+    inertia.cancel("card0");   // back to initialValues, and stays there
+    inertia.restart("card0");  // clears the cancel and plays from the top
+    inertia.isCancelled("card0");
+    ```
+
+    `restart` rewinds the shared clock, so it starts *every* animation in the container
+    over, not just this one. That is the same shared clock that makes a mid-run trigger
+    join the run in progress.
+
 ## Repeating
 
-Animations repeat by default. Turn it off on the data model:
+Animations repeat by default. Turn it off:
 
-```swift
-inertia.isRepeating = false
-inertia.trigger("card0")
-```
+=== "SwiftUI"
+
+    ```swift
+    inertia.isRepeating = false
+    inertia.trigger("card0")
+    ```
+
+=== "Compose"
+
+    ```kotlin
+    LaunchedEffect(inertia) {
+        inertia.isRepeating = false
+    }
+    ```
+
+=== "React"
+
+    ```tsx
+    React.useEffect(() => {
+      inertia.setRepeating(false);
+    }, [inertia]);
+    ```
 
 With repeating off, each track plays its own keyframes once and stops on its final pose.
 With it on, tracks are held out to the full loop duration and start over together.
 
 ## Loop duration
 
-```swift
-inertia.loopDuration = 1.5   // seconds
-```
+=== "SwiftUI"
 
-Assigning to `loopDuration` does **not** clamp — the property takes whatever you give it,
-including a value outside the usable range. Only the editor's timeline messages are
-clamped on the way in. Run your own values through the same helper if they come from
-somewhere you do not control:
+    ```swift
+    inertia.loopDuration = 1.5   // seconds
+    ```
 
-```swift
-inertia.loopDuration = InertiaPlayback.clampLoopDuration(userValue)
-```
+    Assigning to `loopDuration` does **not** clamp — the property takes whatever you give
+    it, including a value outside the usable range. Only the editor's timeline messages
+    are clamped on the way in. Run your own values through the same helper if they come
+    from somewhere you do not control:
 
-`InertiaPlayback` exposes the same constants the editor uses:
+    ```swift
+    inertia.loopDuration = InertiaPlayback.clampLoopDuration(userValue)
+    ```
 
-```swift
-InertiaPlayback.defaultLoopDuration   // 3.0
-InertiaPlayback.loopDurationRange     // 0.1...60.0
-InertiaPlayback.clampLoopDuration(_:) // brings a value into range, non-finite included
-```
+    `InertiaPlayback` exposes the same constants the editor uses:
 
-The loop the runtime actually plays is `max(loopDuration, longest track)`, so a track
-longer than the value you set stretches the loop rather than being cut off.
+    ```swift
+    InertiaPlayback.defaultLoopDuration   // 3.0
+    InertiaPlayback.loopDurationRange     // 0.1...60.0
+    InertiaPlayback.clampLoopDuration(_:) // brings a value into range, non-finite included
+    ```
+
+=== "Compose"
+
+    `loopDuration` is read-only to the app — it starts at 3 seconds and changes only when
+    the editor sends a new timeline length:
+
+    ```kotlin
+    inertia.loopDuration     // 3.0f by default
+    inertia.playbackDuration // max(loopDuration, longest track)
+    ```
+
+    The constants are on `InertiaPlaybackDefaults`:
+
+    ```kotlin
+    InertiaPlaybackDefaults.defaultLoopDuration
+    InertiaPlaybackDefaults.clampLoopDuration(seconds)
+    ```
+
+    Since a Compose app has no bundled-file path, this only matters while the editor is
+    attached — and the editor sets it from the timeline.
+
+=== "React"
+
+    `useInertia()` does not expose loop duration; it starts at 3 seconds and changes only
+    when the editor sends a new timeline length. The same constants live on
+    `InertiaPlayback` in `inertia-base`:
+
+    ```ts
+    import { InertiaPlayback } from "inertia-base";
+
+    InertiaPlayback.defaultLoopDuration;
+    InertiaPlayback.clampLoopDuration(seconds);
+    ```
+
+The loop the runtime actually plays is `max(loopDuration, longest track)` on every
+runtime, so a track longer than the loop stretches it rather than being cut off.
 
 ## Triggering in editor mode
 
-The editor's transport does not trigger anything. Its play button pushes the current
-schemas and sends a *resume*, and resume deliberately only picks up actionables your app
-has already triggered — starting one is the app's call, not the editor's.
+This is one of the sharper differences between the runtimes.
 
-So a view that is never triggered stays still in the editor too, however many times you
-press play. Give the app a way to trigger while you are authoring — a button, or an
-`.onAppear` — or you will be recording against a view that never moves.
+=== "SwiftUI"
 
-For the same reason, `trigger(_:)` in editor mode does nothing until the editor has sent
-its schemas: the clock will not start while the container has no animations loaded, which
-in editor mode it does not until an editor attaches.
+    The editor's transport does not trigger anything. Its play button pushes the current
+    schemas and sends a *resume*, and resume deliberately only picks up actionables your
+    app has already triggered — starting one is the app's call, not the editor's.
 
-![In editor mode the runtime waits for schemas, the app triggers the id, and only then does the editor's resume start that animation.](../assets/diagrams/editor-resume-dark.svg){ .diagram }
+    So a view that is never triggered stays still in the editor too, however many times
+    you press play. Give the app a way to trigger while you are authoring — a button, or
+    an `.onAppear` — or you will be recording against a view that never moves.
+
+    For the same reason, `trigger(_:)` in editor mode does nothing until the editor has
+    sent its schemas: the clock will not start while the container has no animations
+    loaded, which in editor mode it does not until an editor attaches.
+
+    ![In editor mode the runtime waits for schemas, the app triggers the id, and only then does the editor's resume start that animation.](../assets/diagrams/editor-resume-dark.svg){ .diagram }
+
+=== "Compose"
+
+    The editor's play button starts **every** registered animation, whatever its
+    `invokeType`. Authoring a `trigger` animation is exactly the moment nothing is going
+    to call `trigger` for it, so the editor stands in for the app.
+
+    You therefore do not need a trigger button in the app just to author against it —
+    though one is still useful for checking how the animation reads on a real interaction.
+
+    Signals only ever come from the editor, so the same animation running with no editor
+    attached still waits for its trigger.
+
+=== "React"
+
+    The editor's play button starts **every** animation whose schema the runtime holds,
+    whatever its `invokeType`. Authoring a `trigger` animation is exactly the moment
+    nothing is going to call `trigger` for it, so the editor stands in for the app.
+
+    You therefore do not need a trigger button in the app just to author against it —
+    though one is still useful for checking how the animation reads on a real interaction.
+
+    Signals only ever come from the editor, so the same animation running with no editor
+    attached still waits for its trigger.
 
 ## What triggering does not do
 
-`trigger(_:)` sets a view's track running, clears any frame the editor has the playhead
-parked on, and starts the container's clock. It does not reset a track that is already
-playing, and there is no public "stop this one view" on the data model — pause, seek and
-resume exist, but only the editor can reach them. If you need a view to be able to restart
-from the beginning, structure it so the view is removed and re-added, or keep the
-animation on a track short enough that the loop does the work.
+`trigger` sets a view's track running, clears any frame the editor has the playhead parked
+on, and starts the container's clock. It does not reset a track that is already playing —
+on Compose and React that is what `restart` is for, and on SwiftUI there is no equivalent.

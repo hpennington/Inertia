@@ -827,12 +827,39 @@ extension EnvironmentValues {
     }
 }
 
+/// The animation schema behind an actionable — found through the editor's
+/// actionable-to-animation mapping, or, for schemas loaded straight off disk,
+/// under the prefix itself.
+///
+/// Deliberately free of playback state: the schema is what an actionable *has*,
+/// not what it is doing. The values on screen are gated on the animation
+/// running, but the shapes drawn behind it are not.
+@MainActor
+private func inertiaSchema(
+    hierarchyId: String?,
+    hierarchyIdPrefix: String,
+    in model: InertiaDataModel?
+) -> InertiaAnimationSchema? {
+    guard let model, let hierarchyId else { return nil }
+
+    guard let animationId = model.actionableIdToAnimationIdMap[hierarchyId] else {
+        InertiaLog.debug("no mapping for hierarchyId: \(hierarchyId), trying hierarchyIdPrefix: \(hierarchyIdPrefix)")
+        return model.inertiaSchemas[hierarchyIdPrefix]
+    }
+
+    return model.inertiaSchemas[animationId]
+}
+
 struct InertiaActionable<Content: View>: View {
     @State private var animation: InertiaAnimationSchema? = nil
     @State private var contentSize: CGSize = .zero
     @State private var vm = InertiaViewModel()
     @State private var hierarchyId: String? = nil
-    
+    /// This actionable's box in the container's space, as laid out — measured
+    /// outside the animation, which is the only place it can be read honestly.
+    /// The shapes are projected from it.
+    @State private var layoutFrame: CGRect = .zero
+
     private weak var indexManager = SharedIndexManager.shared
     let hierarchyIdPrefix: String
     let content: Content
@@ -853,16 +880,65 @@ struct InertiaActionable<Content: View>: View {
         ZStack(alignment: .center) {
             content
         }
+        // Inside the animated content, so the scale, rotation, offset and
+        // opacity applied in `body` carry the shapes with them: the canvas is
+        // the actionable's own graphics, not a backdrop it moves across.
+        //
+        // Aligned to the top-left rather than centred, because that corner is
+        // where `containerCanvas` starts measuring from.
+        .background(alignment: .topLeading) { containerCanvas }
     }
-    
+
+    /// The shapes authored against this actionable, if it has any. Read off the
+    /// schema rather than the running animation so the backdrop is there
+    /// whether or not the animation is playing.
+    private var shapes: [InertiaShape] {
+        inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel)?.shapes ?? []
+    }
+
+    /// The actionable's canvas: its shapes, drawn in Metal, behind its content.
+    ///
+    /// The shapes are authored against `frame` — this actionable's box — and
+    /// projected onto the container, which is what the canvas fills. That is
+    /// what lets a shape reach past the view it belongs to: a background is not
+    /// clipped to its subject, so the canvas has the whole container to draw
+    /// across while still sitting behind this one view.
+    ///
+    /// Takes no hits: it covers everything the container holds, and would
+    /// otherwise swallow taps meant for the views it overlaps. Left out
+    /// entirely when there is nothing to draw — this is one `MTKView` per
+    /// actionable, and most have no shapes at all.
     @ViewBuilder
-    private var backgroundView: some View {
-        // Background view disabled for new schema structure
-        // The new schema only contains animation data, no shape objects
-        InertiaLog.verbose("backgroundView - new schema doesn't support shapes")
-        return AnyView(EmptyView())
+    private func backgroundView(for frame: CGRect) -> some View {
+        let shapes = self.shapes
+        if !shapes.isEmpty,
+           frame.width > 0, frame.height > 0,
+           inertiaContainerSize.width > 0, inertiaContainerSize.height > 0 {
+            InertiaCanvas(
+                vm: vm,
+                shapes: shapes.map { $0.projected(from: frame, into: inertiaContainerSize) }
+            )
+            .allowsHitTesting(false)
+        }
     }
-    
+
+    /// The canvas laid over the container's frame: sized to it, and pushed back
+    /// up by wherever this actionable sits inside it, so what the shapes were
+    /// projected into is the frame they are drawn in.
+    ///
+    /// Both the projection and the placement read the measured layout frame
+    /// rather than a `GeometryReader` of their own. One inside here would be
+    /// reading from within the animation: `frame(in:)` under a rotation reports
+    /// the *bounding box* of the rotated view, which swells and shrinks as the
+    /// angle turns, and re-projecting against it made the shapes pulse in step
+    /// with the spin.
+    @ViewBuilder
+    private var containerCanvas: some View {
+        backgroundView(for: layoutFrame)
+            .frame(width: inertiaContainerSize.width, height: inertiaContainerSize.height)
+            .offset(x: -layoutFrame.origin.x, y: -layoutFrame.origin.y)
+    }
+
     /// The track the animator plays: held out to the full loop when repeating,
     /// so the animation and the editor's playhead share one period.
     func track(for animation: InertiaAnimationSchema) -> [InertiaAnimationKeyframe] {
@@ -938,13 +1014,12 @@ struct InertiaActionable<Content: View>: View {
         }
     //            .frame(minWidth: contentSize.width, minHeight: contentSize.height)
 
-        .background(
-            GeometryReader { proxy in
-                backgroundView
-                    .frame(width: inertiaContainerSize.width, height: inertiaContainerSize.height)
-                    .offset(x: -proxy.frame(in: .named(inertiaContainerId)).origin.x, y: -proxy.frame(in: .named(inertiaContainerId)).origin.y)
-            }
-        )
+        // One level out from every rendering effect above, so what the shapes
+        // are projected from is where this view was laid out — not where the
+        // animation has currently drawn it.
+        .measuringLayoutFrame(in: inertiaContainerId) { frame in
+            layoutFrame = frame
+        }
         .environment(\.inertiaParentID, hierarchyId)
         .environment(\.isInertiaContainer, false)
         .buttonStyle(.plain)
@@ -1000,24 +1075,10 @@ struct InertiaActionable<Content: View>: View {
         InertiaLog.verbose("[InertiaActionable.getAnimation] actionableIdToAnimationIdMap: \(inertiaDataModel.actionableIdToAnimationIdMap)")
         InertiaLog.verbose("[InertiaActionable.getAnimation] available schema IDs: \(Array(inertiaDataModel.inertiaSchemas.keys))")
 
-        // First try to get the animation ID from the map
-        guard let animationId = inertiaDataModel.actionableIdToAnimationIdMap[hierarchyId] else {
-            InertiaLog.debug("no mapping for hierarchyId: \(hierarchyId), trying hierarchyIdPrefix: \(hierarchyIdPrefix)")
-            // If not in the map, try using hierarchyIdPrefix directly (fallback)
-            guard let animation = inertiaDataModel.inertiaSchemas[hierarchyIdPrefix] else {
-                InertiaLog.debug("animation not found for hierarchyId: \(hierarchyId) or hierarchyIdPrefix: \(hierarchyIdPrefix)")
-                return nil
-            }
-            InertiaLog.debug("using hierarchyIdPrefix fallback: \(hierarchyIdPrefix)")
-            return animation
-        }
-
-        // Look up the animation using the mapped animation ID
-        guard let animation = inertiaDataModel.inertiaSchemas[animationId] else {
-            InertiaLog.debug("animation not found for animationId: \(animationId)")
+        guard let animation = inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel) else {
+            InertiaLog.debug("animation not found for hierarchyId: \(hierarchyId) or hierarchyIdPrefix: \(hierarchyIdPrefix)")
             return nil
         }
-        InertiaLog.verbose("found animation - hierarchyId: \(hierarchyId) -> animationId: \(animationId)")
 
         return animation
     }
@@ -1078,6 +1139,9 @@ struct InertiaEditable<Content: View>: View {
     /// reports translation relative to its own start, so without carrying the
     /// accumulated offset every drag after the first snaps back to the origin.
     @State private var startOffset: CGSize = .zero
+    /// This node's box in the container's space, as laid out — measured outside
+    /// both the animation and the drag. The shapes are projected from it.
+    @State private var layoutFrame: CGRect = .zero
 
     /// The node's position in the container: everything before this gesture
     /// plus what this gesture has moved so far.
@@ -1164,6 +1228,10 @@ struct InertiaEditable<Content: View>: View {
                 .disabled(inertiaDataModel?.isActionable ?? false)
 //                .modifier(BindableSize(size: $contentSize))
         }
+        // Behind the content and inside everything that moves it — the drag
+        // below as well as the animation in `body` — so the shapes stay with
+        // the node they belong to. See `InertiaActionable.wrappedContent`.
+        .background(alignment: .topLeading) { containerCanvas }
         .onTapGesture {
             InertiaLog.debug("tapped \(content)")
             guard let inertiaDataModel else {
@@ -1210,14 +1278,41 @@ struct InertiaEditable<Content: View>: View {
         }
     }
     
-    @ViewBuilder
-    private var backgroundView: some View {
-        // Background view disabled for new schema structure
-        // The new schema only contains animation data, no shape objects
-        InertiaLog.verbose("backgroundView - new schema doesn't support shapes")
-        return AnyView(EmptyView())
+    /// The shapes authored against this actionable, if it has any. Read off the
+    /// schema rather than the running animation, so the editor shows the
+    /// backdrop while the timeline is parked as well as while it plays.
+    private var shapes: [InertiaShape] {
+        inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel)?.shapes ?? []
     }
-    
+
+    /// The same canvas the shipped runtime draws behind an actionable, so what
+    /// is authored here is what the app renders. See `InertiaActionable`.
+    @ViewBuilder
+    private func backgroundView(for frame: CGRect) -> some View {
+        let shapes = self.shapes
+        if !shapes.isEmpty,
+           frame.width > 0, frame.height > 0,
+           inertiaContainerSize.width > 0, inertiaContainerSize.height > 0 {
+            InertiaCanvas(
+                vm: vm,
+                shapes: shapes.map { $0.projected(from: frame, into: inertiaContainerSize) }
+            )
+            .allowsHitTesting(false)
+        }
+    }
+
+    /// The canvas over the container's frame. Sized and anchored exactly as the
+    /// shipped runtime does it — see `InertiaActionable.containerCanvas`, which
+    /// also has the reason both of them project from a measured layout frame
+    /// instead of a `GeometryReader` in here — so a shape sits where the editor
+    /// shows it sitting.
+    @ViewBuilder
+    private var containerCanvas: some View {
+        backgroundView(for: layoutFrame)
+            .frame(width: inertiaContainerSize.width, height: inertiaContainerSize.height)
+            .offset(x: -layoutFrame.origin.x, y: -layoutFrame.origin.y)
+    }
+
     /// The track the animator plays: held out to the full loop when repeating,
     /// so the animation and the editor's playhead share one period.
     func track(for animation: InertiaAnimationSchema) -> [InertiaAnimationKeyframe] {
@@ -1290,13 +1385,13 @@ struct InertiaEditable<Content: View>: View {
         }
     //            .frame(minWidth: contentSize.width, minHeight: contentSize.height)
 
-        .background(
-            GeometryReader { proxy in
-                backgroundView
-                    .frame(width: inertiaContainerSize.width, height: inertiaContainerSize.height)
-                    .offset(x: -proxy.frame(in: .named(inertiaContainerId)).origin.x, y: -proxy.frame(in: .named(inertiaContainerId)).origin.y)
-            }
-        )
+        // Outside the animation and outside the drag, so the shapes are
+        // projected from where this node was laid out rather than from wherever
+        // it has been drawn or dragged to. Both of those then move the canvas
+        // as rendering effects, which is what keeps it stuck to the node.
+        .measuringLayoutFrame(in: inertiaContainerId) { frame in
+            layoutFrame = frame
+        }
         .environment(\.inertiaParentID, hierarchyId)
         .environment(\.isInertiaContainer, false)
         .buttonStyle(.plain)
@@ -1389,24 +1484,10 @@ struct InertiaEditable<Content: View>: View {
         InertiaLog.verbose("[InertiaEditable.getAnimation] actionableIdToAnimationIdMap: \(inertiaDataModel.actionableIdToAnimationIdMap)")
         InertiaLog.verbose("[InertiaEditable.getAnimation] available schema IDs: \(Array(inertiaDataModel.inertiaSchemas.keys))")
 
-        // First try to get the animation ID from the map
-        guard let animationId = inertiaDataModel.actionableIdToAnimationIdMap[hierarchyId] else {
-            InertiaLog.debug("no mapping for hierarchyId: \(hierarchyId), trying hierarchyIdPrefix: \(hierarchyIdPrefix)")
-            // If not in the map, try using hierarchyIdPrefix directly (fallback)
-            guard let animation = inertiaDataModel.inertiaSchemas[hierarchyIdPrefix] else {
-                InertiaLog.debug("animation not found for hierarchyId: \(hierarchyId) or hierarchyIdPrefix: \(hierarchyIdPrefix)")
-                return nil
-            }
-            InertiaLog.debug("using hierarchyIdPrefix fallback: \(hierarchyIdPrefix)")
-            return animation
-        }
-
-        // Look up the animation using the mapped animation ID
-        guard let animation = inertiaDataModel.inertiaSchemas[animationId] else {
-            InertiaLog.debug("animation not found for animationId: \(animationId)")
+        guard let animation = inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel) else {
+            InertiaLog.debug("animation not found for hierarchyId: \(hierarchyId) or hierarchyIdPrefix: \(hierarchyIdPrefix)")
             return nil
         }
-        InertiaLog.verbose("found animation - hierarchyId: \(hierarchyId) -> animationId: \(animationId)")
 
         return animation
     }
@@ -1796,7 +1877,7 @@ public enum InertiaAnimationInvokeType: String, Codable, CustomStringConvertible
 public struct InertiaAnimationSchema: Codable, Identifiable, Equatable, CustomStringConvertible {
     public var description: String {
 """
-{"id": \(id), "initialValues": \(initialValues), "invokeType": \(invokeType), "keyframes": \(keyframes)}
+{"id": \(id), "initialValues": \(initialValues), "invokeType": \(invokeType), "keyframes": \(keyframes), shapes: \(shapes)}
 """
     }
 
@@ -1804,12 +1885,26 @@ public struct InertiaAnimationSchema: Codable, Identifiable, Equatable, CustomSt
     public let initialValues: InertiaAnimationValues
     public let invokeType: InertiaAnimationInvokeType
     public let keyframes: [InertiaAnimationKeyframe]
+    /// What the actionable's canvas draws behind it. Optional to author, so an
+    /// animation recorded before shapes existed — or one that simply wants
+    /// none — still decodes.
+    public let shapes: [InertiaShape]
 
-    public init(id: InertiaID, initialValues: InertiaAnimationValues, invokeType: InertiaAnimationInvokeType, keyframes: [InertiaAnimationKeyframe]) {
+    public init(id: InertiaID, initialValues: InertiaAnimationValues, invokeType: InertiaAnimationInvokeType, keyframes: [InertiaAnimationKeyframe], shapes: [InertiaShape] = []) {
         self.id = id
         self.initialValues = initialValues
         self.invokeType = invokeType
         self.keyframes = keyframes
+        self.shapes = shapes
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(InertiaID.self, forKey: .id)
+        self.initialValues = try container.decode(InertiaAnimationValues.self, forKey: .initialValues)
+        self.invokeType = try container.decode(InertiaAnimationInvokeType.self, forKey: .invokeType)
+        self.keyframes = try container.decode([InertiaAnimationKeyframe].self, forKey: .keyframes)
+        self.shapes = try container.decodeIfPresent([InertiaShape].self, forKey: .shapes) ?? []
     }
 }
 
@@ -1819,7 +1914,8 @@ func InertiaSchemaAnimation() -> InertiaAnimationSchema {
         id: "",
         initialValues: .zero,
         invokeType: .auto,
-        keyframes: []
+        keyframes: [],
+        shapes: []
     )
 }
 

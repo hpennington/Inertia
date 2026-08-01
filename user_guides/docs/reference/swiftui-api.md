@@ -1,6 +1,7 @@
 # SwiftUI API
 
-Everything in this page comes from `import Inertia`.
+Everything in this page comes from `import Inertia`. The equivalents for the other
+runtimes are on [Compose API](compose-api.md) and [React API](react-api.md).
 
 ## `InertiaContainer`
 

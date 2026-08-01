@@ -1,19 +1,29 @@
 # Inertia
 
-Inertia is a keyframe animation editor and SwiftUI runtime for animating the UI you
-already built. You wire a modifier onto the views you want to move, run your app in
-the editor, drag those views around on a timeline, and Inertia writes the result to a
-JSON file that ships in your app bundle.
+Inertia is a keyframe animation editor for animating the UI you already built. You wrap
+the views you want to move, run your app inside the editor, drag those views around on a
+timeline, and Inertia writes the result to a JSON file your app loads.
 
 There is no separate rendering surface and no exported video. The thing you animate in
-the editor is the real SwiftUI view, and at runtime it animates through SwiftUI's own
-keyframe animation APIs.
+the editor is the real view in your real app.
+
+Three runtimes read the animations the editor writes:
+
+| Runtime | Package | Editor target |
+| --- | --- | --- |
+| **SwiftUI** | `Inertia` (Swift package) | **iOS** — a live iOS Simulator |
+| **Jetpack Compose** | `com.github.hpennington:inertia-compose` | **Android** — a running emulator |
+| **React** | `inertia-react` + `inertia-base` | **Web** — your dev server in a web view |
+
+They implement the same model against the same file format. [Choosing a
+runtime](getting-started/runtimes.md) is the page to read if you want to know where they
+still differ — and they do, in ways worth knowing before you start.
 
 <div class="grid cards" markdown>
 
-- :material-download: **[Install the runtime](getting-started/installation.md)**
+- :material-download: **[Install a runtime](getting-started/installation.md)**
 
-    Add the Swift package to your app and wrap your root view.
+    Add the package to your app and wrap your root view.
 
 - :material-rocket-launch: **[Quickstart](getting-started/quickstart.md)**
 
@@ -21,11 +31,11 @@ keyframe animation APIs.
 
 - :material-timeline-clock: **[Use the editor](editor/overview.md)**
 
-    Record keyframes against a live simulator.
+    Record keyframes against a live app.
 
 - :material-code-json: **[Animation file format](guides/animation-file.md)**
 
-    What the editor writes, and what the runtime reads.
+    What the editor writes, and what the runtimes read.
 
 </div>
 
@@ -35,12 +45,13 @@ keyframe animation APIs.
 
 In **editor mode** the editor hosts a local WebSocket server and your app connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
-back as you edit, so what you see in the simulator is the animation as it currently
-stands.
+back as you edit, so what you see running is the animation as it currently stands.
 
-In **release mode** none of that is running. The container loads `animation.json` out of
-your app bundle and plays it through SwiftUI's keyframe animator. The WebSocket client is
-gated on the same `dev` flag, so a shipped build never dials out.
+In **release mode** none of that is running. The container loads `animation.json` for
+itself — out of the app bundle in SwiftUI, over HTTP in React — and plays it on its own
+clock. In SwiftUI the WebSocket client is gated on the same `dev` flag, so a shipped build
+never dials out. (The Compose runtime does not yet have a release path; see
+[Choosing a runtime](getting-started/runtimes.md).)
 
 ## What you can animate
 
@@ -59,18 +70,22 @@ is normalized rather than in points.
 
 ## Platform support
 
-Inertia's runtime is SwiftUI, targeting iOS 17 and later — the keyframe animation APIs
-it builds on landed in iOS 17. The editor is a macOS app and drives the iOS Simulator
-through `simctl`.
+The editor is a macOS app. What it drives depends on the target you pick in its framework
+picker:
 
-!!! note "Other platforms"
+| Target | Runtime requirement | How the editor reaches it |
+| --- | --- | --- |
+| iOS | iOS 17+ / Swift 5.9+ | An iOS Simulator, driven through `simctl` |
+| Android | `minSdk` 26, Compose | A running emulator, streamed over `adb` |
+| Web | React 18.3 | Your dev server, loaded in a `WKWebView` |
 
-    There are React and Jetpack Compose runtimes in the repository, but they are not
-    documented here. This site covers the SwiftUI path only.
+The iOS 17 floor is not arbitrary: the SwiftUI runtime plays tracks through
+`KeyframeAnimator`, an iOS 17 API. The Compose and React runtimes sample their tracks
+themselves and have no equivalent floor.
 
 ## Where to go next
 
-Start with [Installation](getting-started/installation.md) if you have an app you want to
-animate. If you would rather read about the workflow before touching your project, the
-[editor tour](editor/overview.md) is the shortest route to understanding what Inertia
-actually does.
+Start with [Choosing a runtime](getting-started/runtimes.md) to see what each one can do
+today, then [Installation](getting-started/installation.md). If you would rather read
+about the workflow before touching your project, the [editor tour](editor/overview.md) is
+the shortest route to understanding what Inertia actually does.

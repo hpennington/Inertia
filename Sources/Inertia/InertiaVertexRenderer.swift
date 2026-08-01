@@ -8,23 +8,57 @@
 import MetalKit
 import SwiftUI
 
-public struct Vertex {
-    let position: CGPoint
-    let color: CGColor
+public struct InertiaColor: Codable, Equatable {
+    public let red: Float
+    public let green: Float
+    public let blue: Float
+    public let alpha: Float
+
+    public init(red: Float, green: Float, blue: Float, alpha: Float) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.alpha = alpha
+    }
+}
+
+public struct InertiaPoint: Codable, Equatable {
+    public let x: Double
+    public let y: Double
+
+    public init(x: Double, y: Double) {
+        self.x = x
+        self.y = y
+    }
+}
+
+/// A single corner of a shape: where it sits, and what colour the shape is
+/// there. Positions are normalized to the frame the shape is drawn in — (0, 0)
+/// its top-left, (1, 1) its bottom-right — so a shape authored once holds its
+/// place through every size that frame is laid out at. Values outside 0...1 are
+/// off the edge of it, and clip.
+public struct Vertex: Codable, Equatable {
+    public let position: InertiaPoint
+    public let color: InertiaColor
+
+    public init(position: InertiaPoint, color: InertiaColor) {
+        self.position = position
+        self.color = color
+    }
 }
 
 public final class InertiaVertexRenderer: MTKView, MTKViewDelegate {
     public var vertices: [Vertex] {
         didSet {
-            needsRedraw = true
+            guard vertices != oldValue else { return }
+            scheduleRedraw()
         }
     }
-    
+
     private let pipelineState: MTLRenderPipelineState
     private let commandQueue: MTLCommandQueue
-    private var needsRedraw = true
     private let metalBackgroundColor: MTLClearColor
-    
+
     public init(frame: CGRect, device: MTLDevice, vertices: [Vertex], backgroundColor: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)) {
         self.metalBackgroundColor = backgroundColor
         self.vertices = vertices
@@ -51,8 +85,15 @@ public final class InertiaVertexRenderer: MTKView, MTKViewDelegate {
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
         pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        // Standard source-over. Without the factors, "blending enabled" still
+        // writes the source straight through, so a shape's alpha would do
+        // nothing and the canvas could not sit behind anything.
         pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
-        
+        pipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+        pipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+        pipelineDescriptor.colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha
+        pipelineDescriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+
         // Create a vertex descriptor
         let vertexDescriptor = MTLVertexDescriptor()
         
@@ -79,61 +120,91 @@ public final class InertiaVertexRenderer: MTKView, MTKViewDelegate {
         
         self.pipelineState = pipelineState
         super.init(frame: frame, device: device)
-        
+
         self.delegate = self
-        #if os(iOS)
+        // A canvas per actionable, so the renderers cannot each hold a display
+        // link open: they draw when their shapes or their bounds change and
+        // stay asleep otherwise.
+        self.isPaused = true
+        self.enableSetNeedsDisplay = true
+#if os(iOS)
+        self.layer.isOpaque = false
         self.backgroundColor = .clear
         self.isOpaque = false
         self.isUserInteractionEnabled = false
-        #endif
+#else
+        self.layer?.isOpaque = false
+#endif
     }
-    
+
     required init(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
-    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        self.bounds.size = size
-        self.needsRedraw = true
+
+    /// Asks for one more frame. Vertices are held in normalized space, so a
+    /// resize changes where every one of them lands and needs the same redraw a
+    /// change of shape does.
+    private func scheduleRedraw() {
+        #if os(macOS)
+        needsDisplay = true
+        #elseif os(iOS)
+        setNeedsDisplay()
+        #endif
     }
-    
+
+    #if os(macOS)
+    public override func layout() {
+        super.layout()
+        scheduleRedraw()
+    }
+    #elseif os(iOS)
+    public override func layoutSubviews() {
+        super.layoutSubviews()
+        scheduleRedraw()
+    }
+    #endif
+
+    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        // Not `bounds`: `size` is the drawable in pixels, and bounds are the
+        // points the vertices are measured against.
+        scheduleRedraw()
+    }
+
     public func draw(in view: MTKView) {
         guard let drawable = view.currentDrawable else { return }
         guard let renderPassDescriptor = view.currentRenderPassDescriptor else { return }
-        
-        guard needsRedraw else {
-            return
-        }
-        
-        needsRedraw = false
-        
+
         renderPassDescriptor.colorAttachments[0].clearColor = self.metalBackgroundColor
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
-        
-        let vertices: [Float] = self.vertices.flatMap {
-            let x = Float($0.position.x / frame.width / 2)
-            let y = Float($0.position.y / frame.height / 2)
+
+        // The view's own box, top-left origin, into clip space — whose origin is
+        // the centre and whose y runs upwards. Nothing here reads the bounds:
+        // vertices are already a fraction of them, which is what lets one
+        // authored shape fill whatever frame it is handed.
+        let vertexData: [Float] = self.vertices.flatMap {
+            let x = Float($0.position.x * 2 - 1)
+            let y = Float(1 - $0.position.y * 2)
             let z = Float(0.0)
             let w = Float(1.0)
-            let rgba = $0.color.components ?? [1.0, 1.0, 1.0, 1.0]
-            
-            return [x, y, z, w, Float(rgba[0]), Float(rgba[1]), Float(rgba[2]), Float(rgba[3])]
+            let rgba = $0.color
+
+            return [x, y, z, w, Float(rgba.red), Float(rgba.green), Float(rgba.blue), Float(rgba.alpha)]
         }
-        
-        guard !vertices.isEmpty else {
-            return
+
+        guard let commandBuffer = commandQueue.makeCommandBuffer(),
+              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
+
+        // An emptied shape list still has a pass to encode: the clear is what
+        // takes the last frame's shapes back off the screen.
+        if !vertexData.isEmpty,
+           let vertexBuffer = device?.makeBuffer(bytes: vertexData, length: vertexData.count * MemoryLayout<Float>.size, options: []) {
+            renderEncoder.setRenderPipelineState(pipelineState)
+            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexData.count / 8)
         }
-        
-        let commandBuffer = commandQueue.makeCommandBuffer()
-        let renderEncoder = commandBuffer?.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
-        let vertexBuffer = device?.makeBuffer(bytes: vertices, length: vertices.count * MemoryLayout<Float>.size, options: [])
-        
-        renderEncoder?.setRenderPipelineState(pipelineState)
-        renderEncoder?.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        renderEncoder?.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count / 8)
-        
-        renderEncoder?.endEncoding()
-        commandBuffer?.present(drawable)
-        commandBuffer?.commit()
+
+        renderEncoder.endEncoding()
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
     }
 }

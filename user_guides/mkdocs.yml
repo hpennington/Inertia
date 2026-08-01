@@ -1,5 +1,5 @@
 site_name: Inertia
-site_description: A keyframe animation editor and SwiftUI runtime for animating real UI.
+site_description: A keyframe animation editor with SwiftUI, Jetpack Compose and React runtimes for animating real UI.
 site_url: https://inertiagraphics.org/
 repo_url: https://github.com/hpennington/Inertia
 repo_name: hpennington/Inertia
@@ -85,6 +85,7 @@ plugins:
 nav:
   - Home: index.md
   - Getting started:
+      - Choosing a runtime: getting-started/runtimes.md
       - Installation: getting-started/installation.md
       - Quickstart: getting-started/quickstart.md
       - Editor mode: getting-started/editor-mode.md
@@ -98,6 +99,8 @@ nav:
       - Animation IDs: guides/ids.md
   - Reference:
       - SwiftUI API: reference/swiftui-api.md
+      - Compose API: reference/compose-api.md
+      - React API: reference/react-api.md
       - Animatable values: reference/values.md
   - Troubleshooting: troubleshooting.md
 
