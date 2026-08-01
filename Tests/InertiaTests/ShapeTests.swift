@@ -64,6 +64,20 @@ final class ShapeTests: XCTestCase {
         XCTAssertEqual(card1.shapes, [])
     }
 
+    /// Saving is the same schemas encoded straight back out, so a shape only
+    /// lasts a session if it makes the round trip. Reading it and writing
+    /// nothing is how an authored canvas gets quietly emptied by the first
+    /// keyframe anyone records.
+    func testShapesAreWrittenBackOut() throws {
+        let decoded = try decodeDemo()
+        let encoded = try JSONEncoder().encode(["card0", "card1"].compactMap { decoded[$0] })
+        let reread = try XCTUnwrap(decodeInertiaSchemas(json: encoded))
+            .reduce(into: [InertiaID: InertiaAnimationSchema]()) { $0[$1.id] = $1 }
+
+        XCTAssertEqual(reread["card0"]?.shapes, decoded["card0"]?.shapes)
+        XCTAssertEqual(reread["card1"]?.shapes, [])
+    }
+
     /// A shape is a ring of corners; the renderer draws triangles. Four corners
     /// are the two triangles of a quad, sharing the corner the fan turns about.
     func testShapeIsTriangulatedAsAFan() throws {
