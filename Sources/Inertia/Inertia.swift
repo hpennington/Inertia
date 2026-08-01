@@ -971,8 +971,19 @@ struct InertiaActionable<Content: View>: View {
         inertiaDataModel?.registerHierarchyIdPrefix(hierarchyIdPrefix)
     }
     
-    /// What to show right now, or nil when the animation is neither playing nor
-    /// parked somewhere by the editor.
+    /// Whether the run itself is on screen — playing, or parked somewhere in the
+    /// track by the editor. Anything else draws where the animation starts.
+    var isShowingTrack: Bool {
+        guard let inertiaDataModel else { return false }
+
+        // Scrubbing shows the animation without running it.
+        guard inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else { return false }
+
+        return inertiaDataModel.states[hierarchyIdPrefix]?.trigger == true
+    }
+
+    /// What to show right now: where the run has got to, or — with no run on
+    /// screen — the values the animation starts from.
     ///
     /// Read off the runtime's own clock rather than handed to a
     /// `keyframeAnimator`, which is what this used to do. The runtime already
@@ -987,9 +998,16 @@ struct InertiaActionable<Content: View>: View {
     /// Sampling the track at the playhead is the same operation for playing,
     /// pausing and scrubbing, and it is what the editor's own view does — so an
     /// app in the field now draws frame for frame what was authored.
-    func displayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues? {
-        guard let inertiaDataModel,
-              inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else { return nil }
+    ///
+    /// An animation that is not running is not the same as no animation at all:
+    /// an actionable waiting on its trigger sits where its schema says it
+    /// starts. This used to draw nothing there, leaving the node at its layout
+    /// position, so initial values only ever appeared once something played —
+    /// the React and Compose runtimes have always drawn them.
+    func displayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues {
+        guard isShowingTrack, let inertiaDataModel else {
+            return animation.initialValues.sanitized
+        }
 
         // A parked playhead holds there; a running one advances. Same read.
         let time = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
@@ -999,7 +1017,9 @@ struct InertiaActionable<Content: View>: View {
     var body: some View {
         //        GeometryReader { rootProxy in
         Group {
-            if let animation = animation ?? getAnimation, let values = displayValues(for: animation) {
+            if let animation = animation ?? getAnimation {
+                let values = displayValues(for: animation)
+
                 wrappedContent
                     .scaleEffect(values.scale)
                     .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
@@ -1049,6 +1069,12 @@ struct InertiaActionable<Content: View>: View {
         }
     }
     
+    /// The schema behind this actionable, whatever it is currently doing.
+    ///
+    /// Free of playback state, like `inertiaSchema` itself: what an actionable
+    /// *has* is not what it is doing. Whether the run is on screen is
+    /// `isShowingTrack`'s to say, and an actionable that is not playing still
+    /// draws — at the values its animation starts from.
     var getAnimation: InertiaAnimationSchema? {
         guard let inertiaDataModel else {
             InertiaLog.debug("inertiaDataModel is nil")
@@ -1057,15 +1083,6 @@ struct InertiaActionable<Content: View>: View {
 
         guard let hierarchyId else {
             InertiaLog.debug("hierarchyId is nil")
-            return nil
-        }
-
-        // Scrubbing shows the animation without running it.
-        guard inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else {
-            return nil
-        }
-
-        guard inertiaDataModel.states[hierarchyIdPrefix]?.trigger == true else {
             return nil
         }
 
@@ -1280,7 +1297,13 @@ struct InertiaEditable<Content: View>: View {
                     .stroke(Color.green)
             }
         }
-        .offset(totalOffset)
+        // Only while this node is the one being edited. A drag is a gesture, not
+        // a position: what an actionable *is* at rests in its schema, which the
+        // animation above draws. Applied unconditionally, a node deselected
+        // before the editor had pushed the drag back stayed stuck where it had
+        // been left, with nothing on screen agreeing that it belonged there.
+        // Same gate as the Compose runtime's `.offset { if (isSelected …) }`.
+        .offset(isDraggable ? totalOffset : .zero)
         // Masked off rather than merely inert when this node isn't selected: an
         // attached DragGesture claims the drag even when its handlers do
         // nothing, which would stop a selected ancestor from being dragged. The
@@ -1301,6 +1324,13 @@ struct InertiaEditable<Content: View>: View {
     /// backdrop while the timeline is parked as well as while it plays.
     private var shapes: [InertiaShape] {
         inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel)?.shapes ?? []
+    }
+
+    /// The values the schema starts this actionable from. Watched rather than
+    /// read: `displayValues` is what draws them, and the drag stacked on top has
+    /// to get out of their way whenever they change.
+    private var initialValues: InertiaAnimationValues? {
+        inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel)?.initialValues
     }
 
     /// The same canvas the shipped runtime draws behind an actionable, so what
@@ -1350,17 +1380,30 @@ struct InertiaEditable<Content: View>: View {
         }
     }
 
-    /// What to show right now, or nil when the animation is neither playing nor
-    /// parked somewhere by the editor.
+    /// Whether the run itself is on screen — playing, or parked somewhere in the
+    /// track by the editor. Anything else draws where the animation starts.
+    var isShowingTrack: Bool {
+        guard let inertiaDataModel else { return false }
+
+        // Scrubbing shows the animation without running it.
+        guard inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else { return false }
+
+        return inertiaDataModel.states[hierarchyIdPrefix]?.trigger == true
+    }
+
+    /// What to show right now: where the run has got to, or — with no run on
+    /// screen — the values the animation starts from. See
+    /// `InertiaActionable.displayValues`, which this deliberately mirrors.
     ///
     /// The editor's copy of an animation is drawn from the runtime's own clock
     /// rather than handed to a `keyframeAnimator`, so playing, pausing and
     /// scrubbing are all the same thing: read the track at the playhead. It is
     /// also the only way play can pick up mid-loop — an animator can only ever
     /// start a track at its beginning.
-    func displayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues? {
-        guard let inertiaDataModel,
-              inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else { return nil }
+    func displayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues {
+        guard isShowingTrack, let inertiaDataModel else {
+            return animation.initialValues.sanitized
+        }
 
         return timeline(for: animation).value(time: inertiaDataModel.playheadTime).sanitized
     }
@@ -1381,25 +1424,35 @@ struct InertiaEditable<Content: View>: View {
     var body: some View {
         //        GeometryReader { rootProxy in
         Group {
-            if let animation = animation ?? getAnimation, let values = displayValues(for: animation) {
+            if let animation = animation ?? getAnimation {
+                let values = displayValues(for: animation)
+
                 wrappedContent
                     .scaleEffect(values.scale)
                     .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
                     .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
                     .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
                     .opacity(values.opacity)
-                    .onAppear {
-                        self.startOffset = CGSize(
-                            width: animation.initialValues.translate.width * inertiaContainerSize.width,
-                            height: animation.initialValues.translate.height * inertiaContainerSize.height
-                        )
-                        self.dragOffset = .zero
-                    }
             } else {
                 wrappedContent
             }
         }
     //            .frame(minWidth: contentSize.width, minHeight: contentSize.height)
+
+        // The animation above already puts this node where the schema says it
+        // starts, so the drag stacked on top of it goes back to zero whenever
+        // those values change: by then the gesture has been authored into the
+        // schema, and leaving it in place would count the same move twice. It is
+        // also what returns a node to the origin when the editor resets an
+        // animation's initial values — until this, a reset changed the authored
+        // animation and left the node sitting wherever it had been dragged to.
+        //
+        // Matches `LaunchedEffect(animation?.initialValues)` in the Compose
+        // runtime and the `pos` effect in the React one.
+        .onChange(of: initialValues) { _, _ in
+            startOffset = .zero
+            dragOffset = .zero
+        }
 
         // Outside the animation and outside the drag, so the shapes are
         // projected from where this node was laid out rather than from wherever
