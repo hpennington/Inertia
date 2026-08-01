@@ -148,4 +148,91 @@ final class ShapeTests: XCTestCase {
         XCTAssertEqual(InertiaShape(vertices: []).triangles, [])
         XCTAssertEqual(InertiaShape(vertices: [corner(0, 0), corner(1, 1)]).triangles, [])
     }
+
+    // MARK: - Shapes that carry an animation
+
+    /// The other way a shape is authored: a drawn vector, described rather than
+    /// spelled out corner by corner, with a track of its own attached — which is
+    /// what makes it move independently of the actionable it is drawn behind.
+    private let drawnJSON = """
+    [
+      {
+        "id" : "card2",
+        "initialValues" : {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [0, 0]},
+        "invokeType" : "auto",
+        "keyframes" : [],
+        "shapes" : [
+          {
+            "shape": {"id": "123", "width": 2, "height": 2, "type": "rectangle"},
+            "animation": {
+              "id" : "shape0",
+              "initialValues" : {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [0, 0]},
+              "invokeType" : "auto",
+              "keyframes" : [
+                {"id": "a", "duration": 0.001, "values": {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [0.8, 0.9]}},
+                {"id": "b", "duration": 1.3, "values": {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [-0.02, -0.05]}}
+              ],
+              "shapes" : []
+            }
+          }
+        ]
+      }
+    ]
+    """
+
+    private func decodeDrawn() throws -> InertiaShape {
+        let data = try XCTUnwrap(drawnJSON.data(using: .utf8))
+        let schemas = try XCTUnwrap(decodeInertiaSchemas(json: data))
+        return try XCTUnwrap(schemas.first?.shapes.first)
+    }
+
+    /// A shape given a track keeps it: without this the vector is decoded and
+    /// drawn, and then sits still because the only animation that reached the
+    /// runtime was the actionable's.
+    func testShapeCarriesItsOwnAnimation() throws {
+        let animation = try XCTUnwrap(decodeDrawn().animation)
+
+        XCTAssertEqual(animation.id, "shape0")
+        XCTAssertEqual(animation.invokeType, .auto)
+        XCTAssertEqual(animation.keyframes.count, 2)
+        XCTAssertEqual(animation.keyframes.last?.values.translate.width, -0.02)
+    }
+
+    /// A described shape has no corners on the wire; the ones it is drawn from
+    /// are worked out from the description. A rectangle is the two triangles of
+    /// a quad, so it reaches the renderer as six corners.
+    func testDescribedShapeIsDrawnFromItsDescription() throws {
+        let shape = try decodeDrawn()
+
+        XCTAssertNil(shape._vertices)
+        XCTAssertEqual(shape.vertices.count, 6)
+        XCTAssertNotNil([shape].bounds)
+    }
+
+    /// Normalizing is about where a shape lands on the canvas, not about what it
+    /// then does — so the track has to come through it. It is the last thing to
+    /// touch a shape before the renderer, and a shape that lost its animation
+    /// here would be drawn in the right place and never move.
+    func testNormalizingKeepsTheShapesAnimation() throws {
+        let shape = try decodeDrawn()
+        let bounds = try XCTUnwrap([shape].bounds)
+
+        let normalized = shape.normalized(to: bounds)
+
+        XCTAssertEqual(normalized.animation?.id, "shape0")
+        XCTAssertEqual(normalized.vertices.count, shape.vertices.count)
+    }
+
+    /// The same round trip the authored corners make: a track attached to a
+    /// shape only lasts a session if saving writes it back out.
+    func testShapeAnimationIsWrittenBackOut() throws {
+        let shape = try decodeDrawn()
+
+        let encoded = try JSONEncoder().encode([shape])
+        let reread = try JSONDecoder().decode([InertiaShape].self, from: encoded)
+
+        XCTAssertEqual(reread.first, shape)
+        XCTAssertEqual(reread.first?.animation?.keyframes.count, 2)
+        XCTAssertEqual(reread.first?.shape?.type, .rectangle)
+    }
 }

@@ -62,11 +62,87 @@ public struct InertiaCanvas: ViewRepresentable {
     #endif
 }
 
-public protocol MetalCanvasNode {
-    var id: InertiaID { get }
-    var animationValues: InertiaAnimationValues { get }
-    var vertices: [Vertex] { get }
-    var zIndex: Int { get }
+/// Everything an actionable draws behind itself: its shapes, laid out on as
+/// many canvases as they need.
+///
+/// A shape with no animation of its own is backdrop — it belongs to the
+/// actionable, moves only as the actionable moves, and shares one canvas with
+/// every other shape like it, fitted to the box they occupy together. A shape
+/// that *was* given an animation is a drawing in its own right: it gets a
+/// canvas of its own, fitted to itself, so its track can scale, turn, move and
+/// fade it without disturbing the actionable or any of the other shapes.
+///
+/// The animated ones are drawn over the backdrop, in the order they were
+/// authored — the shapes have no z-index of their own, and the file's order is
+/// the only ordering anyone has expressed.
+struct InertiaShapesView: View {
+    let vm: InertiaViewModel
+    let shapes: [InertiaShape]
+    /// The actionable's laid-out box: the unit the shapes' coordinates are
+    /// multiples of, so a shape saying 1 is exactly this wide.
+    let size: CGSize
+    /// The container's box — what a translation of 1 crosses. The same measure
+    /// an actionable's own animation is offset by, so a shape and the view it
+    /// backs travel the same distance for the same authored number.
+    let containerSize: CGSize
+    /// Where a track has got to, asked of the actionable rather than worked out
+    /// in here: playing, pausing and scrubbing are one read at the playhead,
+    /// and the actionable is what holds the clock.
+    let values: (InertiaAnimationSchema) -> InertiaAnimationValues
+
+    var body: some View {
+        if size.width > 0, size.height > 0 {
+            // Top-left, because that corner is where the shapes' own box is
+            // measured and offset from.
+            ZStack(alignment: .topLeading) {
+                canvas(for: shapes.filter { $0.animation == nil }, animatedBy: .identity)
+
+                ForEach(Array(shapes.enumerated()), id: \.offset) { _, shape in
+                    if let animation = shape.animation {
+                        canvas(for: [shape], animatedBy: values(animation))
+                    }
+                }
+            }
+        }
+    }
+
+    /// One canvas holding `shapes`, sized and placed by the box they occupy and
+    /// then moved by `transform`.
+    ///
+    /// The box is what the canvas is fitted to — see `Collection.bounds` — so a
+    /// shape reaching past the actionable grows the canvas rather than being cut
+    /// at any edge. The transform is stacked in the same order an actionable's
+    /// own animation is applied in, and the box's offset is folded into the
+    /// track's translation so the shape is moved from where it was authored
+    /// rather than from the actionable's corner.
+    ///
+    /// Takes no hits: this is a backdrop, and would otherwise swallow taps meant
+    /// for the views it overlaps.
+    @ViewBuilder
+    private func canvas(for shapes: [InertiaShape], animatedBy transform: InertiaAnimationValues) -> some View {
+        if let bounds = shapes.bounds {
+            InertiaCanvas(
+                vm: vm,
+                shapes: shapes.map { $0.normalized(to: bounds) }
+            )
+            .frame(width: bounds.width * size.width, height: bounds.height * size.height)
+            .scaleEffect(transform.scale)
+            .rotationEffect(Angle(degrees: transform.rotate), anchor: .topLeading)
+            .rotationEffect(Angle(degrees: transform.rotateCenter), anchor: .center)
+            .offset(
+                x: bounds.minX * size.width + transform.translate.width * containerSize.width,
+                y: bounds.minY * size.height + transform.translate.height * containerSize.height
+            )
+            .opacity(transform.opacity)
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+public struct MetalCanvasNode: Equatable, Codable {
+    public let id: InertiaID
+    public let vertices: [Vertex]
+    public let zIndex: Int
 }
 
 #if os(macOS)

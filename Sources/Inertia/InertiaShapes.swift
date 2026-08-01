@@ -7,6 +7,26 @@
 
 import SwiftUI
 
+public enum InertiaShapeType: String, Codable {
+    case rectangle
+    case oval
+    case triangle
+}
+
+public struct InertiaShapeProperties: Codable, Equatable {
+    let id: InertiaID
+    let type: InertiaShapeType
+    let width: CGFloat
+    let height: CGFloat
+
+    public init(id: InertiaID, type: InertiaShapeType, width: CGFloat, height: CGFloat) {
+        self.id = id
+        self.type = type
+        self.width = width
+        self.height = height
+    }
+}
+
 /// A shape as it is authored alongside an animation: a ring of corners, each
 /// carrying its own colour, measured against the actionable it belongs to —
 /// (0, 0) that view's top-left, (1, 1) its bottom-right.
@@ -15,22 +35,80 @@ import SwiftUI
 /// past the actionable and go on being drawn, because the canvas they land on
 /// is the container's rather than the view's: a shape three times the size of
 /// the card it backs is authored simply by saying 3.
-public struct InertiaShape: Codable, Equatable, CustomStringConvertible {
+///
+/// A shape may also carry an animation of its own, which is what makes it a
+/// drawing rather than a backdrop: the corners say what is drawn, the animation
+/// says how it moves, and the actionable it was authored against carries both.
+public final class InertiaShape: Codable, Equatable, CustomStringConvertible {
+    public static func ==(lhs: InertiaShape, rhs: InertiaShape) -> Bool {
+        return lhs.vertices == rhs.vertices && lhs.animation == rhs.animation
+    }
+
     public var description: String {
         """
-        {"vertices": \(vertices.count)}
+        {"vertices": \(vertices.count), "animated": \(animation != nil)}
         """
     }
 
-    public let vertices: [Vertex]
+    /// The corners as authored, when they were authored one by one. A shape
+    /// described by `shape` instead has none of its own and is drawn from that
+    /// description, which is what `vertices` resolves.
+    public let _vertices: [Vertex]?
 
-    public init(vertices: [Vertex]) {
-        self.vertices = vertices
+    /// The ring of corners the renderer draws, however the shape was authored.
+    public var vertices: [Vertex] {
+        if let _vertices {
+            return _vertices
+        } else if let vertices = getVertices() {
+            return vertices
+        } else {
+            return []
+        }
+    }
+
+    private func getVertices() -> [Vertex]? {
+        guard let shape else {
+            return nil
+        }
+        switch shape.type {
+        case .rectangle:
+            return SquareNode(id: shape.id, zIndex: 0, size: max(shape.width, shape.height), color: CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)).metalCanvasNode.vertices
+        case .oval:
+            return SquareNode(id: shape.id, zIndex: 0, size: max(shape.width, shape.height), color: CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)).metalCanvasNode.vertices
+        case .triangle:
+            return TriangleNode(id: shape.id, size: max(shape.width, shape.height), center: .zero, color: CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)).metalCanvasNode.vertices
+        }
+    }
+
+    /// This shape's own track, if it was given one. Read at the same playhead
+    /// as everything else in the container, so a shape moves in time with the
+    /// animation it was authored beside rather than on a clock of its own.
+    public let animation: InertiaAnimationSchema?
+    public let shape: InertiaShapeProperties?
+
+    /// `_vertices` is written as `vertices`: the corners are what a shape has
+    /// always been on the wire, and the leading underscore is only how the
+    /// resolved list and the authored one are told apart in here.
+    private enum CodingKeys: String, CodingKey {
+        case _vertices = "vertices"
+        case animation
+        case shape
+    }
+
+    public init(shape: InertiaShapeProperties? = nil, vertices: [Vertex]?, animation: InertiaAnimationSchema? = nil) {
+        self.shape = shape
+        self._vertices = vertices
+        self.animation = animation
     }
 
     /// The same shape restated against `bounds` — the canvas's own box — so
     /// (0, 0) is the canvas's top-left corner and (1, 1) its bottom-right,
     /// which is the space the renderer draws in.
+    ///
+    /// The corners are resolved on the way through: whatever the shape was
+    /// authored as, what comes out is the ring that lands in `bounds`. Its
+    /// animation rides along, since normalizing is about where the shape is
+    /// drawn and not about what it then does.
     func normalized(to bounds: CGRect) -> InertiaShape {
         guard bounds.width > 0, bounds.height > 0 else { return self }
 
@@ -43,7 +121,8 @@ public struct InertiaShape: Codable, Equatable, CustomStringConvertible {
                     ),
                     color: vertex.color
                 )
-            }
+            },
+            animation: animation
         )
     }
 
@@ -96,41 +175,31 @@ public extension Collection where Element == InertiaShape {
     }
 }
 
-public struct TriangleNode: MetalCanvasNode {
+public struct TriangleNode {
     public let id: InertiaID
-    public let animationValues: InertiaAnimationValues
-    public let vertices: [Vertex]
-    public let zIndex: Int
+    public let metalCanvasNode: MetalCanvasNode
     
-    public init(id: InertiaID, animationValues: InertiaAnimationValues, zIndex: Int, size: CGFloat, center: CGPoint, color: CGColor) {
+    public init(id: InertiaID, size: CGFloat, center: CGPoint, color: CGColor) {
         self.id = id
-        self.animationValues = animationValues
-        self.zIndex = zIndex
-        
         // Define vertices of an isosceles triangle with mirror reflection symmetry along the x-axis
         let height = size * sqrt(3) / 2  // Height of the triangle (from top to base)
         let halfBase = size / 2  // Half of the base length
         
         let rgb = color.components!
-        self.vertices = [
+        self.metalCanvasNode = MetalCanvasNode(id: id, vertices:  [
             Vertex(position: InertiaPoint(x: center.x, y: center.y + height / 2), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3]))),
             Vertex(position: InertiaPoint(x: center.x - halfBase, y: center.y - height / 2), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3]))),
             Vertex(position: InertiaPoint(x: center.x + halfBase, y: center.y - height / 2), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3]))),
-        ]
+        ], zIndex: 0)
     }
 }
 
-public struct SquareNode: MetalCanvasNode {
-    public let id: InertiaID
-    public let animationValues: InertiaAnimationValues
-    public let vertices: [Vertex]
-    public let zIndex: Int
-    
-    public init(id: InertiaID, animationValues: InertiaAnimationValues, zIndex: Int, size: CGFloat, center: CGPoint = .zero, color: CGColor) {
+public struct SquareNode {
+    let id: InertiaID
+    let metalCanvasNode: MetalCanvasNode
+
+    public init(id: InertiaID, zIndex: Int, size: CGFloat, center: CGPoint = .zero, color: CGColor) {
         self.id = id
-        self.animationValues = animationValues
-        self.zIndex = zIndex
-        
         // Calculate vertices of the square
         let halfSize = size / 2
         let rgb = color.components!
@@ -139,10 +208,10 @@ public struct SquareNode: MetalCanvasNode {
         let bottomLeft = Vertex(position: InertiaPoint(x: center.x - halfSize, y: center.y + halfSize), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3])))
         let bottomRight = Vertex(position: InertiaPoint(x: center.x + halfSize, y: center.y + halfSize), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3])))
         
-        // Define vertices for two triangles forming the square
-        self.vertices = [
+        // Define vertices for two triangles forming the squares
+        self.metalCanvasNode = MetalCanvasNode(id: id, vertices: [
             topLeft, topRight, bottomRight,
             topLeft, bottomLeft, bottomRight
-        ]
+        ], zIndex: 0)
     }
 }

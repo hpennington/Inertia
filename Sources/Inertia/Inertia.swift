@@ -896,30 +896,25 @@ struct InertiaActionable<Content: View>: View {
         inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel)?.shapes ?? []
     }
 
-    /// The actionable's canvas: its shapes, drawn in Metal, behind its content.
+    /// The actionable's canvases: its shapes, drawn in Metal, behind its
+    /// content. Sized and placed by the box the shapes occupy — `size` is the
+    /// actionable, and the shapes are multiples of it — and each shape carrying
+    /// a track of its own drawn on a canvas of its own, moved by that track.
+    /// See `InertiaShapesView`.
     ///
-    /// Sized and placed by the box the shapes themselves occupy — `size` is the
-    /// actionable, and the shapes are multiples of it — so one reaching past the
-    /// view it belongs to grows the canvas rather than being cut at any edge.
-    /// The container is not in this: a canvas fitted to it stopped a shape at
-    /// the window, and turned into a straight edge sweeping through the artwork
-    /// as the view rotated.
-    ///
-    /// Takes no hits: it is a backdrop, and would otherwise swallow taps meant
-    /// for the views it overlaps. Left out entirely when there is nothing to
-    /// draw — this is one `MTKView` per actionable, and most have no shapes at
-    /// all.
+    /// Left out entirely when there is nothing to draw: a canvas is an
+    /// `MTKView`, and most actionables have no shapes at all.
     @ViewBuilder
     private func backgroundView(for size: CGSize) -> some View {
         let shapes = self.shapes
-        if let bounds = shapes.bounds, size.width > 0, size.height > 0 {
-            InertiaCanvas(
+        if !shapes.isEmpty {
+            InertiaShapesView(
                 vm: vm,
-                shapes: shapes.map { $0.normalized(to: bounds) }
+                shapes: shapes,
+                size: size,
+                containerSize: inertiaContainerSize,
+                values: shapeDisplayValues(for:)
             )
-            .frame(width: bounds.width * size.width, height: bounds.height * size.height)
-            .offset(x: bounds.minX * size.width, y: bounds.minY * size.height)
-            .allowsHitTesting(false)
         }
     }
 
@@ -1010,6 +1005,28 @@ struct InertiaActionable<Content: View>: View {
         }
 
         // A parked playhead holds there; a running one advances. Same read.
+        let time = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
+        return timeline(for: animation).value(time: time).sanitized
+    }
+
+    /// Where a shape's own track has got to.
+    ///
+    /// Read at the same playhead as everything else, so a shape moves in time
+    /// with the actionable it was authored behind rather than on a clock of its
+    /// own — and is padded to the same loop, so the two come round together.
+    ///
+    /// What it does not share is the actionable's `invokeType`: a shape
+    /// animation marked `auto` runs as soon as the container's clock does, even
+    /// while the actionable it backs is still waiting on the app to trigger it.
+    /// A shape given a `trigger` animation waits for the actionable, which is
+    /// the only trigger a shape can be reached by.
+    func shapeDisplayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues {
+        guard let inertiaDataModel else { return animation.initialValues.sanitized }
+
+        let isPlaying = inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil
+        let isShowing = isShowingTrack || (animation.invokeType == .auto && isPlaying)
+        guard isShowing else { return animation.initialValues.sanitized }
+
         let time = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
         return timeline(for: animation).value(time: time).sanitized
     }
@@ -1333,19 +1350,20 @@ struct InertiaEditable<Content: View>: View {
         inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel)?.initialValues
     }
 
-    /// The same canvas the shipped runtime draws behind an actionable, so what
-    /// is authored here is what the app renders. See `InertiaActionable`.
+    /// The same canvases the shipped runtime draws behind an actionable —
+    /// including a shape's own animation moving it — so what is authored here is
+    /// what the app renders. See `InertiaActionable.backgroundView`.
     @ViewBuilder
     private func backgroundView(for size: CGSize) -> some View {
         let shapes = self.shapes
-        if let bounds = shapes.bounds, size.width > 0, size.height > 0 {
-            InertiaCanvas(
+        if !shapes.isEmpty {
+            InertiaShapesView(
                 vm: vm,
-                shapes: shapes.map { $0.normalized(to: bounds) }
+                shapes: shapes,
+                size: size,
+                containerSize: inertiaContainerSize,
+                values: shapeDisplayValues(for:)
             )
-            .frame(width: bounds.width * size.width, height: bounds.height * size.height)
-            .offset(x: bounds.minX * size.width, y: bounds.minY * size.height)
-            .allowsHitTesting(false)
         }
     }
 
@@ -1404,6 +1422,20 @@ struct InertiaEditable<Content: View>: View {
         guard isShowingTrack, let inertiaDataModel else {
             return animation.initialValues.sanitized
         }
+
+        return timeline(for: animation).value(time: inertiaDataModel.playheadTime).sanitized
+    }
+
+    /// Where a shape's own track has got to, drawn from the same playhead as
+    /// the actionable it backs. See `InertiaActionable.shapeDisplayValues`,
+    /// which this deliberately mirrors — a shape being authored has to move in
+    /// the editor exactly as it will in the app.
+    func shapeDisplayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues {
+        guard let inertiaDataModel else { return animation.initialValues.sanitized }
+
+        let isPlaying = inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil
+        let isShowing = isShowingTrack || (animation.invokeType == .auto && isPlaying)
+        guard isShowing else { return animation.initialValues.sanitized }
 
         return timeline(for: animation).value(time: inertiaDataModel.playheadTime).sanitized
     }
@@ -1777,6 +1809,10 @@ public struct InertiaAnimationValues: VectorArithmetic, Animatable, Equatable, C
 }
 
 extension InertiaAnimationValues {
+    /// Draws a thing exactly where it was laid out: what something with no
+    /// animation of its own is shown at.
+    static let identity = InertiaAnimationValues(scale: 1, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1)
+
     var isFinite: Bool {
         scale.isFinite && translate.width.isFinite && translate.height.isFinite
             && rotate.isFinite && rotateCenter.isFinite && opacity.isFinite
@@ -1785,7 +1821,7 @@ extension InertiaAnimationValues {
     /// Falls back to the identity transform so a NaN slipping out of interpolation
     /// can't reach a geometry modifier, which traps.
     var sanitized: InertiaAnimationValues {
-        isFinite ? self : InertiaAnimationValues(scale: 1, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1)
+        isFinite ? self : .identity
     }
 }
 
