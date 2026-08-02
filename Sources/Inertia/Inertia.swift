@@ -655,6 +655,14 @@ extension View {
     }
 }
 
+/// The frame every animation in it is measured against.
+///
+/// A `translate` of 1 crosses the whole container, so what the container *is*
+/// has to mean the same thing on every runtime or one authored animation moves a
+/// different distance on each. It is the space the host offers this view,
+/// filled: `GeometryReader` takes the whole proposal, and the frames below hold
+/// the content out to it. The Compose runtime's `fillMaxSize()` container and
+/// the React runtime's `width: 100%; height: 100%` div are the same rectangle.
 public struct InertiaContainer<Content: View>: View {
     let bundle: Bundle
     let dev: Bool
