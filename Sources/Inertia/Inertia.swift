@@ -285,8 +285,6 @@ public struct InertiaViewRepresentable: NSViewRepresentable {
     
     public func makeNSView(context: Context) -> NSViewType {
         let view = view()
-//        view.isOpaque = false
-//        view.backgroundColor = .clear
         return view
     }
     
@@ -1055,7 +1053,6 @@ struct InertiaActionable<Content: View>: View {
                 wrappedContent
             }
         }
-    //            .frame(minWidth: contentSize.width, minHeight: contentSize.height)
 
         // One level out from every rendering effect above, so what the shapes
         // are projected from is where this view was laid out — not where the
@@ -1282,7 +1279,6 @@ struct InertiaEditable<Content: View>: View {
         ZStack(alignment: .center) {
             content
                 .disabled(inertiaDataModel?.isActionable ?? false)
-//                .modifier(BindableSize(size: $contentSize))
         }
         // Behind the content and inside everything that moves it — the drag
         // below as well as the animation in `body` — so the shapes stay with
@@ -1466,7 +1462,6 @@ struct InertiaEditable<Content: View>: View {
     }
     
     var body: some View {
-        //        GeometryReader { rootProxy in
         Group {
             if let animation = animation ?? getAnimation {
                 let values = displayValues(for: animation)
@@ -1481,7 +1476,6 @@ struct InertiaEditable<Content: View>: View {
                 wrappedContent
             }
         }
-    //            .frame(minWidth: contentSize.width, minHeight: contentSize.height)
 
         // The animation above already puts this node where the schema says it
         // starts, so the drag stacked on top of it goes back to zero whenever
@@ -1604,16 +1598,6 @@ struct InertiaEditable<Content: View>: View {
 
         return animation
     }
-
-//    func handleMessage(selectedIds: Set<ActionableIdPair>) {
-//        NSLog("[INERTIA_LOG]: Az(selectedIds) \(selectedIds)")
-//        // Update actionableIdPairs based on selectedIds
-//        // Keep existing pairs that match selectedIds, remove others
-//        inertiaDataModel?.actionableIdPairs = inertiaDataModel?.actionableIdPairs.filter { pair in
-//            selectedIds.contains(pair)
-//        } ?? Set()
-////        inertiaDataModel?.actionableIdPairs
-//    }
     
     func handleMessage(_ msg: Set<ActionableIdPair>) {
         InertiaLog.debug("Received handleMessage with \(msg.count) IDs")
@@ -1926,62 +1910,6 @@ public struct InertiaAnimationKeyframe: Identifiable, Codable, Equatable, Custom
         lhs.duration == rhs.duration
     }
 }
-
-//public enum InertiaObjectType: String, Codable, Equatable, CustomStringConvertible {
-//    public var description: String {
-//        "\(self.rawValue)"
-//    }
-//    
-//    case shape, animation
-//}
-//
-//public struct InertiaShape: Codable, Identifiable, Equatable, CustomStringConvertible {
-//    public var description: String {
-//"""
-//{"id": "\(id)", "containerId": "\(containerId.description)", "width": \(width.description), "height": \(height.description), "position": \(position.debugDescription), "color": \(color.description), "shape": \(shape.description), "objectType": \(objectType.description), "zIndex": \(zIndex), "animation": \(animation.description)}
-//"""
-//    }
-//    
-//    public let id: InertiaID
-//    public let containerId: InertiaID
-//    public let width: CGFloat
-//    public let height: CGFloat
-//    public let position: CGPoint
-//    public let color: [CGFloat]
-//    public let shape: String
-//    public let objectType: InertiaObjectType
-//    public let zIndex: Int
-//    public let animation: InertiaAnimationSchema
-//    
-//    public init(id: InertiaID, containerId: InertiaID, width: CGFloat, height: CGFloat, position: CGPoint, color: [CGFloat], shape: String, objectType: InertiaObjectType, zIndex: Int, animation: InertiaAnimationSchema) {
-//        self.id = id
-//        self.containerId = containerId
-//        self.width = width
-//        self.height = height
-//        self.position = position
-//        self.color = color
-//        self.shape = shape
-//        self.objectType = objectType
-//        self.zIndex = zIndex
-//        self.animation = animation
-//    }
-//}
-
-//public struct InertiaSchema: Codable, Equatable, CustomStringConvertible {
-//    public var description: String {
-//"""
-//{"id": "\(id)", objects: \(objects)}
-//"""
-//    }
-//    
-//    public let id: InertiaID
-//    public let objects: [InertiaShape]
-//    
-//    public init(id: InertiaID, objects: [InertiaShape]) {
-//        self.id = id
-//        self.objects = objects
-//    }
-//}
 
 public enum InertiaAnimationInvokeType: String, Codable, CustomStringConvertible {
     public var description: String {
