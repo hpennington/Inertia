@@ -1310,8 +1310,12 @@ struct InertiaEditable<Content: View>: View {
         }
         .overlay {
             if showSelectedBorder && inertiaDataModel?.isActionable ?? false {
+                // `strokeBorder` rather than `stroke`: a stroke centers the line
+                // on the edge, so half of it hangs outside the node's bounds and
+                // over its neighbours. Inset, the way the Compose runtime's
+                // `Modifier.border` draws it.
                 Rectangle()
-                    .stroke(Color.green)
+                    .strokeBorder(Color.green, lineWidth: 2)
             }
         }
         // Only while this node is the one being edited. A drag is a gesture, not
