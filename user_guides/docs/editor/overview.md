@@ -80,12 +80,12 @@ having the project directory under version control if the animations matter.
 
 === "SwiftUI"
 
-    The editor can install and launch a build on the simulator for you, rather than round
-    tripping through Xcode. Point it at a built `.app` bundle and it runs `simctl install`
-    followed by a launch, reading the bundle identifier out of the bundle itself.
+    Boot a simulator yourself — the editor attaches to a running one but never boots one
+    — then run the app from Xcode with the `INERTIA_EDITOR` flag compiled in. The editor
+    cannot turn on editor mode in an app that was not built for it.
 
-    Builds you install this way still need the `INERTIA_EDITOR` flag compiled in — the
-    editor cannot turn on editor mode in an app that was not built for it.
+    Once the app is up it dials the editor on its own. Rebuilding and relaunching from
+    Xcode reconnects; you do not need to touch the editor.
 
 === "Compose"
 

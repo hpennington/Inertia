@@ -1312,11 +1312,11 @@ having the project directory under version control if the animations matter.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">SwiftUI</label><label for="__tabbed_1_2">Compose</label><label for="__tabbed_1_3">React</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>The editor can install and launch a build on the simulator for you, rather than round
-tripping through Xcode. Point it at a built <code>.app</code> bundle and it runs <code>simctl install</code>
-followed by a launch, reading the bundle identifier out of the bundle itself.</p>
-<p>Builds you install this way still need the <code>INERTIA_EDITOR</code> flag compiled in — the
-editor cannot turn on editor mode in an app that was not built for it.</p>
+<p>Boot a simulator yourself — the editor attaches to a running one but never boots one
+— then run the app from Xcode with the <code>INERTIA_EDITOR</code> flag compiled in. The editor
+cannot turn on editor mode in an app that was not built for it.</p>
+<p>Once the app is up it dials the editor on its own. Rebuilding and relaunching from
+Xcode reconnects; you do not need to touch the editor.</p>
 </div>
 <div class="tabbed-block">
 <p>Start an emulator yourself — the editor attaches to a running one but never boots one

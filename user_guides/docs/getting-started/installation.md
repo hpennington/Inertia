@@ -9,10 +9,12 @@ the guides will show you the same one.
 | --- | --- | --- | --- |
 | App target | iOS 17+ (or macOS 14+) | `minSdk` 26, `compileSdk` 34 | React 18.3.1 |
 | Language | Swift 5.9+ / SwiftUI | Kotlin 2.0+, JVM 17 | TypeScript 5.5+ |
-| Editor | macOS, with `xcrun simctl` | macOS, with `adb` on `PATH` | macOS |
+| Editor | macOS, with Xcode installed | macOS, with `adb` on `PATH` | macOS |
 
-The editor is a macOS app in every case. What differs is what it drives: an iOS Simulator,
-an Android emulator, or your web dev server in a web view.
+The editor is a macOS app in every case. What differs is what it attaches to: a booted iOS
+Simulator, a running Android emulator, or your web dev server in a web view. You start the
+device and launch the app yourself on all three — the editor never boots, installs or
+launches anything.
 
 === "SwiftUI"
 

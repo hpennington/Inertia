@@ -75,7 +75,7 @@ picker:
 
 | Target | Runtime requirement | How the editor reaches it |
 | --- | --- | --- |
-| iOS | iOS 17+ / Swift 5.9+ | An iOS Simulator, driven through `simctl` |
+| iOS | iOS 17+ / Swift 5.9+ | A booted iOS Simulator, mirrored in the viewport |
 | Android | `minSdk` 26, Compose | A running emulator, streamed over `adb` |
 | Web | React 18.3 | Your dev server, loaded in a `WKWebView` |
 
