@@ -372,6 +372,20 @@ public final class InertiaDataModel{
 
     private var clock: Task<Void, Never>? = nil
 
+    /// Whether the editor has asked for playback and not since paused it.
+    ///
+    /// Held across schema arrivals because the two race. The editor sends the
+    /// schemas and then `resume` straight after, and a signal is applied the
+    /// moment it arrives while a schema has to reach this model first — so
+    /// `resume` can land against a `states` map that is still empty, with
+    /// nothing for it to start. Remembering the request lets the schemas start
+    /// themselves when they turn up, which is what `startAutoAnimations` reads
+    /// this for.
+    ///
+    /// Only the editor sends signals, so this stays false in a shipped build
+    /// and a `trigger` animation there still waits for the app.
+    private var isEditorPlaying: Bool = false
+
     /// Roughly one message per display frame. Fine enough for the editor to
     /// interpolate a smooth playhead without flooding the socket.
     private static let clockInterval: Duration = .milliseconds(16)
@@ -447,10 +461,16 @@ public final class InertiaDataModel{
     /// its schema — which is why this runs both when an actionable registers and
     /// when the editor sends a schema, whichever of the two arrives last.
     ///
+    /// While the editor is playing, everything starts whatever its `invokeType`:
+    /// authoring a `trigger` animation is exactly when nothing is going to call
+    /// `trigger(_:)` for it, and a schema that arrived after the editor's
+    /// `resume` would otherwise sit still until the next one. See
+    /// `isEditorPlaying` for the race this settles.
+    ///
     /// Cancelled animations are left where they are: stopping one is the app's
     /// call, and picking it back up is `restart(_:)`'s.
     func startAutoAnimations() {
-        guard markTriggered(where: { $0.invokeType == .auto }) else { return }
+        guard markTriggered(where: { $0.invokeType == .auto || isEditorPlaying }) else { return }
 
         // A parked playhead means the editor is scrubbing, and starting the clock
         // would pull the run out from under whoever is dragging it.
@@ -486,6 +506,7 @@ public final class InertiaDataModel{
     /// Pausing parks the playhead where it is, which holds the frame on screen
     /// and is what playing again picks up from.
     func pausePlayback() {
+        isEditorPlaying = false
         isRunning = false
         clock?.cancel()
         clock = nil
@@ -508,11 +529,21 @@ public final class InertiaDataModel{
     /// Cancelled animations are left where they are: stopping one is the app's
     /// call, and picking it back up is `restart(_:)`'s.
     func resumePlayback() {
+        isEditorPlaying = true
+
+        // Unparked before the bail-out below, not after: a play following a
+        // pause has to release the playhead even when the schemas it applies to
+        // have not arrived yet, or `startAutoAnimations` finds it still parked
+        // and declines to start the run they were meant to join.
+        seekTime = nil
+
         markTriggered(where: { _ in true })
 
+        // Nothing to play yet: the schemas this request arrived ahead of will
+        // start themselves in `startAutoAnimations`, which is where the race
+        // `isEditorPlaying` describes is settled.
         guard states.values.contains(where: { $0.trigger == true }) else { return }
 
-        seekTime = nil
         isRunning = true
         startClock()
     }

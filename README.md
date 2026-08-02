@@ -36,7 +36,7 @@ Inertia sits between the two. Your app is the canvas:
 
 | Runtime | Package | Editor target |
 | --- | --- | --- |
-| **SwiftUI** | `Inertia` (Swift package) | A booted iOS Simulator, mirrored in the viewport |
+| **SwiftUI** | `Inertia` (Swift package) | iOS Simulator, driven through `simctl` |
 | **Jetpack Compose** | `com.github.hpennington:inertia-compose` | Android emulator, over `adb` |
 | **React** | `inertia-react` + `inertia-base` | Your dev server, in a `WKWebView` |
 
@@ -478,9 +478,8 @@ The runtimes are deliberately parallel, but they are not at the same level of ma
 - **Shape rendering is per-platform.** SwiftUI draws through Metal, Compose through
   OpenGL ES 2.0, React through WebGL. The vertices and colours are the same on all three;
   the compositing is each platform's own.
-- **You launch the app yourself on every target.** The editor never installs or launches a
-  build. Boot the simulator or emulator and start the app from Xcode, Android Studio or
-  `adb`, or point the web viewport at your dev server; everything after that is the same.
+- **The editor installs and launches builds on the iOS Simulator only.** On Android and web
+  you launch the app yourself; everything after that is the same.
 
 [Choosing a runtime](https://hpennington.github.io/Inertia/getting-started/runtimes/) has
 the full comparison.

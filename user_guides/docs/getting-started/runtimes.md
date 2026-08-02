@@ -85,12 +85,11 @@ The one gap is the selection geometry the viewport toolbar shows — position an
 selected view. SwiftUI and React report it; Compose does not, so the readout stays blank on
 the Android target.
 
-### Getting your app in front of the editor
+### What the editor can install for you
 
-You launch the app yourself on all three targets — the editor never installs or launches a
-build, and never boots a simulator or emulator. Run the app from Xcode, from Android Studio
-or `adb install -r`, or start your dev server and point the web viewport at it. The editor
-attaches to whatever is already running, and everything after that is the same.
+The editor installs and launches a build on the **iOS Simulator** for you. On Android and
+Web you launch the app yourself — from Android Studio or `adb install`, or by starting
+your dev server. Everything after that is the same.
 
 ## Which to pick
 

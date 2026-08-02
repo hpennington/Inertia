@@ -131,6 +131,105 @@ final class StandalonePlaybackTests: XCTestCase {
         XCTAssertTrue(model.isRunning)
     }
 
+    // MARK: - The editor-playing latch
+
+    /// The editor sends the schemas and then `resume` straight after, and the
+    /// two can arrive the other way round: a signal is applied the moment it
+    /// lands, a schema has to reach the model first. `resume` then finds nothing
+    /// to start, and the `trigger` animation being authored has to start itself
+    /// when its schema turns up — which is the whole point of the latch.
+    func testResumeBeforeSchemasStartsTriggerAnimationsOnArrival() {
+        let model = InertiaDataModel(
+            containerId: "animation",
+            inertiaSchemas: [:],
+            tree: Tree(id: "animation"),
+            actionableIdPairs: []
+        )
+
+        // `resume` overtakes the schemas: nothing is held yet, so it starts
+        // nothing and the clock stays down.
+        model.resumePlayback()
+        XCTAssertFalse(model.isRunning)
+
+        // The schemas land a tick later, the way `handleMessageSchema` delivers
+        // them.
+        model.inertiaSchemas = demoSchemas()
+        model.startAutoAnimations()
+
+        XCTAssertEqual(model.states["card0"]?.trigger, true, "the trigger animation being authored has to play")
+        XCTAssertEqual(model.states["card1"]?.trigger, true)
+        XCTAssertTrue(model.isRunning)
+    }
+
+    /// The playhead has to be released by the `resume` that started nothing,
+    /// otherwise the schemas arriving behind it find it still parked and decline
+    /// to start the run they were meant to join.
+    func testResumeBeforeSchemasUnparksThePlayhead() {
+        let model = InertiaDataModel(
+            containerId: "animation",
+            inertiaSchemas: [:],
+            tree: Tree(id: "animation"),
+            actionableIdPairs: []
+        )
+
+        model.seek(to: 1.0)
+        XCTAssertNotNil(model.seekTime)
+
+        model.resumePlayback()
+        XCTAssertNil(model.seekTime)
+
+        model.inertiaSchemas = demoSchemas()
+        model.startAutoAnimations()
+
+        XCTAssertTrue(model.isRunning)
+    }
+
+    /// Pausing drops the latch, so a schema arriving after it is back to
+    /// obeying its own `invokeType`.
+    func testPauseClearsTheLatch() {
+        let model = InertiaDataModel(
+            containerId: "animation",
+            inertiaSchemas: [:],
+            tree: Tree(id: "animation"),
+            actionableIdPairs: []
+        )
+
+        model.resumePlayback()
+        model.pausePlayback()
+
+        model.inertiaSchemas = demoSchemas()
+        model.startAutoAnimations()
+
+        XCTAssertNotEqual(model.states["card0"]?.trigger, true, "a paused editor must not start a trigger animation")
+    }
+
+    /// Nothing but the editor sends signals, so a shipped build never sets the
+    /// latch and a `trigger` animation there still waits for the app.
+    func testLatchIsOffWithNoEditorAttached() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.registerHierarchyIdPrefix("card1")
+
+        XCTAssertEqual(model.states["card1"]?.trigger, true)
+        XCTAssertNotEqual(model.states["card0"]?.trigger, true)
+    }
+
+    /// The latch starts what has not run, and leaves alone what the app has
+    /// since cancelled — stopping one is the app's call.
+    func testLatchDoesNotRestartCancelledAnimations() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.trigger("card0")
+        model.cancel("card0")
+
+        model.resumePlayback()
+
+        XCTAssertTrue(model.isCancelled("card0"))
+        XCTAssertNotEqual(model.states["card0"]?.trigger, true)
+    }
+
     /// Restarting is what picks a cancelled animation back up, and what plays a
     /// running one from the top.
     func testRestartClearsCancellationAndRewinds() {

@@ -108,12 +108,12 @@ is listening.
 
 === "SwiftUI"
 
-    1. Boot an iOS Simulator. The editor attaches to a booted one but never boots one for
-       you.
+    1. Boot an iOS Simulator, or let the editor pick a booted one.
     2. Open the Inertia editor, open (or create) a project, and select **iOS** in the
        framework picker.
-    3. Build your app with the `INERTIA_EDITOR` flag and run it on that simulator from
-       Xcode.
+    3. Build your app with the `INERTIA_EDITOR` flag and install it on that simulator —
+       from Xcode, or through the editor's **Install and launch** panel.
+    4. Launch the app.
 
     The simulator shares the Mac's network stack, so `127.0.0.1` reaches the editor with
     no address to discover.
