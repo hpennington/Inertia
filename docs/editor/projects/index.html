@@ -1142,7 +1142,7 @@ autosaves.</p>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>└── MyProject.inertia/
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    ├── meta.json
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    └── animations/
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        └── animation.json
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        └── animation.msgpack
 </span></code></pre></div>
 <table>
 <thead>
@@ -1161,7 +1161,7 @@ autosaves.</p>
 <td>Project metadata — the target framework and the project title.</td>
 </tr>
 <tr>
-<td><code>animations/animation.json</code></td>
+<td><code>animations/animation.msgpack</code></td>
 <td>Every animation in the project. This is the file your app bundles.</td>
 </tr>
 </tbody>
@@ -1184,27 +1184,32 @@ keyframes rather than on top of them.</p>
 <h2 id="getting-animations-into-your-app">Getting animations into your app<a class="headerlink" href="#getting-animations-into-your-app" title="Permanent link">&para;</a></h2>
 <p>The editor writes only to its own project directory. Shipping an animation means copying
 the file into your Xcode project:</p>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cp<span class="w"> </span>~/InertiaStorage/MyProject.inertia/animations/animation.json<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">   </span>path/to/MyApp/animation.json
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cp<span class="w"> </span>~/InertiaStorage/MyProject.inertia/animations/animation.msgpack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">   </span>path/to/MyApp/animation.msgpack
 </span></code></pre></div>
 <p>The file must end up in <strong>Copy Bundle Resources</strong> for your target, and its name must
 match the <code>id</code> you passed to <code>InertiaContainer</code> — <code>id: "animation"</code> loads
-<code>animation.json</code>.</p>
+<code>animation.msgpack</code>.</p>
 <div class="admonition tip">
 <p class="admonition-title">Symlink instead of copying</p>
 <p>If you get tired of copying, symlink the project's animation file into your Xcode
 project once:</p>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ln<span class="w"> </span>-s<span class="w"> </span>~/InertiaStorage/MyProject.inertia/animations/animation.json<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">      </span>path/to/MyApp/animation.json
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ln<span class="w"> </span>-s<span class="w"> </span>~/InertiaStorage/MyProject.inertia/animations/animation.msgpack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">      </span>path/to/MyApp/animation.msgpack
 </span></code></pre></div>
 <p>Xcode copies through the symlink at build time, so a rebuild picks up whatever the
 editor last saved. The tradeoff is that your repository no longer records the
 animation as it shipped — commit the real file before you tag a release.</p>
 </div>
 <h2 id="version-control">Version control<a class="headerlink" href="#version-control" title="Permanent link">&para;</a></h2>
-<p><code>animation.json</code> is ordinary JSON with stable key ordering, so it diffs reasonably.
-Keyframe ids are UUIDs generated when the keyframe is recorded and are stable across
-saves, which keeps diffs limited to what actually changed.</p>
+<p><code>animation.msgpack</code> is binary, so git will treat it as such and no diff will be
+readable. What keeps it from churning is that the editor writes the store sorted by
+id, and keyframe ids are UUIDs generated when the keyframe is recorded and stable
+across saves — so an unchanged animation re-saves to identical bytes.</p>
+<p>To read a change, decode it. Any MessagePack CLI will do; with Python:</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import msgpack,sys,json; print(json.dumps(msgpack.unpack(open(sys.argv[1],&#39;rb&#39;)), indent=2))&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span>animations/animation.msgpack
+</span></code></pre></div>
 <p>The project directory is worth committing alongside your app if the animations are part
 of the product.</p>
 

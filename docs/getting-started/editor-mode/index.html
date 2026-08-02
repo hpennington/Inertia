@@ -1192,7 +1192,7 @@ recorded as keyframes. It is a different code path in the runtime, switched on b
 <tbody>
 <tr>
 <td>Animations come from</td>
-<td><code>animation.json</code>, loaded by the container</td>
+<td><code>animation.msgpack</code>, loaded by the container</td>
 <td>the editor, over a WebSocket</td>
 </tr>
 <tr>
@@ -1291,7 +1291,7 @@ dials port 8060, so a shipped build never reaches for an editor.</p>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">}</span>
 </span></code></pre></div>
 <p><code>dev</code> gates the socket here too: with <code>dev = false</code> the container never dials the
-editor and reads <code>assets/animation.json</code> instead, so it is safe to leave in a release
+editor and reads <code>assets/animation.msgpack</code> instead, so it is safe to leave in a release
 build.</p>
 <p><code>baseURL</code> is passed through as given. From an emulator, <code>127.0.0.1</code> reaches the editor
 because the editor opens an <code>adb reverse</code> tunnel for port 8070 when it attaches — see
@@ -1308,7 +1308,7 @@ instead.</p>
 <p>With <code>dev</code> false the container never opens a socket, so a production bundle does not
 reach for an editor.</p>
 <p>Note that <code>baseURL</code> is <strong>not</strong> the editor's address. The editor connection is always
-<code>ws://127.0.0.1:8080</code>; <code>baseURL</code> is only where <code>&lt;id&gt;.json</code> is fetched from when <code>dev</code>
+<code>ws://127.0.0.1:8080</code>; <code>baseURL</code> is only where <code>&lt;id&gt;.msgpack</code> is fetched from when <code>dev</code>
 is false.</p>
 </div>
 </div>
@@ -1383,8 +1383,8 @@ happy with the animation, take the file across:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="3:3"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">SwiftUI</label><label for="__tabbed_3_2">Compose</label><label for="__tabbed_3_3">React</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cp<span class="w"> </span>~/InertiaStorage/MyProject.inertia/animations/animation.json<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">   </span>path/to/MyApp/animation.json
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cp<span class="w"> </span>~/InertiaStorage/MyProject.inertia/animations/animation.msgpack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">   </span>path/to/MyApp/animation.msgpack
 </span></code></pre></div>
 <p>Then build without the <code>INERTIA_EDITOR</code> flag. The container now loads that file from
 the bundle and plays it with no editor involved.</p>
@@ -1403,7 +1403,7 @@ load it.</p>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8000</span>
 </span></code></pre></div>
 <p>Then run with <code>dev</code> false and <code>baseURL</code> pointing at that server. For a real deploy,
-copy <code>animation.json</code> into your app's static assets and point <code>baseURL</code> at wherever
+copy <code>animation.msgpack</code> into your app's static assets and point <code>baseURL</code> at wherever
 they are served from.</p>
 </div>
 </div>

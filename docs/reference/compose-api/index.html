@@ -1336,7 +1336,7 @@ actionable inside it samples.</p>
 <tbody>
 <tr>
 <td><code>dev</code></td>
-<td><code>true</code> takes animations from the editor over the socket; <code>false</code> reads <code>assets/&lt;id&gt;.json</code> and never opens a socket.</td>
+<td><code>true</code> takes animations from the editor over the socket; <code>false</code> reads <code>assets/&lt;id&gt;.msgpack</code> and never opens a socket.</td>
 </tr>
 <tr>
 <td><code>id</code></td>
@@ -1371,10 +1371,10 @@ drops any schema whose container id does not match its own. Use <code>id = "anim
 any container you intend to author in the editor.</p>
 </div>
 <h3 id="where-the-animation-comes-from">Where the animation comes from<a class="headerlink" href="#where-the-animation-comes-from" title="Permanent link">&para;</a></h3>
-<p>With <code>dev</code> false the container reads <code>assets/&lt;id&gt;.json</code> and logs an error if the file is
+<p>With <code>dev</code> false the container reads <code>assets/&lt;id&gt;.msgpack</code> and logs an error if the file is
 missing or fails to decode — a broken animation leaves the actionables at their layout
 positions rather than bringing the app down. Put the file the editor exported at
-<code>app/src/main/assets/animation.json</code>.</p>
+<code>app/src/main/assets/animation.msgpack</code>.</p>
 <p>With <code>dev</code> true it dials <code>baseURL</code> and takes its schemas from the editor. No socket is
 opened when <code>dev</code> is false, so the container is safe to leave in a release build.</p>
 <p>The container fills the space its host offers it (<code>fillMaxSize()</code>). Since <code>translate</code> is a
@@ -1480,7 +1480,7 @@ runtimes.</p>
 </span><span id="__span-10-23"><a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">opacity</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1.0f</span>
 </span><span id="__span-10-24"><a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a><span class="p">)</span>
 </span></code></pre></div>
-<p>Note that <code>translate</code> is a <code>List&lt;Float&gt;</code> rather than a pair, to match the JSON array in the
+<p>Note that <code>translate</code> is a <code>List&lt;Float&gt;</code> rather than a pair, to match the array in the
 file. See <a href="../values/">Animatable values</a>.</p>
 <h2 id="logging">Logging<a class="headerlink" href="#logging" title="Permanent link">&para;</a></h2>
 <div class="language-kotlin highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kd">object</span><span class="w"> </span><span class="nc">InertiaLog</span><span class="w"> </span><span class="p">{</span>

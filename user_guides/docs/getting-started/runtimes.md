@@ -16,7 +16,7 @@ Every runtime has the same four pieces:
    also selectable and draggable.
 3. **A playback handle** — the app's way to start an animation. Nothing animates until an
    id is triggered.
-4. **An animation file** — `animation.json`, written by the editor.
+4. **An animation file** — `animation.msgpack`, written by the editor.
 
 ## The API, side by side
 
@@ -52,16 +52,17 @@ socket in that mode. Where the file comes from differs:
 
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
-| `dev: false` loads | `<id>.json` from the app bundle | `<id>.json` from `assets/` | `fetch("<baseURL>/<id>.json")` |
+| `dev: false` loads | `<id>.msgpack` from the app bundle | `<id>.msgpack` from `assets/` | `fetch("<baseURL>/<id>.msgpack")` |
 | A missing or broken file | **traps** | logs, draws nothing | logs, draws nothing |
 
 The SwiftUI runtime is the strict one: with `dev: false` the container reads the bundled
 resource during initialization and **traps** if it is missing or fails to decode. An empty
-`[]` is a valid file; a missing one is a crash. Compose and React log an error and leave
+array — the single byte `0x90` — is a valid file; a missing one is a crash. Compose and React log an error and leave
 every tagged view at its layout position.
 
-React's path also means something has to be serving that JSON with CORS headers if it is
-not on the same origin as your app.
+React's path also means something has to be serving that file with CORS headers if it is
+not on the same origin as your app. It is fetched as bytes, so no content type is
+required, but `application/msgpack` is the correct one to send.
 
 ### Interpolation
 

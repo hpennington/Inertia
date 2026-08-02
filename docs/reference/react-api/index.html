@@ -1266,7 +1266,7 @@ every actionable inside it is drawn from.</p>
 </tr>
 <tr>
 <td><code>id</code></td>
-<td>The container id the editor addresses its schemas to, and the basename of the JSON fetched outside editor mode.</td>
+<td>The container id the editor addresses its schemas to, and the basename of the file fetched outside editor mode.</td>
 </tr>
 <tr>
 <td><code>hierarchyId</code></td>
@@ -1274,7 +1274,7 @@ every actionable inside it is drawn from.</p>
 </tr>
 <tr>
 <td><code>baseURL</code></td>
-<td>Where <code>&lt;id&gt;.json</code> is fetched from when <code>dev</code> is false. <strong>Not</strong> the editor's address.</td>
+<td>Where <code>&lt;id&gt;.msgpack</code> is fetched from when <code>dev</code> is false. <strong>Not</strong> the editor's address.</td>
 </tr>
 </tbody>
 </table>
@@ -1292,7 +1292,7 @@ drops any schema whose container id does not match its own. Use <code>id="animat
 any container you intend to author in the editor.</p>
 </div>
 <h3 id="where-the-animation-comes-from">Where the animation comes from<a class="headerlink" href="#where-the-animation-comes-from" title="Permanent link">&para;</a></h3>
-<p>With <code>dev</code> false the container fetches <code>`${baseURL}/${id}.json`</code> on mount, and logs an
+<p>With <code>dev</code> false the container fetches <code>`${baseURL}/${id}.msgpack`</code> on mount, and logs an
 error if the request fails — a missing file is a still page rather than a crash. The server
 needs CORS headers if it is not the same origin as your app.</p>
 <p>With <code>dev</code> true it connects to the editor at <code>ws://127.0.0.1:8080</code>. That address is fixed:

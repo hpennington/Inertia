@@ -1131,7 +1131,7 @@
 <h1 id="inertia">Inertia<a class="headerlink" href="#inertia" title="Permanent link">&para;</a></h1>
 <p>Inertia is a keyframe animation editor for animating the UI you already built. You wrap
 the views you want to move, run your app inside the editor, drag those views around on a
-timeline, and Inertia writes the result to a JSON file your app loads.</p>
+timeline, and Inertia writes the result to a MessagePack file your app loads.</p>
 <p>There is no separate rendering surface and no exported video. The thing you animate in
 the editor is the real view in your real app.</p>
 <p>Three runtimes read the animations the editor writes:</p>
@@ -1185,11 +1185,11 @@ still differ — and they do, in ways worth knowing before you start.</p>
 </ul>
 </div>
 <h2 id="how-it-fits-together">How it fits together<a class="headerlink" href="#how-it-fits-together" title="Permanent link">&para;</a></h2>
-<p><img alt="Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.json your shipped app bundles." class="diagram" src="assets/diagrams/architecture-dark.svg" /></p>
+<p><img alt="Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.msgpack your shipped app bundles." class="diagram" src="assets/diagrams/architecture-dark.svg" /></p>
 <p>In <strong>editor mode</strong> the editor hosts a local WebSocket server and your app connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
 back as you edit, so what you see running is the animation as it currently stands.</p>
-<p>In <strong>release mode</strong> none of that is running. The container loads <code>animation.json</code> for
+<p>In <strong>release mode</strong> none of that is running. The container loads <code>animation.msgpack</code> for
 itself — out of the app bundle in SwiftUI, over HTTP in React — and plays it on its own
 clock. In SwiftUI the WebSocket client is gated on the same <code>dev</code> flag, so a shipped build
 never dials out. (The Compose runtime does not yet have a release path; see

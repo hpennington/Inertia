@@ -1194,7 +1194,7 @@ the animation data. Put it at the root of your app.</p>
    the bundle. Drive it from a build flag rather than hardcoding it — see
    <a href="../installation/">Installation</a>.</li>
 <li>The animation file's name without its extension. <code>"animation"</code> loads
-   <code>animation.json</code> from the bundle. Keep this as <code>"animation"</code> — it doubles as the
+   <code>animation.msgpack</code> from the bundle. Keep this as <code>"animation"</code> — it doubles as the
    container id the editor sends animations to.</li>
 <li>The root node's id in the view hierarchy the editor draws. Any stable string works.</li>
 </ol>
@@ -1226,7 +1226,7 @@ the animation data. Put it at the root of your app.</p>
 </span></code></pre></div>
 <ol>
 <li><code>true</code> takes animations from the editor over the socket; <code>false</code> reads
-   <code>assets/animation.json</code> and never opens one. Wire it to your own build flag.</li>
+   <code>assets/animation.msgpack</code> and never opens one. Wire it to your own build flag.</li>
 <li>The container id the editor addresses its schemas to. Keep it as <code>"animation"</code> —
    the runtime drops schemas meant for any other container.</li>
 <li>The id of the container's own node, which every actionable inside it hangs from.
@@ -1263,9 +1263,9 @@ than the one you authored against.</p>
 </span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="p">}</span>
 </span></code></pre></div>
 <ol>
-<li>The container id the editor addresses its schemas to, and the basename of the JSON
+<li>The container id the editor addresses its schemas to, and the basename of the
    file fetched outside editor mode. Keep it as <code>"animation"</code>.</li>
-<li>Where <code>&lt;id&gt;.json</code> is served from when <code>dev</code> is false. It is <strong>not</strong> the editor's
+<li>Where <code>&lt;id&gt;.msgpack</code> is served from when <code>dev</code> is false. It is <strong>not</strong> the editor's
    address — the editor connection is always <code>ws://127.0.0.1:8080</code>.</li>
 <li><code>true</code> takes animations from the editor over the socket; <code>false</code> fetches them from
    <code>baseURL</code> and never opens a socket.</li>
@@ -1383,10 +1383,10 @@ transform onto that wrapper. It takes a single child element.</p>
 appears more than once.</p>
 </div>
 <h2 id="3-give-it-an-animation">3. Give it an animation<a class="headerlink" href="#3-give-it-an-animation" title="Permanent link">&para;</a></h2>
-<p>Animations normally come from the editor, but the file is plain JSON and hand-writing
-one is a good way to see the shape of it. This moves <code>card0</code> from left of center to
-center over three seconds:</p>
-<div class="language-json highlight"><span class="filename">animation.json</span><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">[</span>
+<p>Animations normally come from the editor. The file is binary, so it is not one you can
+type out — but reading it as JSON is still the quickest way to see the shape of it. This
+moves <code>card0</code> from left of center to center over three seconds:</p>
+<div class="language-json highlight"><span class="filename">animation.msgpack, as JSON</span><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">[</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="p">{</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;card0&quot;</span><span class="p">,</span>
 </span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="nt">&quot;invokeType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;trigger&quot;</span><span class="p">,</span>

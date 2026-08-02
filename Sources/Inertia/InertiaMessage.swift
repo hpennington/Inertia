@@ -4,6 +4,11 @@
 //
 //  Wire format shared by the runtime (server) and the editor (client).
 //
+//  Every frame is one MessagePack-encoded `MessageWrapper`, sent as a binary
+//  WebSocket frame. `payload` is `Data`, which MessagePack carries as a `bin`
+//  value: the inner message is a separately encoded MessagePack document, so
+//  the envelope can be read without knowing what it holds.
+//
 
 import Foundation
 

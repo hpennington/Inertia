@@ -321,6 +321,8 @@ public final class InertiaWebSocketClient {
                 case .data(let data):
                     self.decodeAndHandle(data)
                 case .string(let text):
+                    // Every frame is MessagePack now, so nothing on this channel
+                    // has a text form to arrive as.
                     InertiaLog.warning("Received unexpected text frame: \(text)")
                 @unknown default:
                     InertiaLog.warning("Received an unknown message type")
@@ -333,7 +335,7 @@ public final class InertiaWebSocketClient {
 
     private func decodeAndHandle(_ data: Data) {
         do {
-            let messageWrapper = try JSONDecoder().decode(InertiaMessage.MessageWrapper.self, from: data)
+            let messageWrapper = try InertiaCoding.decode(InertiaMessage.MessageWrapper.self, from: data)
             handleMessage(messageWrapper)
         } catch {
             InertiaLog.error("Receive decode error: \(error)")
@@ -343,24 +345,24 @@ public final class InertiaWebSocketClient {
     private func handleMessage(_ messageWrapper: InertiaMessage.MessageWrapper) {
         switch messageWrapper.type {
         case .actionable:
-            guard let message = try? JSONDecoder().decode(InertiaMessage.MessageActionable.self, from: messageWrapper.payload) else {
+            guard let message = try? InertiaCoding.decode(InertiaMessage.MessageActionable.self, from: messageWrapper.payload) else {
                 return
             }
             InertiaLog.verbose("Received message (data): \(message)")
             DispatchQueue.main.async { self.messageReceivedIsActionable?(message.isActionable) }
         case .actionables:
-            guard let message = try? JSONDecoder().decode(InertiaMessage.MessageActionables.self, from: messageWrapper.payload) else {
+            guard let message = try? InertiaCoding.decode(InertiaMessage.MessageActionables.self, from: messageWrapper.payload) else {
                 return
             }
             DispatchQueue.main.async { self.messageReceived?(message.actionableIds) }
         case .schema:
-            guard let message = try? JSONDecoder().decode(InertiaMessage.MessageSchema.self, from: messageWrapper.payload) else {
+            guard let message = try? InertiaCoding.decode(InertiaMessage.MessageSchema.self, from: messageWrapper.payload) else {
                 return
             }
             InertiaLog.verbose("Received message (data): \(message)")
             DispatchQueue.main.async { self.messageReceivedSchema?(message.schemaWrappers) }
         case .signal:
-            guard let message = try? JSONDecoder().decode(InertiaMessage.MessageSignal.self, from: messageWrapper.payload) else {
+            guard let message = try? InertiaCoding.decode(InertiaMessage.MessageSignal.self, from: messageWrapper.payload) else {
                 return
             }
             InertiaLog.verbose("Received message (data): \(message)")
@@ -474,8 +476,8 @@ public final class InertiaWebSocketClient {
         }
 
         guard
-            let payloadData = try? JSONEncoder().encode(payload),
-            let wrapperData = try? JSONEncoder().encode(InertiaMessage.MessageWrapper(type: type, payload: payloadData))
+            let payloadData = try? InertiaCoding.encode(payload),
+            let wrapperData = try? InertiaCoding.encode(InertiaMessage.MessageWrapper(type: type, payload: payloadData))
         else {
             InertiaLog.error("Error encoding message of type \(type)")
             completion?()

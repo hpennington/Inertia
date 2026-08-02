@@ -33,7 +33,7 @@ implement identically.
 
 `"plane"` is an **id shared by every instance**. It is what you look up in the animation
 file, what you pass to `trigger`, and what appears as an animation's `id` in
-`animation.json`. All three runtimes call this parameter `id` for exactly that reason —
+`animation.msgpack`. All three runtimes call this parameter `id` for exactly that reason —
 one id, one animation, however many views wear it.
 
 ## The id in the hierarchy
@@ -170,7 +170,7 @@ In practice this matters for two things:
 
     | Parameter | Purpose |
     | --- | --- |
-    | `id` | The animation file's resource name. `id: "animation"` loads `animation.json`. |
+    | `id` | The animation file's resource name. `id: "animation"` loads `animation.msgpack`. |
     | `hierarchyId` | The root node's id in the tree the editor draws. |
 
     They can be the same string — the example app uses `"animation"` for both — but they
@@ -185,7 +185,7 @@ In practice this matters for two things:
 === "React"
 
     `InertiaContainer` takes one: `id`. It is the container id the editor addresses, the id
-    of the root node in the tree the editor draws, and the basename of the JSON fetched
+    of the root node in the tree the editor draws, and the basename of the file fetched
     from `baseURL` outside editor mode.
 
 On every runtime, `id` is the container id the editor addresses its schemas to, and the

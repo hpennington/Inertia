@@ -45,7 +45,7 @@ The editor is a macOS app in every case.
 ## Features
 
 - 🌍 Three runtimes — SwiftUI, Jetpack Compose, React — on one file format
-- 🎨 WYSIWYG keyframe editor with JSON export
+- 🎨 WYSIWYG keyframe editor with MessagePack export
 - ⚡ Native playback: `KeyframeAnimator` on iOS, native clocks on Android and web
 - 🎛️ Playback control from your app: `trigger`, `cancel`, `restart`, `isCancelled`
 - 🔁 Looping or play-once, switchable at runtime
@@ -73,7 +73,7 @@ targets: [
 
 Requires **iOS 17+ / macOS 14+** and Swift 5.9+. The iOS 17 floor is `KeyframeAnimator`.
 
-Add an `animation.json` containing `[]` to your target's **Copy Bundle Resources** — the
+Add an `animation.msgpack` containing `[]` to your target's **Copy Bundle Resources** — the
 container reads it by `id` at init and traps if it is missing. Then add `-D INERTIA_EDITOR`
 to **Other Swift Flags** for the configuration you want to edit in.
 
@@ -162,7 +162,7 @@ struct DemoApp: App {
         WindowGroup {
             InertiaContainer(
                 dev: AppEnvironment.isInertiaEditor, // editor mode when built with -D INERTIA_EDITOR
-                id: "animation",                     // reads animation.json from the bundle
+                id: "animation",                     // reads animation.msgpack from the bundle
                 hierarchyId: "animation"             // this container's node in the hierarchy
             ) {
                 ContentView()
@@ -290,7 +290,7 @@ export default function App() {
 }
 ```
 
-Outside editor mode the React container fetches `<baseURL>/<id>.json` over HTTP, so
+Outside editor mode the React container fetches `<baseURL>/<id>.msgpack` over HTTP, so
 something has to serve the editor's animations directory with CORS headers. The repository
 ships `example/demo.inertia/animations/serve_animations.py` for exactly that. In editor
 mode the socket is dialed at `ws://127.0.0.1:8080` regardless of `baseURL`.

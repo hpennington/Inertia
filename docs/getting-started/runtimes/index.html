@@ -1269,7 +1269,7 @@ maturity, and the differences that remain are worth knowing before you start.</p
    also selectable and draggable.</li>
 <li><strong>A playback handle</strong> — the app's way to start an animation. Nothing animates until an
    id is triggered.</li>
-<li><strong>An animation file</strong> — <code>animation.json</code>, written by the editor.</li>
+<li><strong>An animation file</strong> — <code>animation.msgpack</code>, written by the editor.</li>
 </ol>
 <h2 id="the-api-side-by-side">The API, side by side<a class="headerlink" href="#the-api-side-by-side" title="Permanent link">&para;</a></h2>
 <table>
@@ -1368,9 +1368,9 @@ socket in that mode. Where the file comes from differs:</p>
 <tbody>
 <tr>
 <td><code>dev: false</code> loads</td>
-<td><code>&lt;id&gt;.json</code> from the app bundle</td>
-<td><code>&lt;id&gt;.json</code> from <code>assets/</code></td>
-<td><code>fetch("&lt;baseURL&gt;/&lt;id&gt;.json")</code></td>
+<td><code>&lt;id&gt;.msgpack</code> from the app bundle</td>
+<td><code>&lt;id&gt;.msgpack</code> from <code>assets/</code></td>
+<td><code>fetch("&lt;baseURL&gt;/&lt;id&gt;.msgpack")</code></td>
 </tr>
 <tr>
 <td>A missing or broken file</td>
@@ -1382,10 +1382,11 @@ socket in that mode. Where the file comes from differs:</p>
 </table>
 <p>The SwiftUI runtime is the strict one: with <code>dev: false</code> the container reads the bundled
 resource during initialization and <strong>traps</strong> if it is missing or fails to decode. An empty
-<code>[]</code> is a valid file; a missing one is a crash. Compose and React log an error and leave
+array — the single byte <code>0x90</code> — is a valid file; a missing one is a crash. Compose and React log an error and leave
 every tagged view at its layout position.</p>
-<p>React's path also means something has to be serving that JSON with CORS headers if it is
-not on the same origin as your app.</p>
+<p>React's path also means something has to be serving that file with CORS headers if it is
+not on the same origin as your app. It is fetched as bytes, so no content type is
+required, but <code>application/msgpack</code> is the correct one to send.</p>
 <h3 id="interpolation">Interpolation<a class="headerlink" href="#interpolation" title="Permanent link">&para;</a></h3>
 <table>
 <thead>

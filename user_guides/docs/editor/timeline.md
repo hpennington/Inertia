@@ -73,7 +73,7 @@ refolds the durations so nothing else moves.
 ## What gets written
 
 Keyframes are held in memory as you record and written to the project's
-`animations/animation.json` on save — autosave every 10 seconds, or when you close the
+`animations/animation.msgpack` on save — autosave every 10 seconds, or when you close the
 project. Reopening a project loads its tracks back and parks each playhead at the end of
 what was recorded, so recording continues after the existing keyframes.
 

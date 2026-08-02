@@ -12,11 +12,17 @@ let package = Package(
             name: "Inertia",
             targets: ["Inertia"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/fumoboy007/msgpack-swift.git", from: "2.0.6"),
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "Inertia",
+            dependencies: [
+                .product(name: "DMMessagePack", package: "msgpack-swift"),
+            ],
             resources: [
                 .copy("Metal/")
             ],

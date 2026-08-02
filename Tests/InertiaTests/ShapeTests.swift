@@ -4,35 +4,6 @@ import XCTest
 /// The shapes an actionable's canvas draws: how they are authored alongside an
 /// animation, and how they reach the renderer.
 final class ShapeTests: XCTestCase {
-    /// The two kinds of entry `example/demo.inertia/animations/animation.json`
-    /// holds: a card with a shape behind it, and one without the key at all.
-    private let demoJSON = """
-    [
-      {
-        "id" : "card0",
-        "initialValues" : {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [0, 0]},
-        "invokeType" : "trigger",
-        "keyframes" : [],
-        "shapes" : [
-          {
-            "vertices" : [
-              {"position": {"x": 0, "y": 0}, "color": {"red": 0.35, "green": 0.1, "blue": 0.85, "alpha": 0.6}},
-              {"position": {"x": 1, "y": 0}, "color": {"red": 0.1, "green": 0.55, "blue": 0.95, "alpha": 0.6}},
-              {"position": {"x": 1, "y": 1}, "color": {"red": 0.1, "green": 0.85, "blue": 0.75, "alpha": 0.6}},
-              {"position": {"x": 0, "y": 1}, "color": {"red": 0.35, "green": 0.1, "blue": 0.85, "alpha": 0.6}}
-            ]
-          }
-        ]
-      },
-      {
-        "id" : "card1",
-        "initialValues" : {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [0, 0]},
-        "invokeType" : "auto",
-        "keyframes" : []
-      }
-    ]
-    """
-
     private func corner(_ x: Double, _ y: Double) -> Vertex {
         Vertex(
             position: InertiaPoint(x: x, y: y),
@@ -40,9 +11,43 @@ final class ShapeTests: XCTestCase {
         )
     }
 
+    private func shapedCorner(_ x: Double, _ y: Double, _ red: Float, _ green: Float, _ blue: Float) -> Vertex {
+        Vertex(
+            position: InertiaPoint(x: x, y: y),
+            color: InertiaColor(red: red, green: green, blue: blue, alpha: 0.6)
+        )
+    }
+
+    private let identity = InertiaAnimationValues(scale: 1, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1)
+
+    /// A card with a shape behind it, taken through the animation file's own
+    /// bytes rather than built in memory: what is being checked is that a shape
+    /// survives being written and read back, so the coding has to be part of it.
     private func decodeDemo() throws -> [InertiaID: InertiaAnimationSchema] {
-        let data = try XCTUnwrap(demoJSON.data(using: .utf8))
-        let schemas = try XCTUnwrap(decodeInertiaSchemas(json: data))
+        let card0 = InertiaAnimationSchema(
+            id: "card0",
+            initialValues: identity,
+            invokeType: .trigger,
+            keyframes: [],
+            shapes: [
+                InertiaShape(vertices: [
+                    shapedCorner(0, 0, 0.35, 0.1, 0.85),
+                    shapedCorner(1, 0, 0.1, 0.55, 0.95),
+                    shapedCorner(1, 1, 0.1, 0.85, 0.75),
+                    shapedCorner(0, 1, 0.35, 0.1, 0.85)
+                ])
+            ]
+        )
+
+        let card1 = InertiaAnimationSchema(
+            id: "card1",
+            initialValues: identity,
+            invokeType: .auto,
+            keyframes: []
+        )
+
+        let data = try InertiaCoding.encode([card0, card1])
+        let schemas = try XCTUnwrap(decodeInertiaSchemas(data: data))
         return schemas.reduce(into: [:]) { $0[$1.id] = $1 }
     }
 
@@ -59,7 +64,22 @@ final class ShapeTests: XCTestCase {
     /// none — has to keep loading, or a single old file takes the whole
     /// container's schemas down with it.
     func testAnimationWithoutShapesStillDecodes() throws {
-        let card1 = try XCTUnwrap(decodeDemo()["card1"])
+        /// A schema as it was written before shapes existed: the key is
+        /// genuinely absent from the bytes rather than present and empty.
+        /// Encoding the real type would always write the field, so the case
+        /// needs a shape of its own to be tested at all.
+        struct SchemaWithoutShapes: Encodable {
+            let id: InertiaID
+            let initialValues: InertiaAnimationValues
+            let invokeType: InertiaAnimationInvokeType
+            let keyframes: [InertiaAnimationKeyframe]
+        }
+
+        let data = try InertiaCoding.encode(
+            SchemaWithoutShapes(id: "card1", initialValues: identity, invokeType: .auto, keyframes: [])
+        )
+
+        let card1 = try InertiaCoding.decode(InertiaAnimationSchema.self, from: data)
 
         XCTAssertEqual(card1.shapes, [])
     }
@@ -70,8 +90,8 @@ final class ShapeTests: XCTestCase {
     /// keyframe anyone records.
     func testShapesAreWrittenBackOut() throws {
         let decoded = try decodeDemo()
-        let encoded = try JSONEncoder().encode(["card0", "card1"].compactMap { decoded[$0] })
-        let reread = try XCTUnwrap(decodeInertiaSchemas(json: encoded))
+        let encoded = try InertiaCoding.encode(["card0", "card1"].compactMap { decoded[$0] })
+        let reread = try XCTUnwrap(decodeInertiaSchemas(data: encoded))
             .reduce(into: [InertiaID: InertiaAnimationSchema]()) { $0[$1.id] = $1 }
 
         XCTAssertEqual(reread["card0"]?.shapes, decoded["card0"]?.shapes)
@@ -154,35 +174,41 @@ final class ShapeTests: XCTestCase {
     /// The other way a shape is authored: a drawn vector, described rather than
     /// spelled out corner by corner, with a track of its own attached — which is
     /// what makes it move independently of the actionable it is drawn behind.
-    private let drawnJSON = """
-    [
-      {
-        "id" : "card2",
-        "initialValues" : {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [0, 0]},
-        "invokeType" : "auto",
-        "keyframes" : [],
-        "shapes" : [
-          {
-            "shape": {"id": "123", "width": 2, "height": 2, "type": "rectangle"},
-            "animation": {
-              "id" : "shape0",
-              "initialValues" : {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [0, 0]},
-              "invokeType" : "auto",
-              "keyframes" : [
-                {"id": "a", "duration": 0.001, "values": {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [0.8, 0.9]}},
-                {"id": "b", "duration": 1.3, "values": {"opacity": 1, "rotate": 0, "rotateCenter": 0, "scale": 1, "translate": [-0.02, -0.05]}}
-              ],
-              "shapes" : []
-            }
-          }
-        ]
-      }
-    ]
-    """
-
     private func decodeDrawn() throws -> InertiaShape {
-        let data = try XCTUnwrap(drawnJSON.data(using: .utf8))
-        let schemas = try XCTUnwrap(decodeInertiaSchemas(json: data))
+        func values(_ x: CGFloat, _ y: CGFloat) -> InertiaAnimationValues {
+            InertiaAnimationValues(
+                scale: 1,
+                translate: CGSize(width: x, height: y),
+                rotate: 0,
+                rotateCenter: 0,
+                opacity: 1
+            )
+        }
+
+        let card2 = InertiaAnimationSchema(
+            id: "card2",
+            initialValues: identity,
+            invokeType: .auto,
+            keyframes: [],
+            shapes: [
+                InertiaShape(
+                    shape: InertiaShapeProperties(id: "123", type: .rectangle, width: 2, height: 2),
+                    vertices: nil,
+                    animation: InertiaAnimationSchema(
+                        id: "shape0",
+                        initialValues: identity,
+                        invokeType: .auto,
+                        keyframes: [
+                            InertiaAnimationKeyframe(id: "a", values: values(0.8, 0.9), duration: 0.001),
+                            InertiaAnimationKeyframe(id: "b", values: values(-0.02, -0.05), duration: 1.3)
+                        ]
+                    )
+                )
+            ]
+        )
+
+        let data = try InertiaCoding.encode([card2])
+        let schemas = try XCTUnwrap(decodeInertiaSchemas(data: data))
         return try XCTUnwrap(schemas.first?.shapes.first)
     }
 

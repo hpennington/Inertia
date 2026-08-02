@@ -51,10 +51,18 @@ an Android emulator, or your web dev server in a web view.
 
     ## Add the animation file to your target
 
-    The runtime loads animations from a JSON resource in your app bundle, looked up by the
-    container's `id`. A container created with `id: "animation"` reads `animation.json`.
+    The runtime loads animations from a [MessagePack](https://msgpack.org) resource in
+    your app bundle, looked up by the container's `id`. A container created with
+    `id: "animation"` reads `animation.msgpack`.
 
-    1. Create an empty `animation.json` next to your Swift sources containing `[]`.
+    1. Create an empty `animation.msgpack` next to your Swift sources. The file is
+       binary, so it cannot be typed into an editor — an empty array is the single
+       byte `0x90`:
+
+        ```sh
+        printf '\x90' > animation.msgpack
+        ```
+
     2. Drag it into your Xcode project.
     3. Confirm it appears under **Target → Build Phases → Copy Bundle Resources**.
 
@@ -64,7 +72,7 @@ an Android emulator, or your web dev server in a web view.
         initialization and traps if it is missing or fails to decode. An empty
         array is a valid animation file; a missing file is not.
 
-    Once the editor is writing animations for this project, you copy its `animation.json`
+    Once the editor is writing animations for this project, you copy its `animation.msgpack`
     over this one. See [Projects](../editor/projects.md) for where the editor keeps it.
 
     ## Add the editor build flag
@@ -167,10 +175,10 @@ an Android emulator, or your web dev server in a web view.
 
     ## Add the animation file
 
-    Put the `animation.json` the editor exported in your app's assets:
+    Put the `animation.msgpack` the editor exported in your app's assets:
 
     ```
-    app/src/main/assets/animation.json
+    app/src/main/assets/animation.msgpack
     ```
 
     The basename has to match the container's `id`. With `dev = false` the container reads
@@ -233,7 +241,7 @@ an Android emulator, or your web dev server in a web view.
     ## Serve the animation file
 
     Outside editor mode the container does not read a bundled file — it fetches
-    `<baseURL>/<id>.json` over HTTP. Something has to serve the editor's animations
+    `<baseURL>/<id>.msgpack` over HTTP. Something has to serve the editor's animations
     directory, with CORS headers, at whatever `baseURL` you pass:
 
     ```sh

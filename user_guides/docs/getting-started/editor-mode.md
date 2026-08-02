@@ -8,7 +8,7 @@ recorded as keyframes. It is a different code path in the runtime, switched on b
 
 | | `dev: false` | `dev: true` |
 | --- | --- | --- |
-| Animations come from | `animation.json`, loaded by the container | the editor, over a WebSocket |
+| Animations come from | `animation.msgpack`, loaded by the container | the editor, over a WebSocket |
 | Tagged views | animate | animate, and are selectable and draggable |
 | Playback clock | runs in the app | still runs in the app; the editor pauses, scrubs and resumes it by message, and mirrors its position on the playhead |
 | WebSocket client | never started | dialing the editor |
@@ -79,7 +79,7 @@ is listening.
     ```
 
     `dev` gates the socket here too: with `dev = false` the container never dials the
-    editor and reads `assets/animation.json` instead, so it is safe to leave in a release
+    editor and reads `assets/animation.msgpack` instead, so it is safe to leave in a release
     build.
 
     `baseURL` is passed through as given. From an emulator, `127.0.0.1` reaches the editor
@@ -101,7 +101,7 @@ is listening.
     reach for an editor.
 
     Note that `baseURL` is **not** the editor's address. The editor connection is always
-    `ws://127.0.0.1:8080`; `baseURL` is only where `<id>.json` is fetched from when `dev`
+    `ws://127.0.0.1:8080`; `baseURL` is only where `<id>.msgpack` is fetched from when `dev`
     is false.
 
 ## Connecting
@@ -177,8 +177,8 @@ happy with the animation, take the file across:
 === "SwiftUI"
 
     ```sh
-    cp ~/InertiaStorage/MyProject.inertia/animations/animation.json \
-       path/to/MyApp/animation.json
+    cp ~/InertiaStorage/MyProject.inertia/animations/animation.msgpack \
+       path/to/MyApp/animation.msgpack
     ```
 
     Then build without the `INERTIA_EDITOR` flag. The container now loads that file from
@@ -204,7 +204,7 @@ happy with the animation, take the file across:
     ```
 
     Then run with `dev` false and `baseURL` pointing at that server. For a real deploy,
-    copy `animation.json` into your app's static assets and point `baseURL` at wherever
+    copy `animation.msgpack` into your app's static assets and point `baseURL` at wherever
     they are served from.
 
 [Projects](../editor/projects.md) covers the project layout.

@@ -1205,7 +1205,7 @@ implement identically.</p>
 </div>
 <p><code>"plane"</code> is an <strong>id shared by every instance</strong>. It is what you look up in the animation
 file, what you pass to <code>trigger</code>, and what appears as an animation's <code>id</code> in
-<code>animation.json</code>. All three runtimes call this parameter <code>id</code> for exactly that reason —
+<code>animation.msgpack</code>. All three runtimes call this parameter <code>id</code> for exactly that reason —
 one id, one animation, however many views wear it.</p>
 <h2 id="the-id-in-the-hierarchy">The id in the hierarchy<a class="headerlink" href="#the-id-in-the-hierarchy" title="Permanent link">&para;</a></h2>
 <p>Internally each <em>instance</em> of a tagged view gets a distinct hierarchy id, formed by
@@ -1327,7 +1327,7 @@ will differ accordingly.</p>
 <tbody>
 <tr>
 <td><code>id</code></td>
-<td>The animation file's resource name. <code>id: "animation"</code> loads <code>animation.json</code>.</td>
+<td>The animation file's resource name. <code>id: "animation"</code> loads <code>animation.msgpack</code>.</td>
 </tr>
 <tr>
 <td><code>hierarchyId</code></td>
@@ -1345,7 +1345,7 @@ and the id of the root node in the tree the editor draws.</p>
 </div>
 <div class="tabbed-block">
 <p><code>InertiaContainer</code> takes one: <code>id</code>. It is the container id the editor addresses, the id
-of the root node in the tree the editor draws, and the basename of the JSON fetched
+of the root node in the tree the editor draws, and the basename of the file fetched
 from <code>baseURL</code> outside editor mode.</p>
 </div>
 </div>

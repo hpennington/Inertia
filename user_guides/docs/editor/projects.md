@@ -13,14 +13,14 @@ Projects live under `InertiaStorage` in your home directory:
 └── MyProject.inertia/
     ├── meta.json
     └── animations/
-        └── animation.json
+        └── animation.msgpack
 ```
 
 | Path | Contents |
 | --- | --- |
 | `MyProject.inertia/` | The project. The name before `.inertia` is the project title. |
 | `meta.json` | Project metadata — the target framework and the project title. |
-| `animations/animation.json` | Every animation in the project. This is the file your app bundles. |
+| `animations/animation.msgpack` | Every animation in the project. This is the file your app bundles. |
 
 `meta.json` is small:
 
@@ -50,13 +50,13 @@ The editor writes only to its own project directory. Shipping an animation means
 the file into your Xcode project:
 
 ```sh
-cp ~/InertiaStorage/MyProject.inertia/animations/animation.json \
-   path/to/MyApp/animation.json
+cp ~/InertiaStorage/MyProject.inertia/animations/animation.msgpack \
+   path/to/MyApp/animation.msgpack
 ```
 
 The file must end up in **Copy Bundle Resources** for your target, and its name must
 match the `id` you passed to `InertiaContainer` — `id: "animation"` loads
-`animation.json`.
+`animation.msgpack`.
 
 !!! tip "Symlink instead of copying"
 
@@ -64,8 +64,8 @@ match the `id` you passed to `InertiaContainer` — `id: "animation"` loads
     project once:
 
     ```sh
-    ln -s ~/InertiaStorage/MyProject.inertia/animations/animation.json \
-          path/to/MyApp/animation.json
+    ln -s ~/InertiaStorage/MyProject.inertia/animations/animation.msgpack \
+          path/to/MyApp/animation.msgpack
     ```
 
     Xcode copies through the symlink at build time, so a rebuild picks up whatever the
@@ -74,9 +74,17 @@ match the `id` you passed to `InertiaContainer` — `id: "animation"` loads
 
 ## Version control
 
-`animation.json` is ordinary JSON with stable key ordering, so it diffs reasonably.
-Keyframe ids are UUIDs generated when the keyframe is recorded and are stable across
-saves, which keeps diffs limited to what actually changed.
+`animation.msgpack` is binary, so git will treat it as such and no diff will be
+readable. What keeps it from churning is that the editor writes the store sorted by
+id, and keyframe ids are UUIDs generated when the keyframe is recorded and stable
+across saves — so an unchanged animation re-saves to identical bytes.
+
+To read a change, decode it. Any MessagePack CLI will do; with Python:
+
+```sh
+python3 -c "import msgpack,sys,json; print(json.dumps(msgpack.unpack(open(sys.argv[1],'rb')), indent=2))" \
+    animations/animation.msgpack
+```
 
 The project directory is worth committing alongside your app if the animations are part
 of the product.

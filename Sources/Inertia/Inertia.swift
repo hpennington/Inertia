@@ -719,10 +719,11 @@ public struct InertiaContainer<Content: View>: View {
                 wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: [:], tree: Tree(id: id), actionableIdPairs: Set())
             )
         } else {
-            if let url = bundle.url(forResource: id, withExtension: "json") {
-                let schemaText = try! String(contentsOf: url, encoding: .utf8)
-                if let data = schemaText.data(using: .utf8),
-                   let schemas = decodeInertiaSchemas(json: data) {
+            // Read as bytes rather than text: an animation file is MessagePack,
+            // and most of it is not valid UTF-8.
+            if let url = bundle.url(forResource: id, withExtension: InertiaCoding.fileExtension) {
+                if let data = try? Data(contentsOf: url),
+                   let schemas = decodeInertiaSchemas(data: data) {
                     InertiaLog.info("InertiaDataModel instantiated for container: \(id)")
                     let schemaMap = schemas.reduce(into: [String: InertiaAnimationSchema]()) { $0[$1.id] = $1 }
                     self._inertiaDataModel = State(
@@ -1995,12 +1996,11 @@ func InertiaSchemaAnimation() -> InertiaAnimationSchema {
     )
 }
 
-func decodeInertiaSchemas(json: Data) -> [InertiaAnimationSchema]? {
+func decodeInertiaSchemas(data: Data) -> [InertiaAnimationSchema]? {
     do {
-        let schemas = try JSONDecoder().decode([InertiaAnimationSchema].self, from: json)
-        return schemas
+        return try InertiaCoding.decode([InertiaAnimationSchema].self, from: data)
     } catch {
-        InertiaLog.error("Failed to decode JSON: \(error.localizedDescription)")
+        InertiaLog.error("Failed to decode the animation file: \(error.localizedDescription)")
         return nil
     }
 }
