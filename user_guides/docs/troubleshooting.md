@@ -55,7 +55,7 @@ has its own listener, and the panel only shows the one currently selected.
     - Is the page loaded in the editor's own web view? The runtime dials
       `ws://127.0.0.1:8080`, so a page served from another machine cannot reach it.
     - Is the page served over `https`? A secure page refuses a `ws://` dial outright.
-    - Does the app have at least one `<Inertiaable>`? A container with no tagged views
+    - Does the app have at least one `<Inertia>`? A container with no tagged views
       reports a tree with only its root.
     - Is anything else holding port **8080**?
 
@@ -153,9 +153,11 @@ Check that the container wraps what you intend — usually the root view, fillin
 — and that nothing between it and the animated view constrains the frame in a way you did
 not mean.
 
-This bites hardest on Compose, where `InertiaContainer` measures itself with
-`wrapContentSize()`: give it content that fills the screen, or every `translate` in it
-resolves against a smaller box than the one you authored against.
+All three containers fill the space their host offers them — `GeometryReader` plus
+`.frame(maxWidth:maxHeight: .infinity)` on SwiftUI, `fillMaxSize()` on Compose,
+`width: 100%; height: 100%` on React — so they resolve `translate` against the same
+rectangle. What differs is what the *host* offers: a container nested inside something that
+constrains it gets the smaller box, and every offset in it scales down with it.
 
 ## The animation reads differently on iOS than on Android or the web
 

@@ -118,7 +118,7 @@ an Android emulator, or your web dev server in a web view.
 
     ```kotlin
     import org.inertiagraphics.inertia.InertiaContainer
-    import org.inertiagraphics.inertia.Inertiaable
+    import org.inertiagraphics.inertia.Inertia
     import org.inertiagraphics.inertia.LocalInertia
     ```
 
@@ -165,20 +165,28 @@ an Android emulator, or your web dev server in a web view.
     Keep this to the hosts you actually need, and prefer a `debug` source set over the
     main manifest if the app is ever going to be released.
 
-    ## Keep the container out of release builds
+    ## Add the animation file
 
-    !!! warning "The Compose runtime has no release path yet"
+    Put the `animation.json` the editor exported in your app's assets:
 
-        `InertiaContainer` accepts a `dev` parameter but does not read it: it connects to
-        `baseURL` unconditionally, and never loads an animation file for itself. There is
-        nothing for a shipped build to play, and it would keep retrying the dial.
+    ```
+    app/src/main/assets/animation.json
+    ```
 
-        Gate the container out yourself — a `BuildConfig.DEBUG` branch, or a
-        build-variant source set that swaps the container for a plain `Box`. See
-        [Choosing a runtime](runtimes.md).
+    The basename has to match the container's `id`. With `dev = false` the container reads
+    it from there; with `dev = true` it ignores the file and takes its schemas from the
+    editor over the socket instead.
 
-    There is no animation file to add to your Android project, for the same reason. The
-    editor's `animation.json` is read by the editor, and pushed to the app over the socket.
+    Wire `dev` to a build flag so a release build never dials the editor:
+
+    ```kotlin
+    InertiaContainer(
+        dev = BuildConfig.DEBUG,
+        id = "animation",
+        hierarchyId = "animation",
+        baseURL = "ws://127.0.0.1:8070"
+    ) { App() }
+    ```
 
 === "React"
 
@@ -219,7 +227,7 @@ an Android emulator, or your web dev server in a web view.
     Then import from it:
 
     ```tsx
-    import { InertiaContainer, Inertiaable, useInertia } from "inertia-react";
+    import { InertiaContainer, Inertia, useInertia } from "inertia-react";
     ```
 
     ## Serve the animation file

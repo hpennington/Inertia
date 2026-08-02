@@ -191,7 +191,7 @@ nest.
 
 ```kotlin
 import org.inertiagraphics.inertia.InertiaContainer
-import org.inertiagraphics.inertia.Inertiaable
+import org.inertiagraphics.inertia.Inertia
 import org.inertiagraphics.inertia.LocalInertia
 
 class MainActivity : ComponentActivity() {
@@ -200,9 +200,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 InertiaContainer(
+                    dev = true,
                     id = "animation",
-                    baseURL = "ws://127.0.0.1:8070",  // the editor, through `adb reverse`
-                    dev = true
+                    hierarchyId = "animation",
+                    baseURL = "ws://127.0.0.1:8070"  // the editor, through `adb reverse`
                 ) {
                     DemoApp()
                 }
@@ -218,10 +219,10 @@ fun DemoApp() {
     LaunchedEffect(inertia) { inertia.isRepeating = false }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Inertiaable(hierarchyIdPrefix = "card0") {
+        Inertia(id = "card0") {
             DemoCard(title = "Welcome", subtitle = "Tap trigger to animate.")
         }
-        Inertiaable(hierarchyIdPrefix = "card1") {
+        Inertia(id = "card1") {
             DemoCard(title = "Second Card", subtitle = "Same animation, own state.")
         }
         Button(onClick = {
@@ -237,7 +238,7 @@ fun DemoApp() {
 ### React
 
 ```tsx
-import { InertiaContainer, Inertiaable, useInertia } from "inertia-react";
+import { InertiaContainer, Inertia, useInertia } from "inertia-react";
 
 const isDev = process.env.REACT_APP_INERTIA_DEV !== "false";
 const baseURL = process.env.REACT_APP_INERTIA_BASE_URL ?? "http://localhost:8000";
@@ -246,18 +247,18 @@ function DemoApp() {
   const inertia = useInertia();
 
   React.useEffect(() => {
-    inertia.setRepeating(false);
+    inertia.isRepeating = false;
   }, [inertia]);
 
   return (
     <div>
-      <Inertiaable hierarchyIdPrefix="card0">
+      <Inertia id="card0">
         <Card title="Welcome" subtitle="Tap trigger to animate." />
-      </Inertiaable>
+      </Inertia>
 
-      <Inertiaable hierarchyIdPrefix="card1">
+      <Inertia id="card1">
         <Card title="Second Card" subtitle="Same animation, own state." />
-      </Inertiaable>
+      </Inertia>
 
       <button
         onClick={() => {
@@ -290,13 +291,16 @@ mode the socket is dialed at `ws://127.0.0.1:8080` regardless of `baseURL`.
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
 | Import | `import Inertia` | `org.inertiagraphics.inertia` | `from "inertia-react"` |
-| Container | `InertiaContainer(dev:id:hierarchyId:)` | `InertiaContainer(id, baseURL, dev)` | `<InertiaContainer id baseURL dev>` |
-| Tag a view | `.inertia("card0")` | `Inertiaable("card0") { … }` | `<Inertiaable hierarchyIdPrefix="card0">` |
+| Container | `InertiaContainer(dev:id:hierarchyId:)` | `InertiaContainer(dev, id, hierarchyId, baseURL)` | `<InertiaContainer dev id hierarchyId baseURL>` |
+| Tag a view | `.inertia("card0")` | `Inertia(id = "card0") { … }` | `<Inertia id="card0">` |
 | Playback handle | `@Environment(\.inertiaDataModel)` | `LocalInertia.current` | `useInertia()` |
 | Start | `trigger(_:)` | `trigger(…)` | `trigger(…)` |
 | Stop / rewind | `cancel(_:)`, `restart(_:)` | `cancel`, `restart` | `cancel`, `restart` |
 | Query | `isCancelled(_:)` | `isCancelled` | `isCancelled` |
-| Looping | `isRepeating` | `isRepeating` | `setRepeating` / `isRepeating` |
+| Looping | `isRepeating` | `isRepeating` | `isRepeating` |
+| Loop length | `loopDuration` | `loopDuration` | `loopDuration` |
+| Playhead (read-only) | `playheadTime`, `seekTime` | `playheadTime`, `seekTime` | `playheadTime`, `seekTime` |
+| Constants | `InertiaPlayback` | `InertiaPlayback` | `InertiaPlayback` |
 | Editor port | 8060 | 8070 | 8080 |
 
 `trigger` starts an animation whose `invokeType` is `"trigger"`; one arriving mid-run joins
@@ -352,7 +356,7 @@ The editor writes an array of animation objects, one per tagged id:
 
 | Field | Meaning |
 | --- | --- |
-| `id` | Matches the id passed to `.inertia()` / `Inertiaable` |
+| `id` | Matches the id passed to `.inertia()` / `Inertia` |
 | `initialValues` | The pose before anything runs, and where `cancel` returns to |
 | `invokeType` | `"auto"` starts when the view appears; `"trigger"` waits for your call |
 | `keyframes` | The track: each entry is a pose and how long to take reaching it |
@@ -378,19 +382,17 @@ pause, resume, seek, loop duration — and report their position back so the tim
 a running animation.
 
 In **release mode** none of that runs. The container loads the animation for itself and
-plays it on its own clock: from the app bundle on SwiftUI, over HTTP on React.
+plays it on its own clock: from the app bundle on SwiftUI, from `assets/` on Compose, over
+HTTP on React.
 
 ## Known differences between runtimes
 
 The runtimes are deliberately parallel, but they are not at the same level of maturity.
 
-- **Compose has no release path yet.** `InertiaContainer` accepts `dev` but does not read
-  it: it connects to `baseURL` unconditionally and never loads an animation file for
-  itself. Gate the container out of release builds yourself — a `BuildConfig.DEBUG` branch
-  or a build-variant source set.
 - **SwiftUI is strict about the bundled file.** With `dev: false` the container reads the
   resource during init and traps if it is missing or fails to decode. `[]` is valid; absent
-  is a crash. React logs an error and renders a still page instead.
+  is a crash. Compose and React log an error and leave the views at their layout
+  positions instead.
 - **Interpolation differs.** SwiftUI fits a cubic spline across the whole track, so motion
   can overshoot a keyframe on the way to the next. Compose and React solve each segment
   with a cubic ease-in-out, which never overshoots. The poses at the keyframes are
@@ -415,11 +417,12 @@ the full comparison.
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
 | Author in the editor | ✅ | ✅ | ✅ |
-| Ship the result | ✅ | ⚠️ no release path | ✅ (serve the JSON) |
+| Ship the result | ✅ (bundle the JSON) | ✅ (`assets/`) | ✅ (serve the JSON) |
 | Distribution | Swift Package Manager | JitPack | build from source |
 
-If you are animating an iOS app, the SwiftUI runtime is the one kept current and the only
-one with a supported release path today.
+All three expose the same API and ship the same animation file. The SwiftUI runtime is the
+one kept most current — it is where new work lands first, and its cubic-spline
+interpolation is the reference the other two approximate.
 
 ---
 

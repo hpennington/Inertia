@@ -956,10 +956,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inertiaable" class="md-nav__link">
+  <a href="#inertia" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Inertiaable
+        Inertia
       
     </span>
   </a>
@@ -1147,10 +1147,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inertiaable" class="md-nav__link">
+  <a href="#inertia" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Inertiaable
+        Inertia
       
     </span>
   </a>
@@ -1236,7 +1236,7 @@
 <p>The React runtime is two packages. <code>inertia-react</code> is what your app imports; it depends on
 <code>inertia-base</code>, which holds the framework-agnostic core and is worth reaching into only for
 the shared constants and types.</p>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">InertiaContainer</span><span class="p">,</span><span class="w"> </span><span class="nx">Inertiaable</span><span class="p">,</span><span class="w"> </span><span class="nx">useInertia</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;inertia-react&quot;</span><span class="p">;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">InertiaContainer</span><span class="p">,</span><span class="w"> </span><span class="nx">Inertia</span><span class="p">,</span><span class="w"> </span><span class="nx">useInertia</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;inertia-react&quot;</span><span class="p">;</span>
 </span></code></pre></div>
 <p>React 18.3.1 is a peer dependency — your app supplies React, and a second copy resolving
 inside the package breaks hooks.</p>
@@ -1246,10 +1246,11 @@ inside the package breaks hooks.</p>
 every actionable inside it is drawn from.</p>
 <div class="language-tsx highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">InertiaContainerProps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nx">children</span><span class="o">:</span><span class="w"> </span><span class="kt">React.ReactElement</span><span class="p">;</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">baseURL</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nx">dev</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">};</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">dev</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nx">hierarchyId</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nx">baseURL</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">};</span>
 </span></code></pre></div>
 <table>
 <thead>
@@ -1260,23 +1261,30 @@ every actionable inside it is drawn from.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>dev</code></td>
+<td><code>true</code> takes animations from the editor over the socket and never fetches; <code>false</code> fetches from <code>baseURL</code> and never opens a socket.</td>
+</tr>
+<tr>
 <td><code>id</code></td>
 <td>The container id the editor addresses its schemas to, and the basename of the JSON fetched outside editor mode.</td>
+</tr>
+<tr>
+<td><code>hierarchyId</code></td>
+<td>The id of the container's own node — the root every actionable inside it hangs from. Usually the same string as <code>id</code>.</td>
 </tr>
 <tr>
 <td><code>baseURL</code></td>
 <td>Where <code>&lt;id&gt;.json</code> is fetched from when <code>dev</code> is false. <strong>Not</strong> the editor's address.</td>
 </tr>
-<tr>
-<td><code>dev</code></td>
-<td><code>true</code> takes animations from the editor over the socket and never fetches; <code>false</code> fetches from <code>baseURL</code> and never opens a socket.</td>
-</tr>
 </tbody>
 </table>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">&lt;</span><span class="nt">InertiaContainer</span><span class="w"> </span><span class="na">id</span><span class="o">=</span><span class="s">&quot;animation&quot;</span><span class="w"> </span><span class="na">baseURL</span><span class="o">=</span><span class="s">&quot;http://localhost:8000&quot;</span><span class="w"> </span><span class="na">dev</span><span class="o">=</span><span class="p">{</span><span class="nx">isDev</span><span class="p">}&gt;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">&lt;</span><span class="nt">InertiaContainer</span><span class="w"> </span><span class="na">dev</span><span class="o">=</span><span class="p">{</span><span class="nx">isDev</span><span class="p">}</span><span class="w"> </span><span class="na">id</span><span class="o">=</span><span class="s">&quot;animation&quot;</span><span class="w"> </span><span class="na">hierarchyId</span><span class="o">=</span><span class="s">&quot;animation&quot;</span><span class="w"> </span><span class="na">baseURL</span><span class="o">=</span><span class="s">&quot;http://localhost:8000&quot;</span><span class="p">&gt;</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="p">&lt;</span><span class="nt">App</span><span class="w"> </span><span class="p">/&gt;</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">&lt;/</span><span class="nt">InertiaContainer</span><span class="p">&gt;</span>
 </span></code></pre></div>
+<p>This is the same argument list the SwiftUI and Compose containers take, in the same order.
+SwiftUI has no <code>baseURL</code> — it reads from a <code>Bundle</code> — and on Compose <code>baseURL</code> is the
+editor's socket rather than an HTTP origin.</p>
 <div class="admonition warning">
 <p class="admonition-title">The editor only addresses the container id <code>animation</code></p>
 <p>The editor sends every schema against the container id <code>"animation"</code>, and the runtime
@@ -1291,20 +1299,21 @@ needs CORS headers if it is not the same origin as your app.</p>
 <code>baseURL</code> has no bearing on it.</p>
 <p>The canvas is measured with a <code>ResizeObserver</code>, so a container that resizes re-resolves
 every <code>translate</code> against the new size.</p>
-<h2 id="inertiaable"><code>Inertiaable</code><a class="headerlink" href="#inertiaable" title="Permanent link">&para;</a></h2>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">InertiaableProps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<h2 id="inertia"><code>Inertia</code><a class="headerlink" href="#inertia" title="Permanent link">&para;</a></h2>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">InertiaProps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nx">children</span><span class="o">:</span><span class="w"> </span><span class="kt">React.ReactElement</span><span class="p">;</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nx">hierarchyIdPrefix</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">};</span>
 </span></code></pre></div>
 <p>Wraps one element and animates it under the given id.</p>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">&lt;</span><span class="nt">Inertiaable</span><span class="w"> </span><span class="na">hierarchyIdPrefix</span><span class="o">=</span><span class="s">&quot;card0&quot;</span><span class="p">&gt;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">&lt;</span><span class="nt">Inertia</span><span class="w"> </span><span class="na">id</span><span class="o">=</span><span class="s">&quot;card0&quot;</span><span class="p">&gt;</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="p">&lt;</span><span class="nt">div</span><span class="w"> </span><span class="na">style</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">width</span><span class="o">:</span><span class="w"> </span><span class="kt">200</span><span class="p">,</span><span class="w"> </span><span class="nx">height</span><span class="o">:</span><span class="w"> </span><span class="kt">120</span><span class="p">,</span><span class="w"> </span><span class="nx">background</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;blue&quot;</span><span class="w"> </span><span class="p">}}</span><span class="w"> </span><span class="p">/&gt;</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="p">&lt;/</span><span class="nt">Inertiaable</span><span class="p">&gt;</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="p">&lt;/</span><span class="nt">Inertia</span><span class="p">&gt;</span>
 </span></code></pre></div>
-<p><code>hierarchyIdPrefix</code> is the id you look up in the animation file and pass to <code>trigger</code>. Each
-<em>instance</em> claims a distinct hierarchy id by appending an index (<code>card0--0</code>, <code>card0--1</code>),
-which is what lets the editor tell copies apart — see <a href="../../guides/ids/">Animation IDs</a>.</p>
+<p><code>id</code> is the id you look up in the animation file and the same id you pass to <code>trigger</code>.
+Each <em>instance</em> claims a distinct hierarchy id by appending an index (<code>card0--0</code>,
+<code>card0--1</code>), which is what lets the editor tell copies apart — see
+<a href="../../guides/ids/">Animation IDs</a>.</p>
 <p>It renders an <code>inline-block</code> wrapper <code>div</code> carrying <code>data-inertia-id</code>, and the playback
 controller writes <code>transform</code> and <code>opacity</code> onto that wrapper directly, outside React's
 render cycle. So a frame of animation does not re-render your component tree.</p>
@@ -1318,33 +1327,43 @@ translation, and draws the selection border.</p>
 InertiaContainer"</em> outside a container.</p>
 <div class="language-tsx highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">inertia</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useInertia</span><span class="p">();</span>
 </span></code></pre></div>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">InertiaPlaybackHandle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nx">trigger</span><span class="p">(</span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nx">cancel</span><span class="p">(</span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nx">restart</span><span class="p">(</span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nx">isCancelled</span><span class="p">(</span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="nx">setRepeating</span><span class="p">(</span><span class="nx">value</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span><span class="nx">isRepeating</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="p">}</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="nx">isRepeating</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span><span class="nx">loopDuration</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">  </span><span class="k">readonly</span><span class="w"> </span><span class="nx">playheadTime</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">  </span><span class="k">readonly</span><span class="w"> </span><span class="nx">seekTime</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="p">};</span>
 </span></code></pre></div>
 <ul>
 <li><strong><code>trigger</code></strong> starts an animation that was waiting on its <code>trigger</code> invoke type. Arriving
-  mid-run it joins the run in progress rather than cutting it short.</li>
+  mid-run it joins the run in progress rather than cutting it short, and a cancelled
+  animation is left where it is.</li>
 <li><strong><code>cancel</code></strong> stops an animation and returns it to its <code>initialValues</code>, where it stays
   until <code>restart</code>.</li>
 <li><strong><code>restart</code></strong> clears a cancellation and plays from the top. Because every actionable in a
   container shares one clock, this rewinds the playhead for all of them.</li>
-<li><strong><code>setRepeating</code></strong> — on by default. With it off, each track plays its keyframes once and
+<li><strong><code>isRepeating</code></strong> — on by default. With it off, each track plays its keyframes once and
   holds its final pose.</li>
+<li><strong><code>loopDuration</code></strong> — how long one loop lasts, in seconds. Applies from the next frame, so
+  changing it mid-run stretches the loop rather than waiting for a restart. The editor
+  overwrites it whenever the timeline is resized.</li>
+<li><strong><code>playheadTime</code></strong> and <strong><code>seekTime</code></strong> are read-only. <code>seekTime</code> is non-null only while the
+  editor has the playhead parked.</li>
 </ul>
+<p><code>isRepeating</code> and <code>loopDuration</code> are properties rather than setter functions, so an app
+assigns to them exactly as it would on SwiftUI and Compose:</p>
 <div class="language-tsx highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">React</span><span class="p">.</span><span class="nx">useEffect</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nx">inertia</span><span class="p">.</span><span class="nx">setRepeating</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nx">inertia</span><span class="p">.</span><span class="nx">isRepeating</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="nx">inertia</span><span class="p">]);</span>
 </span></code></pre></div>
 <p>The returned object is memoized on the controller, so it is stable across renders and safe
-in a dependency array.</p>
-<p>Loop duration is not exposed here. It starts at the default and changes only when the
-editor sends a new timeline length.</p>
+in a dependency array. Its members are accessors rather than a snapshot — the controller
+drives the screen imperatively, so a value copied out of it would be stale by the next
+frame.</p>
 <h2 id="inertiaplaybackcontroller"><code>InertiaPlaybackController</code><a class="headerlink" href="#inertiaplaybackcontroller" title="Permanent link">&para;</a></h2>
 <p>The class behind <code>useInertia</code>, exported for the rare case of driving playback without the
 hook. It owns the clock, the schema map, the registered nodes, and the per-frame render.
@@ -1376,7 +1395,7 @@ runtime up yourself.</p>
 <p>Playback constants and the interpolation helpers, should you want to sample a track
 yourself:</p>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nx">InertiaPlayback</span><span class="p">,</span><span class="w">   </span><span class="c1">// defaultLoopDuration, clampLoopDuration</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nx">InertiaPlayback</span><span class="p">,</span><span class="w">   </span><span class="c1">// defaultLoopDuration, loopDurationRange, clampLoopDuration</span>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nx">valuesAtTime</span><span class="p">,</span><span class="w">      </span><span class="c1">// (schema, time, loopDuration, isRepeating) =&gt; values</span>
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span><span class="nx">trackDuration</span><span class="p">,</span><span class="w">     </span><span class="c1">// (schema) =&gt; seconds</span>
 </span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nx">playableKeyframes</span><span class="p">,</span><span class="w"> </span><span class="c1">// keyframes with non-positive durations repaired</span>
@@ -1390,8 +1409,8 @@ round-trip it.</p>
 <p><code>Tree</code>, <code>Node</code>, <code>WebSocketClient</code>, <code>MessageSchema</code>, <code>InertiaSchemaWrapper</code>,
 <code>AnimationSignal</code> and the other message types are exported because the editor talks to them
 over the wire. They are part of the editor protocol rather than the app-facing API.</p>
-<p><code>withDrag</code>, <code>DraggableProps</code> and <code>DraggableInertiaableGuts</code> are the drag machinery
-<code>Inertiaable</code> is built from, exported for composition rather than for direct use.</p>
+<p><code>withDrag</code>, <code>DraggableProps</code> and <code>DraggableInertiaGuts</code> are the drag machinery <code>Inertia</code> is
+built from, exported for composition rather than for direct use.</p>
 <h2 id="logging">Logging<a class="headerlink" href="#logging" title="Permanent link">&para;</a></h2>
 <p>The runtime logs to the browser console with an <code>[INERTIA_LOG]</code> prefix, which makes it easy
 to filter in devtools. It traces schema arrival, id registration and the socket lifecycle —

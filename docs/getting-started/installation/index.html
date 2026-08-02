@@ -509,10 +509,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#keep-the-container-out-of-release-builds" class="md-nav__link">
+  <a href="#add-the-animation-file" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Keep the container out of release builds
+        Add the animation file
       
     </span>
   </a>
@@ -1212,10 +1212,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#keep-the-container-out-of-release-builds" class="md-nav__link">
+  <a href="#add-the-animation-file" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Keep the container out of release builds
+        Add the animation file
       
     </span>
   </a>
@@ -1400,7 +1400,7 @@ configuration:</p>
 </span></code></pre></div>
 <p>Everything is in one package:</p>
 <div class="language-kotlin highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">import</span><span class="w"> </span><span class="nn">org.inertiagraphics.inertia.InertiaContainer</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">import</span><span class="w"> </span><span class="nn">org.inertiagraphics.inertia.Inertiaable</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">import</span><span class="w"> </span><span class="nn">org.inertiagraphics.inertia.Inertia</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">import</span><span class="w"> </span><span class="nn">org.inertiagraphics.inertia.LocalInertia</span>
 </span></code></pre></div>
 <div class="admonition tip">
@@ -1437,18 +1437,21 @@ the editor at:</p>
 </span></code></pre></div>
 <p>Keep this to the hosts you actually need, and prefer a <code>debug</code> source set over the
 main manifest if the app is ever going to be released.</p>
-<h2 id="keep-the-container-out-of-release-builds">Keep the container out of release builds<a class="headerlink" href="#keep-the-container-out-of-release-builds" title="Permanent link">&para;</a></h2>
-<div class="admonition warning">
-<p class="admonition-title">The Compose runtime has no release path yet</p>
-<p><code>InertiaContainer</code> accepts a <code>dev</code> parameter but does not read it: it connects to
-<code>baseURL</code> unconditionally, and never loads an animation file for itself. There is
-nothing for a shipped build to play, and it would keep retrying the dial.</p>
-<p>Gate the container out yourself — a <code>BuildConfig.DEBUG</code> branch, or a
-build-variant source set that swaps the container for a plain <code>Box</code>. See
-<a href="../runtimes/">Choosing a runtime</a>.</p>
-</div>
-<p>There is no animation file to add to your Android project, for the same reason. The
-editor's <code>animation.json</code> is read by the editor, and pushed to the app over the socket.</p>
+<h2 id="add-the-animation-file">Add the animation file<a class="headerlink" href="#add-the-animation-file" title="Permanent link">&para;</a></h2>
+<p>Put the <code>animation.json</code> the editor exported in your app's assets:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>app/src/main/assets/animation.json
+</span></code></pre></div>
+<p>The basename has to match the container's <code>id</code>. With <code>dev = false</code> the container reads
+it from there; with <code>dev = true</code> it ignores the file and takes its schemas from the
+editor over the socket instead.</p>
+<p>Wire <code>dev</code> to a build flag so a release build never dials the editor:</p>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">InertiaContainer</span><span class="p">(</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span><span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BuildConfig</span><span class="p">.</span><span class="na">DEBUG</span><span class="p">,</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="n">hierarchyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span><span class="n">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ws://127.0.0.1:8070&quot;</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">App</span><span class="p">()</span><span class="w"> </span><span class="p">}</span>
+</span></code></pre></div>
 </div>
 <div class="tabbed-block">
 <h2 id="build-and-link-the-packages">Build and link the packages<a class="headerlink" href="#build-and-link-the-packages" title="Permanent link">&para;</a></h2>
@@ -1461,29 +1464,29 @@ them out of the repository and link them into your app:</p>
 </ul>
 <p><code>inertia-react</code> depends on <code>inertia-base</code> by file path, so the two build in order.
 The repository has a script that does exactly that:</p>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>./scripts/build_react.sh
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>./scripts/build_react.sh
 </span></code></pre></div>
 <p>Then depend on the built package from your app:</p>
-<div class="language-json highlight"><span class="filename">package.json</span><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="p">{</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">&quot;dependencies&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="nt">&quot;inertia-react&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;file:../path/to/runtime-web/inertia-react&quot;</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="p">}</span>
+<div class="language-json highlight"><span class="filename">package.json</span><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="p">{</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span><span class="nt">&quot;dependencies&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span><span class="nt">&quot;inertia-react&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;file:../path/to/runtime-web/inertia-react&quot;</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="p">}</span>
 </span></code></pre></div>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>npm<span class="w"> </span>install
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>npm<span class="w"> </span>install
 </span></code></pre></div>
 <p>React 18.3.1 is a <strong>peer</strong> dependency of <code>inertia-react</code>, so your app supplies it.
 Having a second copy of React resolve inside the package breaks hooks, which is why
 the build script deletes <code>node_modules/react</code> before building.</p>
 <p>Then import from it:</p>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">InertiaContainer</span><span class="p">,</span><span class="w"> </span><span class="nx">Inertiaable</span><span class="p">,</span><span class="w"> </span><span class="nx">useInertia</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;inertia-react&quot;</span><span class="p">;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">InertiaContainer</span><span class="p">,</span><span class="w"> </span><span class="nx">Inertia</span><span class="p">,</span><span class="w"> </span><span class="nx">useInertia</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;inertia-react&quot;</span><span class="p">;</span>
 </span></code></pre></div>
 <h2 id="serve-the-animation-file">Serve the animation file<a class="headerlink" href="#serve-the-animation-file" title="Permanent link">&para;</a></h2>
 <p>Outside editor mode the container does not read a bundled file — it fetches
 <code>&lt;baseURL&gt;/&lt;id&gt;.json</code> over HTTP. Something has to serve the editor's animations
 directory, with CORS headers, at whatever <code>baseURL</code> you pass:</p>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nb">cd</span><span class="w"> </span>MyProject.inertia/animations
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8000</span>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nb">cd</span><span class="w"> </span>MyProject.inertia/animations
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8000</span>
 </span></code></pre></div>
 <p>The repository ships a small server that does this with
 <code>Access-Control-Allow-Origin: *</code> already set, at
@@ -1491,8 +1494,8 @@ directory, with CORS headers, at whatever <code>baseURL</code> you pass:</p>
 as long as your page is served from the same origin.</p>
 <h2 id="add-the-editor-flag">Add the editor flag<a class="headerlink" href="#add-the-editor-flag" title="Permanent link">&para;</a></h2>
 <p>Editor mode is a prop, so drive it from the environment rather than hardcoding it:</p>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">isDev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">REACT_APP_INERTIA_DEV</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s2">&quot;false&quot;</span><span class="p">;</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">REACT_APP_INERTIA_BASE_URL</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;http://localhost:8000&quot;</span><span class="p">;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">isDev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">REACT_APP_INERTIA_DEV</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s2">&quot;false&quot;</span><span class="p">;</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">REACT_APP_INERTIA_BASE_URL</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;http://localhost:8000&quot;</span><span class="p">;</span>
 </span></code></pre></div>
 <p>With <code>dev</code> false the container never opens a socket, so a production bundle does not
 reach for an editor.</p>

@@ -5,7 +5,7 @@ The React runtime is two packages. `inertia-react` is what your app imports; it 
 the shared constants and types.
 
 ```tsx
-import { InertiaContainer, Inertiaable, useInertia } from "inertia-react";
+import { InertiaContainer, Inertia, useInertia } from "inertia-react";
 ```
 
 React 18.3.1 is a peer dependency — your app supplies React, and a second copy resolving
@@ -20,23 +20,29 @@ every actionable inside it is drawn from.
 ```tsx
 type InertiaContainerProps = {
   children: React.ReactElement;
-  id: string;
-  baseURL: string;
   dev: boolean;
+  id: string;
+  hierarchyId: string;
+  baseURL: string;
 };
 ```
 
 | Prop | Meaning |
 | --- | --- |
-| `id` | The container id the editor addresses its schemas to, and the basename of the JSON fetched outside editor mode. |
-| `baseURL` | Where `<id>.json` is fetched from when `dev` is false. **Not** the editor's address. |
 | `dev` | `true` takes animations from the editor over the socket and never fetches; `false` fetches from `baseURL` and never opens a socket. |
+| `id` | The container id the editor addresses its schemas to, and the basename of the JSON fetched outside editor mode. |
+| `hierarchyId` | The id of the container's own node — the root every actionable inside it hangs from. Usually the same string as `id`. |
+| `baseURL` | Where `<id>.json` is fetched from when `dev` is false. **Not** the editor's address. |
 
 ```tsx
-<InertiaContainer id="animation" baseURL="http://localhost:8000" dev={isDev}>
+<InertiaContainer dev={isDev} id="animation" hierarchyId="animation" baseURL="http://localhost:8000">
   <App />
 </InertiaContainer>
 ```
+
+This is the same argument list the SwiftUI and Compose containers take, in the same order.
+SwiftUI has no `baseURL` — it reads from a `Bundle` — and on Compose `baseURL` is the
+editor's socket rather than an HTTP origin.
 
 !!! warning "The editor only addresses the container id `animation`"
 
@@ -56,26 +62,27 @@ With `dev` true it connects to the editor at `ws://127.0.0.1:8080`. That address
 The canvas is measured with a `ResizeObserver`, so a container that resizes re-resolves
 every `translate` against the new size.
 
-## `Inertiaable`
+## `Inertia`
 
 ```tsx
-type InertiaableProps = {
+type InertiaProps = {
   children: React.ReactElement;
-  hierarchyIdPrefix: string;
+  id: string;
 };
 ```
 
 Wraps one element and animates it under the given id.
 
 ```tsx
-<Inertiaable hierarchyIdPrefix="card0">
+<Inertia id="card0">
   <div style={{ width: 200, height: 120, background: "blue" }} />
-</Inertiaable>
+</Inertia>
 ```
 
-`hierarchyIdPrefix` is the id you look up in the animation file and pass to `trigger`. Each
-*instance* claims a distinct hierarchy id by appending an index (`card0--0`, `card0--1`),
-which is what lets the editor tell copies apart — see [Animation IDs](../guides/ids.md).
+`id` is the id you look up in the animation file and the same id you pass to `trigger`.
+Each *instance* claims a distinct hierarchy id by appending an index (`card0--0`,
+`card0--1`), which is what lets the editor tell copies apart — see
+[Animation IDs](../guides/ids.md).
 
 It renders an `inline-block` wrapper `div` carrying `data-inertia-id`, and the playback
 controller writes `transform` and `opacity` onto that wrapper directly, outside React's
@@ -98,36 +105,46 @@ const inertia = useInertia();
 ```
 
 ```ts
-{
+type InertiaPlaybackHandle = {
   trigger(id: string): void;
   cancel(id: string): void;
   restart(id: string): void;
   isCancelled(id: string): boolean;
-  setRepeating(value: boolean): void;
-  isRepeating(): boolean;
-}
+  isRepeating: boolean;
+  loopDuration: number;
+  readonly playheadTime: number;
+  readonly seekTime: number | null;
+};
 ```
 
 - **`trigger`** starts an animation that was waiting on its `trigger` invoke type. Arriving
-  mid-run it joins the run in progress rather than cutting it short.
+  mid-run it joins the run in progress rather than cutting it short, and a cancelled
+  animation is left where it is.
 - **`cancel`** stops an animation and returns it to its `initialValues`, where it stays
   until `restart`.
 - **`restart`** clears a cancellation and plays from the top. Because every actionable in a
   container shares one clock, this rewinds the playhead for all of them.
-- **`setRepeating`** — on by default. With it off, each track plays its keyframes once and
+- **`isRepeating`** — on by default. With it off, each track plays its keyframes once and
   holds its final pose.
+- **`loopDuration`** — how long one loop lasts, in seconds. Applies from the next frame, so
+  changing it mid-run stretches the loop rather than waiting for a restart. The editor
+  overwrites it whenever the timeline is resized.
+- **`playheadTime`** and **`seekTime`** are read-only. `seekTime` is non-null only while the
+  editor has the playhead parked.
+
+`isRepeating` and `loopDuration` are properties rather than setter functions, so an app
+assigns to them exactly as it would on SwiftUI and Compose:
 
 ```tsx
 React.useEffect(() => {
-  inertia.setRepeating(false);
+  inertia.isRepeating = false;
 }, [inertia]);
 ```
 
 The returned object is memoized on the controller, so it is stable across renders and safe
-in a dependency array.
-
-Loop duration is not exposed here. It starts at the default and changes only when the
-editor sends a new timeline length.
+in a dependency array. Its members are accessors rather than a snapshot — the controller
+drives the screen imperatively, so a value copied out of it would be stale by the next
+frame.
 
 ## `InertiaPlaybackController`
 
@@ -168,7 +185,7 @@ yourself:
 
 ```ts
 import {
-  InertiaPlayback,   // defaultLoopDuration, clampLoopDuration
+  InertiaPlayback,   // defaultLoopDuration, loopDurationRange, clampLoopDuration
   valuesAtTime,      // (schema, time, loopDuration, isRepeating) => values
   trackDuration,     // (schema) => seconds
   playableKeyframes, // keyframes with non-positive durations repaired
@@ -186,8 +203,8 @@ round-trip it.
 `AnimationSignal` and the other message types are exported because the editor talks to them
 over the wire. They are part of the editor protocol rather than the app-facing API.
 
-`withDrag`, `DraggableProps` and `DraggableInertiaableGuts` are the drag machinery
-`Inertiaable` is built from, exported for composition rather than for direct use.
+`withDrag`, `DraggableProps` and `DraggableInertiaGuts` are the drag machinery `Inertia` is
+built from, exported for composition rather than for direct use.
 
 ## Logging
 

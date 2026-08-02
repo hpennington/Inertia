@@ -18,7 +18,7 @@ implement identically.
 === "Compose"
 
     ```kotlin
-    Inertiaable(hierarchyIdPrefix = "plane") {
+    Inertia(id = "plane") {
         Text("✈")
     }
     ```
@@ -26,14 +26,15 @@ implement identically.
 === "React"
 
     ```tsx
-    <Inertiaable hierarchyIdPrefix="plane">
+    <Inertia id="plane">
       <span>✈</span>
-    </Inertiaable>
+    </Inertia>
     ```
 
-`"plane"` is a **prefix**. It is what you look up in the animation file, what you pass to
-`trigger`, and what appears as an animation's `id` in `animation.json`. The Compose and
-React APIs name the parameter `hierarchyIdPrefix` for exactly this reason.
+`"plane"` is an **id shared by every instance**. It is what you look up in the animation
+file, what you pass to `trigger`, and what appears as an animation's `id` in
+`animation.json`. All three runtimes call this parameter `id` for exactly that reason —
+one id, one animation, however many views wear it.
 
 ## The id in the hierarchy
 
@@ -68,7 +69,7 @@ same animation.
 
     ```kotlin
     repeat(3) {
-        Inertiaable(hierarchyIdPrefix = "plane") { Text("✈") }   // one animation, three views
+        Inertia(id = "plane") { Text("✈") }   // one animation, three views
     }
     ```
 
@@ -76,9 +77,9 @@ same animation.
 
     ```tsx
     {[0, 1, 2].map(i => (
-      <Inertiaable key={i} hierarchyIdPrefix="plane">   {/* one animation, three views */}
+      <Inertia key={i} id="plane">   {/* one animation, three views */}
         <span>✈</span>
-      </Inertiaable>
+      </Inertia>
     ))}
     ```
 
@@ -119,7 +120,7 @@ silently never animates, so it is worth keeping the two ends together:
         CARD0("card0"), CARD1("card1"), PLANE_TOP("planeTop"), PLANE_BOTTOM("planeBottom")
     }
 
-    Inertiaable(hierarchyIdPrefix = AnimationID.CARD0.id) { /* … */ }
+    Inertia(id = AnimationID.CARD0.id) { /* … */ }
 
     // ...
 
@@ -138,7 +139,7 @@ silently never animates, so it is worth keeping the two ends together:
     ```
 
     ```tsx
-    <Inertiaable hierarchyIdPrefix={AnimationID.card0}>{/* … */}</Inertiaable>
+    <Inertia id={AnimationID.card0}>{/* … */}</Inertia>
 
     // ...
 

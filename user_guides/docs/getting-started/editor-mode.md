@@ -69,21 +69,18 @@ is listening.
 
     ```kotlin
     InertiaContainer(
+        dev = true,
         id = "animation",
-        baseURL = "ws://127.0.0.1:8070",
-        dev = true
+        hierarchyId = "animation",
+        baseURL = "ws://127.0.0.1:8070"
     ) {
         DemoApp()
     }
     ```
 
-    !!! warning "`dev` does not gate anything yet"
-
-        The Compose container accepts `dev` and never reads it. It connects to `baseURL`
-        whatever you pass, and has no path that loads an animation file for itself.
-
-        Keep the whole container out of release builds — a `BuildConfig.DEBUG` branch, or
-        a build-variant source set. See [Choosing a runtime](runtimes.md).
+    `dev` gates the socket here too: with `dev = false` the container never dials the
+    editor and reads `assets/animation.json` instead, so it is safe to leave in a release
+    build.
 
     `baseURL` is passed through as given. From an emulator, `127.0.0.1` reaches the editor
     because the editor opens an `adb reverse` tunnel for port 8070 when it attaches — see

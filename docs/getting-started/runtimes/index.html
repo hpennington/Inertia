@@ -1291,14 +1291,14 @@ maturity, and the differences that remain are worth knowing before you start.</p
 <tr>
 <td>Container</td>
 <td><code>InertiaContainer(dev:id:hierarchyId:)</code></td>
-<td><code>InertiaContainer(id, baseURL, dev)</code></td>
-<td><code>&lt;InertiaContainer id baseURL dev&gt;</code></td>
+<td><code>InertiaContainer(dev, id, hierarchyId, baseURL)</code></td>
+<td><code>&lt;InertiaContainer dev id hierarchyId baseURL&gt;</code></td>
 </tr>
 <tr>
 <td>Tag a view</td>
 <td><code>.inertia("card0")</code></td>
-<td><code>Inertiaable("card0") { … }</code></td>
-<td><code>&lt;Inertiaable hierarchyIdPrefix="card0"&gt;</code></td>
+<td><code>Inertia(id = "card0") { … }</code></td>
+<td><code>&lt;Inertia id="card0"&gt;</code></td>
 </tr>
 <tr>
 <td>Playback handle</td>
@@ -1307,16 +1307,34 @@ maturity, and the differences that remain are worth knowing before you start.</p
 <td><code>useInertia()</code></td>
 </tr>
 <tr>
-<td>Start an animation</td>
-<td><code>trigger(_:)</code></td>
-<td><code>trigger(…)</code></td>
-<td><code>trigger(…)</code></td>
+<td>Start / stop / restart</td>
+<td><code>trigger</code>, <code>cancel</code>, <code>restart</code></td>
+<td><code>trigger</code>, <code>cancel</code>, <code>restart</code></td>
+<td><code>trigger</code>, <code>cancel</code>, <code>restart</code></td>
 </tr>
 <tr>
-<td>Stop / restart</td>
-<td>—</td>
-<td><code>cancel</code>, <code>restart</code></td>
-<td><code>cancel</code>, <code>restart</code></td>
+<td>Query</td>
+<td><code>isCancelled(id)</code></td>
+<td><code>isCancelled(id)</code></td>
+<td><code>isCancelled(id)</code></td>
+</tr>
+<tr>
+<td>Settable</td>
+<td><code>isRepeating</code>, <code>loopDuration</code></td>
+<td><code>isRepeating</code>, <code>loopDuration</code></td>
+<td><code>isRepeating</code>, <code>loopDuration</code></td>
+</tr>
+<tr>
+<td>Read-only</td>
+<td><code>playheadTime</code>, <code>seekTime</code></td>
+<td><code>playheadTime</code>, <code>seekTime</code></td>
+<td><code>playheadTime</code>, <code>seekTime</code></td>
+</tr>
+<tr>
+<td>Constants</td>
+<td><code>InertiaPlayback</code></td>
+<td><code>InertiaPlayback</code></td>
+<td><code>InertiaPlayback</code></td>
 </tr>
 <tr>
 <td>Editor port</td>
@@ -1326,11 +1344,18 @@ maturity, and the differences that remain are worth knowing before you start.</p
 </tr>
 </tbody>
 </table>
-<p>The Compose and React runtimes expose <code>cancel</code> and <code>restart</code>; the SwiftUI one does not,
-so a SwiftUI app can start a run but not stop or rewind it.</p>
+<p>The three surfaces are the same. SwiftUI is the reference the other two are aligned to, so
+what you learn on one carries over: the id you tag a view with is the id you pass to
+<code>trigger</code>, and <code>isRepeating</code> and <code>loopDuration</code> are properties you assign to rather than
+setter functions.</p>
+<p>SwiftUI is the one runtime with no <code>baseURL</code> — it reads its animation file from a <code>Bundle</code>
+and reaches the editor at <code>127.0.0.1:8060</code>. Note also that <code>baseURL</code> is not the same thing
+on the other two: React fetches its animation file from it, while Compose dials the editor
+at it.</p>
 <h2 id="where-they-still-differ">Where they still differ<a class="headerlink" href="#where-they-still-differ" title="Permanent link">&para;</a></h2>
 <h3 id="loading-an-animation-outside-the-editor">Loading an animation outside the editor<a class="headerlink" href="#loading-an-animation-outside-the-editor" title="Permanent link">&para;</a></h3>
-<p>This is the big one.</p>
+<p>All three load their own animation file when <code>dev</code> is false, and none of them opens a
+socket in that mode. Where the file comes from differs:</p>
 <table>
 <thead>
 <tr>
@@ -1344,34 +1369,23 @@ so a SwiftUI app can start a run but not stop or rewind it.</p>
 <tr>
 <td><code>dev: false</code> loads</td>
 <td><code>&lt;id&gt;.json</code> from the app bundle</td>
-<td><strong>nothing</strong></td>
+<td><code>&lt;id&gt;.json</code> from <code>assets/</code></td>
 <td><code>fetch("&lt;baseURL&gt;/&lt;id&gt;.json")</code></td>
 </tr>
 <tr>
-<td><code>dev: false</code> opens a socket</td>
-<td>no</td>
-<td><strong>yes, always</strong></td>
-<td>no</td>
+<td>A missing or broken file</td>
+<td><strong>traps</strong></td>
+<td>logs, draws nothing</td>
+<td>logs, draws nothing</td>
 </tr>
 </tbody>
 </table>
-<p>The Compose container accepts a <code>dev</code> parameter and never reads it: it connects to
-<code>baseURL</code> unconditionally, and has no path that loads an animation file for itself. In
-practice the Compose runtime is an editor-time tool today — a build with no editor
-listening connects to nothing and every tagged view sits at its initial pose.</p>
-<div class="admonition warning">
-<p class="admonition-title">Do not ship a Compose build with <code>InertiaContainer</code> in it</p>
-<p>Because the <code>dev</code> flag is not honoured, a released Compose app would keep retrying a
-WebSocket dial to whatever <code>baseURL</code> names, and would still show no animation. Gate
-the container out of release builds yourself — a build-variant source set, or a
-<code>BuildConfig.DEBUG</code> branch around the container.</p>
-</div>
-<p>The SwiftUI runtime goes the other way and is strict about it: with <code>dev: false</code> the
-container reads the bundled resource during initialization and <strong>traps</strong> if it is missing
-or fails to decode. An empty <code>[]</code> is a valid file; a missing one is a crash.</p>
-<p>React sits in between. It fetches <code>&lt;baseURL&gt;/&lt;id&gt;.json</code> over HTTP and logs an error if the
-request fails, so a missing file is a still page rather than a crash — but it does mean
-something has to be serving that JSON with CORS headers.</p>
+<p>The SwiftUI runtime is the strict one: with <code>dev: false</code> the container reads the bundled
+resource during initialization and <strong>traps</strong> if it is missing or fails to decode. An empty
+<code>[]</code> is a valid file; a missing one is a crash. Compose and React log an error and leave
+every tagged view at its layout position.</p>
+<p>React's path also means something has to be serving that JSON with CORS headers if it is
+not on the same origin as your app.</p>
 <h3 id="interpolation">Interpolation<a class="headerlink" href="#interpolation" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1408,11 +1422,10 @@ the Android target.</p>
 Web you launch the app yourself — from Android Studio or <code>adb install</code>, or by starting
 your dev server. Everything after that is the same.</p>
 <h2 id="which-to-pick">Which to pick<a class="headerlink" href="#which-to-pick" title="Permanent link">&para;</a></h2>
-<p>If you are animating an iOS app, use the SwiftUI runtime: it is the one that is kept
-current, and the only one with a supported release path today.</p>
-<p>Use the Compose and React runtimes when the app you want to animate is already an Android
-or web app. Author against them in the editor exactly as you would for iOS — just know
-that on Compose, shipping the result is not yet a solved path.</p>
+<p>Pick the runtime that matches the app you want to animate. All three author the same way in
+the editor, ship the same animation file, and expose the same API.</p>
+<p>The SwiftUI runtime is the one kept most current — it is where new work lands first, and
+its cubic-spline interpolation is the reference the other two approximate.</p>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../installation/">Installation</a> — add a runtime to your app.</li>

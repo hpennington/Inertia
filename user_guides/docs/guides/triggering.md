@@ -44,7 +44,7 @@ view with:
         val inertia = LocalInertia.current
 
         Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-            Inertiaable(hierarchyIdPrefix = "card0") {
+            Inertia(id = "card0") {
                 Box(Modifier.size(200.dp, 120.dp).background(Color.Blue))
             }
 
@@ -66,9 +66,9 @@ view with:
 
       return (
         <div>
-          <Inertiaable hierarchyIdPrefix="card0">
+          <Inertia id="card0">
             <div style={{ width: 200, height: 120, background: "blue" }} />
-          </Inertiaable>
+          </Inertia>
 
           <button onClick={() => inertia.trigger("card0")}>Animate</button>
         </div>
@@ -175,12 +175,17 @@ joins the run in progress.
 
 === "SwiftUI"
 
-    There is no public way to stop or rewind a single animation. `pause`, `seek` and
-    `resume` exist, but only the editor can reach them.
+    ```swift
+    inertia.cancel("card0")   // back to initialValues, and stays there
+    inertia.restart("card0")  // clears the cancel and plays from the top
+    inertia.isCancelled("card0")
+    ```
 
-    If you need a view to be able to restart from the beginning, structure it so the view
-    is removed and re-added, or keep the animation on a track short enough that the loop
-    does the work.
+    `restart` rewinds the shared clock, so it starts *every* animation in the container
+    over, not just this one. That is the same shared clock that makes a mid-run trigger
+    join the run in progress.
+
+    `pause`, `seek` and `resume` also exist, but only the editor can reach them.
 
 === "Compose"
 
@@ -229,7 +234,7 @@ Animations repeat by default. Turn it off:
 
     ```tsx
     React.useEffect(() => {
-      inertia.setRepeating(false);
+      inertia.isRepeating = false;
     }, [inertia]);
     ```
 
@@ -263,36 +268,43 @@ With it on, tracks are held out to the full loop duration and start over togethe
 
 === "Compose"
 
-    `loopDuration` is read-only to the app — it starts at 3 seconds and changes only when
-    the editor sends a new timeline length:
-
     ```kotlin
-    inertia.loopDuration     // 3.0f by default
-    inertia.playbackDuration // max(loopDuration, longest track)
+    inertia.loopDuration = 1.5f   // seconds
     ```
 
-    The constants are on `InertiaPlaybackDefaults`:
+    Assigning does not clamp, the same as on SwiftUI. Run untrusted values through the
+    helper yourself:
 
     ```kotlin
-    InertiaPlaybackDefaults.defaultLoopDuration
-    InertiaPlaybackDefaults.clampLoopDuration(seconds)
+    inertia.loopDuration = InertiaPlayback.clampLoopDuration(userValue)
     ```
 
-    Since a Compose app has no bundled-file path, this only matters while the editor is
-    attached — and the editor sets it from the timeline.
+    ```kotlin
+    InertiaPlayback.defaultLoopDuration   // 3.0f
+    InertiaPlayback.loopDurationRange     // 0.1f..60.0f
+    InertiaPlayback.clampLoopDuration(seconds)
+    ```
 
 === "React"
 
-    `useInertia()` does not expose loop duration; it starts at 3 seconds and changes only
-    when the editor sends a new timeline length. The same constants live on
+    ```tsx
+    inertia.loopDuration = 1.5;   // seconds
+    ```
+
+    Assigning does not clamp, the same as on SwiftUI. The constants live on
     `InertiaPlayback` in `inertia-base`:
 
     ```ts
     import { InertiaPlayback } from "inertia-base";
 
-    InertiaPlayback.defaultLoopDuration;
+    InertiaPlayback.defaultLoopDuration;   // 3.0
+    InertiaPlayback.loopDurationRange;     // { lowerBound: 0.1, upperBound: 60 }
     InertiaPlayback.clampLoopDuration(seconds);
     ```
+
+Whichever runtime you are on, the editor overwrites `loopDuration` whenever its timeline is
+resized — so a value you set before attaching the editor will be replaced by the one the
+timeline shows.
 
 The loop the runtime actually plays is `max(loopDuration, longest track)` on every
 runtime, so a track longer than the loop stretches it rather than being cut off.

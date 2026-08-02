@@ -12,31 +12,35 @@ actionable inside it samples.
 ```kotlin
 @Composable
 fun InertiaContainer(
+    dev: Boolean,
     id: String,
+    hierarchyId: String,
     baseURL: String,
-    dev: Boolean = false,
     content: @Composable () -> Unit
 )
 ```
 
 | Parameter | Meaning |
 | --- | --- |
-| `id` | The container id the editor addresses its schemas to. Schemas for any other container are dropped. |
-| `baseURL` | The editor's WebSocket address, passed through as given — `ws://127.0.0.1:8070` from an emulator. |
-| `dev` | **Accepted and not read.** See the warning below. |
+| `dev` | `true` takes animations from the editor over the socket; `false` reads `assets/<id>.json` and never opens a socket. |
+| `id` | The container id the editor addresses its schemas to, and the basename of the asset read outside editor mode. Schemas for any other container are dropped. |
+| `hierarchyId` | The id of the container's own node — the root every actionable inside it hangs from. Usually the same string as `id`. |
+| `baseURL` | The editor's WebSocket address, passed through as given — `ws://10.0.2.2:8070` from a stock emulator, a LAN address from a device. |
 
 ```kotlin
-InertiaContainer(id = "animation", baseURL = "ws://127.0.0.1:8070", dev = true) {
+InertiaContainer(
+    dev = BuildConfig.INERTIA_EDITOR,
+    id = "animation",
+    hierarchyId = "animation",
+    baseURL = "ws://127.0.0.1:8070"
+) {
     DemoApp()
 }
 ```
 
-!!! warning "`dev` has no effect"
-
-    The container connects to `baseURL` unconditionally and has no path that loads an
-    animation file for itself. There is nothing for a build without an editor to play, and
-    it will keep retrying the dial. Keep the container out of release builds yourself —
-    see [Choosing a runtime](../getting-started/runtimes.md).
+This is the same argument list the SwiftUI and React containers take, in the same order.
+SwiftUI has no `baseURL` — it reads from a `Bundle` and reaches the editor at
+`127.0.0.1:8060` — and on React `baseURL` is an HTTP origin rather than a socket.
 
 !!! warning "The editor only addresses the container id `animation`"
 
@@ -44,16 +48,27 @@ InertiaContainer(id = "animation", baseURL = "ws://127.0.0.1:8070", dev = true) 
     drops any schema whose container id does not match its own. Use `id = "animation"` for
     any container you intend to author in the editor.
 
-The container measures itself with `wrapContentSize()`, so it is as large as its content.
-Since `translate` is a fraction of the container's size, give it content that fills the
-screen unless you specifically want a smaller coordinate space.
+### Where the animation comes from
 
-## `Inertiaable`
+With `dev` false the container reads `assets/<id>.json` and logs an error if the file is
+missing or fails to decode — a broken animation leaves the actionables at their layout
+positions rather than bringing the app down. Put the file the editor exported at
+`app/src/main/assets/animation.json`.
+
+With `dev` true it dials `baseURL` and takes its schemas from the editor. No socket is
+opened when `dev` is false, so the container is safe to leave in a release build.
+
+The container fills the space its host offers it (`fillMaxSize()`). Since `translate` is a
+fraction of that box, this is the same rectangle SwiftUI's `GeometryReader` reports and the
+React container's div occupies — which is what makes one animation file move the same
+distance on all three.
+
+## `Inertia`
 
 ```kotlin
 @Composable
-fun Inertiaable(
-    hierarchyIdPrefix: String,
+fun Inertia(
+    id: String,
     content: @Composable () -> Unit
 )
 ```
@@ -61,13 +76,13 @@ fun Inertiaable(
 Wraps one composable and animates it under the given id.
 
 ```kotlin
-Inertiaable(hierarchyIdPrefix = "card0") {
+Inertia(id = "card0") {
     Box(Modifier.size(200.dp, 120.dp).background(Color.Blue))
 }
 ```
 
-`hierarchyIdPrefix` is the id you look up in the animation file and pass to `trigger`. Each
-*instance* of the composable claims a distinct hierarchy id by appending an index
+`id` is the id you look up in the animation file and the same id you pass to `trigger`.
+Each *instance* of the composable claims a distinct hierarchy id by appending an index
 (`card0--0`, `card0--1`), which is what lets the editor tell copies apart — see
 [Animation IDs](../guides/ids.md).
 
@@ -82,7 +97,7 @@ drags that record translation, and draws the selection border.
 ## `LocalInertia`
 
 ```kotlin
-val LocalInertia: ProvidableCompositionLocal<InertiaPlayback>
+val LocalInertia: ProvidableCompositionLocal<InertiaPlaybackController>
 ```
 
 The playback handle for the enclosing container.
@@ -94,18 +109,18 @@ val inertia = LocalInertia.current
 It has no default — reading it outside an `InertiaContainer` throws
 *"LocalInertia was read outside of an InertiaContainer."*
 
-## `InertiaPlayback`
+## `InertiaPlaybackController`
 
 The clock every actionable in a container is drawn from, and the app's controls over it.
-Keyed by `hierarchyIdPrefix`, so starting an id starts every instance sharing it.
+Keyed by the `id` you gave `Inertia`, so starting an id starts every instance sharing it.
 
 ### App-facing controls
 
 ```kotlin
-fun trigger(hierarchyIdPrefix: String)
-fun cancel(hierarchyIdPrefix: String)
-fun restart(hierarchyIdPrefix: String)
-fun isCancelled(hierarchyIdPrefix: String): Boolean
+fun trigger(id: String)
+fun cancel(id: String)
+fun restart(id: String)
+fun isCancelled(id: String): Boolean
 ```
 
 - **`trigger`** starts an animation that was waiting on its `trigger` invoke type. Arriving
@@ -119,12 +134,10 @@ fun isCancelled(hierarchyIdPrefix: String): Boolean
 ### State
 
 ```kotlin
-var isRepeating: Boolean                       // default true
-val loopDuration: Float                        // read-only; set by the editor
-val playbackDuration: Float                    // max(loopDuration, longest track)
-val playheadTime: Float                        // read-only, seconds into the run
-val isRunning: Boolean                         // read-only
-val seekTime: Float?                           // read-only; non-null while parked
+var isRepeating: Boolean     // default true
+var loopDuration: Float      // seconds; the editor overwrites it on a timeline resize
+val playheadTime: Float      // read-only, seconds into the run
+val seekTime: Float?         // read-only; non-null while the editor has it parked
 ```
 
 `isRepeating` is the one an app usually sets. With it off, each track plays its own
@@ -136,19 +149,22 @@ LaunchedEffect(inertia) {
 }
 ```
 
-`loopDuration` is read-only to the app — it starts at the default and changes only when the
-editor sends a new timeline length.
+`loopDuration` applies from the next frame, so changing it mid-run stretches the loop
+rather than waiting for a restart. The editor overwrites it whenever its timeline is
+resized, so an app that sets it and then attaches the editor will see its value replaced.
 
-## `InertiaPlaybackDefaults`
+## `InertiaPlayback`
 
 ```kotlin
-object InertiaPlaybackDefaults {
-    val defaultLoopDuration: Float
+object InertiaPlayback {
+    const val defaultLoopDuration: Float                          // 3.0
+    val loopDurationRange: ClosedFloatingPointRange<Float>        // 0.1f..60.0f
     fun clampLoopDuration(seconds: Float): Float
 }
 ```
 
-The same constants the editor clamps its timeline to.
+The same constants the editor clamps its timeline to, under the same name on all three
+runtimes.
 
 ## Data types
 
@@ -160,7 +176,8 @@ data class InertiaAnimationSchema(
     val id: String,
     val initialValues: InertiaAnimationValues = InertiaAnimationValues(),
     val invokeType: InertiaAnimationInvokeType,   // trigger | auto
-    val keyframes: List<InertiaAnimationKeyframe> = emptyList()
+    val keyframes: List<InertiaAnimationKeyframe> = emptyList(),
+    val shapes: List<InertiaShape> = emptyList()
 )
 
 @Serializable
@@ -205,8 +222,9 @@ Set `InertiaLog.isEnabled = false` to silence it.
 `AnimationSignal` and the other message types are public because the editor talks to them
 over the wire. They are part of the editor protocol rather than the app-facing API.
 
-`InertiaShape` and `InertiaObjectType` are remnants of an earlier shape-based model that
-the keyframe model replaced; nothing decodes into them any more.
+`InertiaShape`, `InertiaShapeProperties` and `Vertex` describe the vector shapes a schema
+can carry behind an actionable. `InertiaShapeCanvas` draws them; you do not construct them
+yourself, the editor authors them.
 
 `getHostForWebSocket()`, `isValidIPv4()` and `getFirstDnsIP()` are host-discovery helpers
 that shell out to `ip route`. Nothing in the runtime calls them — `baseURL` is passed

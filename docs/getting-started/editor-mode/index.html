@@ -1282,20 +1282,17 @@ dials port 8060, so a shipped build never reaches for an editor.</p>
 </div>
 <div class="tabbed-block">
 <div class="language-kotlin highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">InertiaContainer</span><span class="p">(</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ws://127.0.0.1:8070&quot;</span><span class="p">,</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="n">DemoApp</span><span class="p">()</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="n">hierarchyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ws://127.0.0.1:8070&quot;</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="n">DemoApp</span><span class="p">()</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">}</span>
 </span></code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title"><code>dev</code> does not gate anything yet</p>
-<p>The Compose container accepts <code>dev</code> and never reads it. It connects to <code>baseURL</code>
-whatever you pass, and has no path that loads an animation file for itself.</p>
-<p>Keep the whole container out of release builds — a <code>BuildConfig.DEBUG</code> branch, or
-a build-variant source set. See <a href="../runtimes/">Choosing a runtime</a>.</p>
-</div>
+<p><code>dev</code> gates the socket here too: with <code>dev = false</code> the container never dials the
+editor and reads <code>assets/animation.json</code> instead, so it is safe to leave in a release
+build.</p>
 <p><code>baseURL</code> is passed through as given. From an emulator, <code>127.0.0.1</code> reaches the editor
 because the editor opens an <code>adb reverse</code> tunnel for port 8070 when it attaches — see
 below. From a physical device, point it at your Mac's address on the local network

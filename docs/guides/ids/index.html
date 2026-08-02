@@ -1190,22 +1190,23 @@ implement identically.</p>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">Inertiaable</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">Inertia</span><span class="p">(</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;✈&quot;</span><span class="p">)</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="p">}</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">&lt;</span><span class="nt">Inertiaable</span><span class="w"> </span><span class="na">hierarchyIdPrefix</span><span class="o">=</span><span class="s">&quot;plane&quot;</span><span class="p">&gt;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">&lt;</span><span class="nt">Inertia</span><span class="w"> </span><span class="na">id</span><span class="o">=</span><span class="s">&quot;plane&quot;</span><span class="p">&gt;</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span><span class="err">✈</span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">&lt;/</span><span class="nt">Inertiaable</span><span class="p">&gt;</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">&lt;/</span><span class="nt">Inertia</span><span class="p">&gt;</span>
 </span></code></pre></div>
 </div>
 </div>
 </div>
-<p><code>"plane"</code> is a <strong>prefix</strong>. It is what you look up in the animation file, what you pass to
-<code>trigger</code>, and what appears as an animation's <code>id</code> in <code>animation.json</code>. The Compose and
-React APIs name the parameter <code>hierarchyIdPrefix</code> for exactly this reason.</p>
+<p><code>"plane"</code> is an <strong>id shared by every instance</strong>. It is what you look up in the animation
+file, what you pass to <code>trigger</code>, and what appears as an animation's <code>id</code> in
+<code>animation.json</code>. All three runtimes call this parameter <code>id</code> for exactly that reason —
+one id, one animation, however many views wear it.</p>
 <h2 id="the-id-in-the-hierarchy">The id in the hierarchy<a class="headerlink" href="#the-id-in-the-hierarchy" title="Permanent link">&para;</a></h2>
 <p>Internally each <em>instance</em> of a tagged view gets a distinct hierarchy id, formed by
 appending an index to the prefix:</p>
@@ -1230,15 +1231,15 @@ same animation.</p>
 </div>
 <div class="tabbed-block">
 <div class="language-kotlin highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">repeat</span><span class="p">(</span><span class="m">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="n">Inertiaable</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;✈&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// one animation, three views</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="n">Inertia</span><span class="p">(</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;plane&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;✈&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// one animation, three views</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">}</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="language-tsx highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{[</span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">].</span><span class="nx">map</span><span class="p">(</span><span class="nx">i</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">(</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="p">&lt;</span><span class="nt">Inertiaable</span><span class="w"> </span><span class="na">key</span><span class="o">=</span><span class="p">{</span><span class="nx">i</span><span class="p">}</span><span class="w"> </span><span class="na">hierarchyIdPrefix</span><span class="o">=</span><span class="s">&quot;plane&quot;</span><span class="p">&gt;</span><span class="w">   </span><span class="p">{</span><span class="cm">/* one animation, three views */</span><span class="p">}</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="p">&lt;</span><span class="nt">Inertia</span><span class="w"> </span><span class="na">key</span><span class="o">=</span><span class="p">{</span><span class="nx">i</span><span class="p">}</span><span class="w"> </span><span class="na">id</span><span class="o">=</span><span class="s">&quot;plane&quot;</span><span class="p">&gt;</span><span class="w">   </span><span class="p">{</span><span class="cm">/* one animation, three views */</span><span class="p">}</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span><span class="err">✈</span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="p">&lt;/</span><span class="nt">Inertiaable</span><span class="p">&gt;</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="p">&lt;/</span><span class="nt">Inertia</span><span class="p">&gt;</span>
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">))}</span>
 </span></code></pre></div>
 </div>
@@ -1274,7 +1275,7 @@ silently never animates, so it is worth keeping the two ends together:</p>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="n">CARD0</span><span class="p">(</span><span class="s">&quot;card0&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">CARD1</span><span class="p">(</span><span class="s">&quot;card1&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">PLANE_TOP</span><span class="p">(</span><span class="s">&quot;planeTop&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">PLANE_BOTTOM</span><span class="p">(</span><span class="s">&quot;planeBottom&quot;</span><span class="p">)</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="p">}</span>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">Inertiaable</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AnimationID</span><span class="p">.</span><span class="na">CARD0</span><span class="p">.</span><span class="na">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">Inertia</span><span class="p">(</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AnimationID</span><span class="p">.</span><span class="na">CARD0</span><span class="p">.</span><span class="na">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}</span>
 </span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
 </span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// ...</span>
 </span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
@@ -1289,7 +1290,7 @@ silently never animates, so it is worth keeping the two ends together:</p>
 </span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nx">planeBottom</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;planeBottom&quot;</span><span class="p">,</span>
 </span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">}</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="kd">const</span><span class="p">;</span>
 </span></code></pre></div>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">&lt;</span><span class="nt">Inertiaable</span><span class="w"> </span><span class="na">hierarchyIdPrefix</span><span class="o">=</span><span class="p">{</span><span class="nx">AnimationID</span><span class="p">.</span><span class="nx">card0</span><span class="p">}&gt;{</span><span class="cm">/* … */</span><span class="p">}&lt;/</span><span class="nt">Inertiaable</span><span class="p">&gt;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">&lt;</span><span class="nt">Inertia</span><span class="w"> </span><span class="na">id</span><span class="o">=</span><span class="p">{</span><span class="nx">AnimationID</span><span class="p">.</span><span class="nx">card0</span><span class="p">}&gt;{</span><span class="cm">/* … */</span><span class="p">}&lt;/</span><span class="nt">Inertia</span><span class="p">&gt;</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1">// ...</span>
 </span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>

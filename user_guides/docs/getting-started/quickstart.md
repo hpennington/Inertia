@@ -64,9 +64,10 @@ the animation data. Put it at the root of your app.
             setContent {
                 MaterialTheme {
                     InertiaContainer(
-                        id = "animation",             // (1)!
-                        baseURL = "ws://127.0.0.1:8070",  // (2)!
-                        dev = true                    // (3)!
+                        dev = true,                       // (1)!
+                        id = "animation",                 // (2)!
+                        hierarchyId = "animation",        // (3)!
+                        baseURL = "ws://127.0.0.1:8070"   // (4)!
                     ) {
                         DemoApp()
                     }
@@ -76,20 +77,23 @@ the animation data. Put it at the root of your app.
     }
     ```
 
-    1. The container id the editor addresses its schemas to. Keep it as `"animation"` —
+    1. `true` takes animations from the editor over the socket; `false` reads
+       `assets/animation.json` and never opens one. Wire it to your own build flag.
+    2. The container id the editor addresses its schemas to. Keep it as `"animation"` —
        the runtime drops schemas meant for any other container.
-    2. Where the editor is listening. `127.0.0.1:8070` works from an emulator because the
+    3. The id of the container's own node, which every actionable inside it hangs from.
+       Usually the same string as `id`.
+    4. Where the editor is listening. `127.0.0.1:8070` works from an emulator because the
        editor opens an `adb reverse` tunnel for that port; a physical device wants the
        Mac's address on the local network instead.
-    3. Accepted, but not read — see the warning in
-       [Installation](installation.md). Keep the whole container out of release builds.
 
-    !!! note "The container wraps its content"
+    !!! note "The container fills the space it is given"
 
-        `InertiaContainer` measures itself with `wrapContentSize()`, so it is as big as
-        what is inside it. Since `translate` is a fraction of the container's size, give it
-        content that fills the screen — a `Box(Modifier.fillMaxSize())`, as above — or
-        every offset in it resolves against a smaller box than you meant.
+        `InertiaContainer` measures itself with `fillMaxSize()`, so it is as big as its
+        host lets it be — the same rectangle the SwiftUI and React containers occupy.
+        Since `translate` is a fraction of that box, don't nest the container inside
+        something that constrains it, or every offset in it resolves against a smaller box
+        than the one you authored against.
 
 === "React"
 
@@ -152,12 +156,12 @@ find each other, in the editor and at runtime.
 === "Compose"
 
     ```kotlin
-    import org.inertiagraphics.inertia.Inertiaable
+    import org.inertiagraphics.inertia.Inertia
 
     @Composable
     fun DemoApp() {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Inertiaable(hierarchyIdPrefix = "card0") {
+            Inertia(id = "card0") {
                 Box(
                     Modifier
                         .size(200.dp, 120.dp)
@@ -166,37 +170,37 @@ find each other, in the editor and at runtime.
                 )
             }
 
-            Inertiaable(hierarchyIdPrefix = "plane") {
+            Inertia(id = "plane") {
                 Text("✈", fontSize = 34.sp)
             }
         }
     }
     ```
 
-    `Inertiaable` puts its content in a `Box` and animates that box, so it takes the size
+    `Inertia` puts its content in a `Box` and animates that box, so it takes the size
     of what you give it. Size and shape the content, not the wrapper.
 
 === "React"
 
     ```tsx
-    import { Inertiaable } from "inertia-react";
+    import { Inertia } from "inertia-react";
 
     function DemoContent() {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Inertiaable hierarchyIdPrefix="card0">
+          <Inertia id="card0">
             <div style={{ width: 200, height: 120, borderRadius: 12, background: "blue" }} />
-          </Inertiaable>
+          </Inertia>
 
-          <Inertiaable hierarchyIdPrefix="plane">
+          <Inertia id="plane">
             <span style={{ fontSize: 34 }}>✈</span>
-          </Inertiaable>
+          </Inertia>
         </div>
       );
     }
     ```
 
-    `Inertiaable` renders an `inline-block` wrapper `div` around its child and writes the
+    `Inertia` renders an `inline-block` wrapper `div` around its child and writes the
     transform onto that wrapper. It takes a single child element.
 
 !!! tip "Keeping ids organized"
@@ -221,7 +225,7 @@ find each other, in the editor and at runtime.
             const val PLANE = "plane"
         }
 
-        // Inertiaable(hierarchyIdPrefix = AnimationID.CARD0) { … }
+        // Inertia(id = AnimationID.CARD0) { … }
         ```
 
     === "React"
@@ -232,7 +236,7 @@ find each other, in the editor and at runtime.
           plane: "plane",
         } as const;
 
-        // <Inertiaable hierarchyIdPrefix={AnimationID.card0}>
+        // <Inertia id={AnimationID.card0}>
         ```
 
     See [Animation IDs](../guides/ids.md) for how ids behave when a tagged view
@@ -334,7 +338,7 @@ for it:
         val inertia = LocalInertia.current
 
         Column {
-            Inertiaable(hierarchyIdPrefix = "card0") { /* … */ }
+            Inertia(id = "card0") { /* … */ }
 
             Button(onClick = { inertia.trigger("card0") }) {
                 Text("Animate")
@@ -357,9 +361,9 @@ for it:
 
       return (
         <>
-          <Inertiaable hierarchyIdPrefix="card0">
+          <Inertia id="card0">
             <div style={{ width: 200, height: 120, background: "blue" }} />
-          </Inertiaable>
+          </Inertia>
 
           <button onClick={() => inertia.trigger("card0")}>Animate</button>
         </>

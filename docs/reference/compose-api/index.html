@@ -908,13 +908,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="InertiaContainer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-the-animation-comes-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the animation comes from
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#inertiaable" class="md-nav__link">
+  <a href="#inertia" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Inertiaable
+        Inertia
       
     </span>
   </a>
@@ -933,15 +950,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inertiaplayback" class="md-nav__link">
+  <a href="#inertiaplaybackcontroller" class="md-nav__link">
     <span class="md-ellipsis">
       
-        InertiaPlayback
+        InertiaPlaybackController
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="InertiaPlayback">
+    <nav class="md-nav" aria-label="InertiaPlaybackController">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -972,10 +989,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inertiaplaybackdefaults" class="md-nav__link">
+  <a href="#inertiaplayback" class="md-nav__link">
     <span class="md-ellipsis">
       
-        InertiaPlaybackDefaults
+        InertiaPlayback
       
     </span>
   </a>
@@ -1149,13 +1166,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="InertiaContainer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-the-animation-comes-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the animation comes from
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#inertiaable" class="md-nav__link">
+  <a href="#inertia" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Inertiaable
+        Inertia
       
     </span>
   </a>
@@ -1174,15 +1208,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inertiaplayback" class="md-nav__link">
+  <a href="#inertiaplaybackcontroller" class="md-nav__link">
     <span class="md-ellipsis">
       
-        InertiaPlayback
+        InertiaPlaybackController
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="InertiaPlayback">
+    <nav class="md-nav" aria-label="InertiaPlaybackController">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1213,10 +1247,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inertiaplaybackdefaults" class="md-nav__link">
+  <a href="#inertiaplayback" class="md-nav__link">
     <span class="md-ellipsis">
       
-        InertiaPlaybackDefaults
+        InertiaPlayback
       
     </span>
   </a>
@@ -1285,11 +1319,12 @@ values are measured against, holds the editor connection, and drives the clock e
 actionable inside it samples.</p>
 <div class="language-kotlin highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nd">@Composable</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">InertiaContainer</span><span class="p">(</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">baseURL</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="n">dev</span><span class="p">:</span><span class="w"> </span><span class="kt">Boolean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="nd">@Composable</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">Unit</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="n">dev</span><span class="p">:</span><span class="w"> </span><span class="kt">Boolean</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="n">hierarchyId</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="n">baseURL</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="nd">@Composable</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">Unit</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
 </span></code></pre></div>
 <table>
 <thead>
@@ -1300,53 +1335,66 @@ actionable inside it samples.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>dev</code></td>
+<td><code>true</code> takes animations from the editor over the socket; <code>false</code> reads <code>assets/&lt;id&gt;.json</code> and never opens a socket.</td>
+</tr>
+<tr>
 <td><code>id</code></td>
-<td>The container id the editor addresses its schemas to. Schemas for any other container are dropped.</td>
+<td>The container id the editor addresses its schemas to, and the basename of the asset read outside editor mode. Schemas for any other container are dropped.</td>
+</tr>
+<tr>
+<td><code>hierarchyId</code></td>
+<td>The id of the container's own node — the root every actionable inside it hangs from. Usually the same string as <code>id</code>.</td>
 </tr>
 <tr>
 <td><code>baseURL</code></td>
-<td>The editor's WebSocket address, passed through as given — <code>ws://127.0.0.1:8070</code> from an emulator.</td>
-</tr>
-<tr>
-<td><code>dev</code></td>
-<td><strong>Accepted and not read.</strong> See the warning below.</td>
+<td>The editor's WebSocket address, passed through as given — <code>ws://10.0.2.2:8070</code> from a stock emulator, a LAN address from a device.</td>
 </tr>
 </tbody>
 </table>
-<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">InertiaContainer</span><span class="p">(</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ws://127.0.0.1:8070&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="n">DemoApp</span><span class="p">()</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="p">}</span>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">InertiaContainer</span><span class="p">(</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BuildConfig</span><span class="p">.</span><span class="na">INERTIA_EDITOR</span><span class="p">,</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="n">hierarchyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ws://127.0.0.1:8070&quot;</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="n">DemoApp</span><span class="p">()</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">}</span>
 </span></code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title"><code>dev</code> has no effect</p>
-<p>The container connects to <code>baseURL</code> unconditionally and has no path that loads an
-animation file for itself. There is nothing for a build without an editor to play, and
-it will keep retrying the dial. Keep the container out of release builds yourself —
-see <a href="../../getting-started/runtimes/">Choosing a runtime</a>.</p>
-</div>
+<p>This is the same argument list the SwiftUI and React containers take, in the same order.
+SwiftUI has no <code>baseURL</code> — it reads from a <code>Bundle</code> and reaches the editor at
+<code>127.0.0.1:8060</code> — and on React <code>baseURL</code> is an HTTP origin rather than a socket.</p>
 <div class="admonition warning">
 <p class="admonition-title">The editor only addresses the container id <code>animation</code></p>
 <p>The editor sends every schema against the container id <code>"animation"</code>, and the runtime
 drops any schema whose container id does not match its own. Use <code>id = "animation"</code> for
 any container you intend to author in the editor.</p>
 </div>
-<p>The container measures itself with <code>wrapContentSize()</code>, so it is as large as its content.
-Since <code>translate</code> is a fraction of the container's size, give it content that fills the
-screen unless you specifically want a smaller coordinate space.</p>
-<h2 id="inertiaable"><code>Inertiaable</code><a class="headerlink" href="#inertiaable" title="Permanent link">&para;</a></h2>
+<h3 id="where-the-animation-comes-from">Where the animation comes from<a class="headerlink" href="#where-the-animation-comes-from" title="Permanent link">&para;</a></h3>
+<p>With <code>dev</code> false the container reads <code>assets/&lt;id&gt;.json</code> and logs an error if the file is
+missing or fails to decode — a broken animation leaves the actionables at their layout
+positions rather than bringing the app down. Put the file the editor exported at
+<code>app/src/main/assets/animation.json</code>.</p>
+<p>With <code>dev</code> true it dials <code>baseURL</code> and takes its schemas from the editor. No socket is
+opened when <code>dev</code> is false, so the container is safe to leave in a release build.</p>
+<p>The container fills the space its host offers it (<code>fillMaxSize()</code>). Since <code>translate</code> is a
+fraction of that box, this is the same rectangle SwiftUI's <code>GeometryReader</code> reports and the
+React container's div occupies — which is what makes one animation file move the same
+distance on all three.</p>
+<h2 id="inertia"><code>Inertia</code><a class="headerlink" href="#inertia" title="Permanent link">&para;</a></h2>
 <div class="language-kotlin highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nd">@Composable</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">Inertiaable</span><span class="p">(</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="n">hierarchyIdPrefix</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">Inertia</span><span class="p">(</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="nd">@Composable</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">Unit</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">)</span>
 </span></code></pre></div>
 <p>Wraps one composable and animates it under the given id.</p>
-<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">Inertiaable</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;card0&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">Inertia</span><span class="p">(</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;card0&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="n">Box</span><span class="p">(</span><span class="n">Modifier</span><span class="p">.</span><span class="na">size</span><span class="p">(</span><span class="m">200.</span><span class="n">dp</span><span class="p">,</span><span class="w"> </span><span class="m">120.</span><span class="n">dp</span><span class="p">).</span><span class="na">background</span><span class="p">(</span><span class="n">Color</span><span class="p">.</span><span class="na">Blue</span><span class="p">))</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><code>hierarchyIdPrefix</code> is the id you look up in the animation file and pass to <code>trigger</code>. Each
-<em>instance</em> of the composable claims a distinct hierarchy id by appending an index
+<p><code>id</code> is the id you look up in the animation file and the same id you pass to <code>trigger</code>.
+Each <em>instance</em> of the composable claims a distinct hierarchy id by appending an index
 (<code>card0--0</code>, <code>card0--1</code>), which is what lets the editor tell copies apart — see
 <a href="../../guides/ids/">Animation IDs</a>.</p>
 <p>The wrapper is a <code>Box</code>, so it takes the size of what you put in it. It applies the
@@ -1356,21 +1404,21 @@ matrix the SwiftUI runtime does for the same schema.</p>
 <p>In editor mode (<code>isActionable</code>, set by the editor) it also handles taps for selection,
 drags that record translation, and draws the selection border.</p>
 <h2 id="localinertia"><code>LocalInertia</code><a class="headerlink" href="#localinertia" title="Permanent link">&para;</a></h2>
-<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">val</span><span class="w"> </span><span class="nv">LocalInertia</span><span class="p">:</span><span class="w"> </span><span class="n">ProvidableCompositionLocal</span><span class="o">&lt;</span><span class="n">InertiaPlayback</span><span class="o">&gt;</span>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">val</span><span class="w"> </span><span class="nv">LocalInertia</span><span class="p">:</span><span class="w"> </span><span class="n">ProvidableCompositionLocal</span><span class="o">&lt;</span><span class="n">InertiaPlaybackController</span><span class="o">&gt;</span>
 </span></code></pre></div>
 <p>The playback handle for the enclosing container.</p>
 <div class="language-kotlin highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">val</span><span class="w"> </span><span class="nv">inertia</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LocalInertia</span><span class="p">.</span><span class="na">current</span>
 </span></code></pre></div>
 <p>It has no default — reading it outside an <code>InertiaContainer</code> throws
 <em>"LocalInertia was read outside of an InertiaContainer."</em></p>
-<h2 id="inertiaplayback"><code>InertiaPlayback</code><a class="headerlink" href="#inertiaplayback" title="Permanent link">&para;</a></h2>
+<h2 id="inertiaplaybackcontroller"><code>InertiaPlaybackController</code><a class="headerlink" href="#inertiaplaybackcontroller" title="Permanent link">&para;</a></h2>
 <p>The clock every actionable in a container is drawn from, and the app's controls over it.
-Keyed by <code>hierarchyIdPrefix</code>, so starting an id starts every instance sharing it.</p>
+Keyed by the <code>id</code> you gave <code>Inertia</code>, so starting an id starts every instance sharing it.</p>
 <h3 id="app-facing-controls">App-facing controls<a class="headerlink" href="#app-facing-controls" title="Permanent link">&para;</a></h3>
-<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">trigger</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">cancel</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">restart</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">isCancelled</span><span class="p">(</span><span class="n">hierarchyIdPrefix</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">):</span><span class="w"> </span><span class="kt">Boolean</span>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">trigger</span><span class="p">(</span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">cancel</span><span class="p">(</span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">restart</span><span class="p">(</span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="kd">fun</span><span class="w"> </span><span class="nf">isCancelled</span><span class="p">(</span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">):</span><span class="w"> </span><span class="kt">Boolean</span>
 </span></code></pre></div>
 <ul>
 <li><strong><code>trigger</code></strong> starts an animation that was waiting on its <code>trigger</code> invoke type. Arriving
@@ -1382,12 +1430,10 @@ Keyed by <code>hierarchyIdPrefix</code>, so starting an id starts every instance
   actionable in a container shares one clock, this rewinds the playhead for all of them.</li>
 </ul>
 <h3 id="state">State<a class="headerlink" href="#state" title="Permanent link">&para;</a></h3>
-<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">var</span><span class="w"> </span><span class="nv">isRepeating</span><span class="p">:</span><span class="w"> </span><span class="kt">Boolean</span><span class="w">                       </span><span class="c1">// default true</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kd">val</span><span class="w"> </span><span class="nv">loopDuration</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w">                        </span><span class="c1">// read-only; set by the editor</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kd">val</span><span class="w"> </span><span class="nv">playbackDuration</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w">                    </span><span class="c1">// max(loopDuration, longest track)</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="kd">val</span><span class="w"> </span><span class="nv">playheadTime</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w">                        </span><span class="c1">// read-only, seconds into the run</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="kd">val</span><span class="w"> </span><span class="nv">isRunning</span><span class="p">:</span><span class="w"> </span><span class="kt">Boolean</span><span class="w">                         </span><span class="c1">// read-only</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="kd">val</span><span class="w"> </span><span class="nv">seekTime</span><span class="p">:</span><span class="w"> </span><span class="kt">Float?</span><span class="w">                           </span><span class="c1">// read-only; non-null while parked</span>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">var</span><span class="w"> </span><span class="nv">isRepeating</span><span class="p">:</span><span class="w"> </span><span class="kt">Boolean</span><span class="w">     </span><span class="c1">// default true</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kd">var</span><span class="w"> </span><span class="nv">loopDuration</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w">      </span><span class="c1">// seconds; the editor overwrites it on a timeline resize</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kd">val</span><span class="w"> </span><span class="nv">playheadTime</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w">      </span><span class="c1">// read-only, seconds into the run</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="kd">val</span><span class="w"> </span><span class="nv">seekTime</span><span class="p">:</span><span class="w"> </span><span class="kt">Float?</span><span class="w">         </span><span class="c1">// read-only; non-null while the editor has it parked</span>
 </span></code></pre></div>
 <p><code>isRepeating</code> is the one an app usually sets. With it off, each track plays its own
 keyframes once and holds its final pose:</p>
@@ -1395,15 +1441,18 @@ keyframes once and holds its final pose:</p>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="n">inertia</span><span class="p">.</span><span class="na">isRepeating</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><code>loopDuration</code> is read-only to the app — it starts at the default and changes only when the
-editor sends a new timeline length.</p>
-<h2 id="inertiaplaybackdefaults"><code>InertiaPlaybackDefaults</code><a class="headerlink" href="#inertiaplaybackdefaults" title="Permanent link">&para;</a></h2>
-<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kd">object</span><span class="w"> </span><span class="nc">InertiaPlaybackDefaults</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">defaultLoopDuration</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">clampLoopDuration</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="p">):</span><span class="w"> </span><span class="kt">Float</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="p">}</span>
+<p><code>loopDuration</code> applies from the next frame, so changing it mid-run stretches the loop
+rather than waiting for a restart. The editor overwrites it whenever its timeline is
+resized, so an app that sets it and then attaches the editor will see its value replaced.</p>
+<h2 id="inertiaplayback"><code>InertiaPlayback</code><a class="headerlink" href="#inertiaplayback" title="Permanent link">&para;</a></h2>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kd">object</span><span class="w"> </span><span class="nc">InertiaPlayback</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">defaultLoopDuration</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w">                          </span><span class="c1">// 3.0</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">loopDurationRange</span><span class="p">:</span><span class="w"> </span><span class="n">ClosedFloatingPointRange</span><span class="o">&lt;</span><span class="kt">Float</span><span class="o">&gt;</span><span class="w">        </span><span class="c1">// 0.1f..60.0f</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">clampLoopDuration</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="p">):</span><span class="w"> </span><span class="kt">Float</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>The same constants the editor clamps its timeline to.</p>
+<p>The same constants the editor clamps its timeline to, under the same name on all three
+runtimes.</p>
 <h2 id="data-types">Data types<a class="headerlink" href="#data-types" title="Permanent link">&para;</a></h2>
 <p>The schema types are <code>kotlinx.serialization</code> data classes matching the file format:</p>
 <div class="language-kotlin highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nd">@Serializable</span>
@@ -1411,24 +1460,25 @@ editor sends a new timeline length.</p>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
 </span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">initialValues</span><span class="p">:</span><span class="w"> </span><span class="n">InertiaAnimationValues</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">InertiaAnimationValues</span><span class="p">(),</span>
 </span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">invokeType</span><span class="p">:</span><span class="w"> </span><span class="n">InertiaAnimationInvokeType</span><span class="p">,</span><span class="w">   </span><span class="c1">// trigger | auto</span>
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">keyframes</span><span class="p">:</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">InertiaAnimationKeyframe</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">emptyList</span><span class="p">()</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="p">)</span>
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
-</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="nd">@Serializable</span>
-</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="kd">data</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">InertiaAnimationKeyframe</span><span class="p">(</span>
-</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
-</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">values</span><span class="p">:</span><span class="w"> </span><span class="n">InertiaAnimationValues</span><span class="p">,</span>
-</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">duration</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w">   </span><span class="c1">// seconds since the previous keyframe</span>
-</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="p">)</span>
-</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
-</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="nd">@Serializable</span>
-</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="kd">data</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">InertiaAnimationValues</span><span class="p">(</span>
-</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">scale</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1.0f</span><span class="p">,</span>
-</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">translate</span><span class="p">:</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">Float</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listOf</span><span class="p">(</span><span class="m">0.0f</span><span class="p">,</span><span class="w"> </span><span class="m">0.0f</span><span class="p">),</span><span class="w">  </span><span class="c1">// [x, y], fraction of the container</span>
-</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">rotate</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.0f</span><span class="p">,</span>
-</span><span id="__span-10-21"><a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">rotateCenter</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.0f</span><span class="p">,</span>
-</span><span id="__span-10-22"><a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">opacity</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1.0f</span>
-</span><span id="__span-10-23"><a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a><span class="p">)</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">keyframes</span><span class="p">:</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">InertiaAnimationKeyframe</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">emptyList</span><span class="p">(),</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">shapes</span><span class="p">:</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">InertiaShape</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">emptyList</span><span class="p">()</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="p">)</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="nd">@Serializable</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="kd">data</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">InertiaAnimationKeyframe</span><span class="p">(</span>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">values</span><span class="p">:</span><span class="w"> </span><span class="n">InertiaAnimationValues</span><span class="p">,</span>
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">duration</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w">   </span><span class="c1">// seconds since the previous keyframe</span>
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="p">)</span>
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="nd">@Serializable</span>
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="kd">data</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">InertiaAnimationValues</span><span class="p">(</span>
+</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">scale</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1.0f</span><span class="p">,</span>
+</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">translate</span><span class="p">:</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">Float</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listOf</span><span class="p">(</span><span class="m">0.0f</span><span class="p">,</span><span class="w"> </span><span class="m">0.0f</span><span class="p">),</span><span class="w">  </span><span class="c1">// [x, y], fraction of the container</span>
+</span><span id="__span-10-21"><a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">rotate</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.0f</span><span class="p">,</span>
+</span><span id="__span-10-22"><a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">rotateCenter</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.0f</span><span class="p">,</span>
+</span><span id="__span-10-23"><a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">opacity</span><span class="p">:</span><span class="w"> </span><span class="kt">Float</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1.0f</span>
+</span><span id="__span-10-24"><a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a><span class="p">)</span>
 </span></code></pre></div>
 <p>Note that <code>translate</code> is a <code>List&lt;Float&gt;</code> rather than a pair, to match the JSON array in the
 file. See <a href="../values/">Animatable values</a>.</p>
@@ -1445,8 +1495,9 @@ file. See <a href="../values/">Animatable values</a>.</p>
 <p><code>Tree</code>, <code>Node</code>, <code>WebSocketClient</code>, <code>MessageSchema</code>, <code>InertiaSchemaWrapper</code>,
 <code>AnimationSignal</code> and the other message types are public because the editor talks to them
 over the wire. They are part of the editor protocol rather than the app-facing API.</p>
-<p><code>InertiaShape</code> and <code>InertiaObjectType</code> are remnants of an earlier shape-based model that
-the keyframe model replaced; nothing decodes into them any more.</p>
+<p><code>InertiaShape</code>, <code>InertiaShapeProperties</code> and <code>Vertex</code> describe the vector shapes a schema
+can carry behind an actionable. <code>InertiaShapeCanvas</code> draws them; you do not construct them
+yourself, the editor authors them.</p>
 <p><code>getHostForWebSocket()</code>, <code>isValidIPv4()</code> and <code>getFirstDnsIP()</code> are host-discovery helpers
 that shell out to <code>ip route</code>. Nothing in the runtime calls them — <code>baseURL</code> is passed
 through as given.</p>

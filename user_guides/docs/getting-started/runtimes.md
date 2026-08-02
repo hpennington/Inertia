@@ -23,46 +23,45 @@ Every runtime has the same four pieces:
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
 | Import | `import Inertia` | `org.inertiagraphics.inertia` | `from "inertia-react"` |
-| Container | `InertiaContainer(dev:id:hierarchyId:)` | `InertiaContainer(id, baseURL, dev)` | `<InertiaContainer id baseURL dev>` |
-| Tag a view | `.inertia("card0")` | `Inertiaable("card0") { … }` | `<Inertiaable hierarchyIdPrefix="card0">` |
+| Container | `InertiaContainer(dev:id:hierarchyId:)` | `InertiaContainer(dev, id, hierarchyId, baseURL)` | `<InertiaContainer dev id hierarchyId baseURL>` |
+| Tag a view | `.inertia("card0")` | `Inertia(id = "card0") { … }` | `<Inertia id="card0">` |
 | Playback handle | `@Environment(\.inertiaDataModel)` | `LocalInertia.current` | `useInertia()` |
-| Start an animation | `trigger(_:)` | `trigger(…)` | `trigger(…)` |
-| Stop / restart | — | `cancel`, `restart` | `cancel`, `restart` |
+| Start / stop / restart | `trigger`, `cancel`, `restart` | `trigger`, `cancel`, `restart` | `trigger`, `cancel`, `restart` |
+| Query | `isCancelled(id)` | `isCancelled(id)` | `isCancelled(id)` |
+| Settable | `isRepeating`, `loopDuration` | `isRepeating`, `loopDuration` | `isRepeating`, `loopDuration` |
+| Read-only | `playheadTime`, `seekTime` | `playheadTime`, `seekTime` | `playheadTime`, `seekTime` |
+| Constants | `InertiaPlayback` | `InertiaPlayback` | `InertiaPlayback` |
 | Editor port | 8060 | 8070 | 8080 |
 
-The Compose and React runtimes expose `cancel` and `restart`; the SwiftUI one does not,
-so a SwiftUI app can start a run but not stop or rewind it.
+The three surfaces are the same. SwiftUI is the reference the other two are aligned to, so
+what you learn on one carries over: the id you tag a view with is the id you pass to
+`trigger`, and `isRepeating` and `loopDuration` are properties you assign to rather than
+setter functions.
+
+SwiftUI is the one runtime with no `baseURL` — it reads its animation file from a `Bundle`
+and reaches the editor at `127.0.0.1:8060`. Note also that `baseURL` is not the same thing
+on the other two: React fetches its animation file from it, while Compose dials the editor
+at it.
 
 ## Where they still differ
 
 ### Loading an animation outside the editor
 
-This is the big one.
+All three load their own animation file when `dev` is false, and none of them opens a
+socket in that mode. Where the file comes from differs:
 
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
-| `dev: false` loads | `<id>.json` from the app bundle | **nothing** | `fetch("<baseURL>/<id>.json")` |
-| `dev: false` opens a socket | no | **yes, always** | no |
+| `dev: false` loads | `<id>.json` from the app bundle | `<id>.json` from `assets/` | `fetch("<baseURL>/<id>.json")` |
+| A missing or broken file | **traps** | logs, draws nothing | logs, draws nothing |
 
-The Compose container accepts a `dev` parameter and never reads it: it connects to
-`baseURL` unconditionally, and has no path that loads an animation file for itself. In
-practice the Compose runtime is an editor-time tool today — a build with no editor
-listening connects to nothing and every tagged view sits at its initial pose.
+The SwiftUI runtime is the strict one: with `dev: false` the container reads the bundled
+resource during initialization and **traps** if it is missing or fails to decode. An empty
+`[]` is a valid file; a missing one is a crash. Compose and React log an error and leave
+every tagged view at its layout position.
 
-!!! warning "Do not ship a Compose build with `InertiaContainer` in it"
-
-    Because the `dev` flag is not honoured, a released Compose app would keep retrying a
-    WebSocket dial to whatever `baseURL` names, and would still show no animation. Gate
-    the container out of release builds yourself — a build-variant source set, or a
-    `BuildConfig.DEBUG` branch around the container.
-
-The SwiftUI runtime goes the other way and is strict about it: with `dev: false` the
-container reads the bundled resource during initialization and **traps** if it is missing
-or fails to decode. An empty `[]` is a valid file; a missing one is a crash.
-
-React sits in between. It fetches `<baseURL>/<id>.json` over HTTP and logs an error if the
-request fails, so a missing file is a still page rather than a crash — but it does mean
-something has to be serving that JSON with CORS headers.
+React's path also means something has to be serving that JSON with CORS headers if it is
+not on the same origin as your app.
 
 ### Interpolation
 
@@ -94,12 +93,11 @@ your dev server. Everything after that is the same.
 
 ## Which to pick
 
-If you are animating an iOS app, use the SwiftUI runtime: it is the one that is kept
-current, and the only one with a supported release path today.
+Pick the runtime that matches the app you want to animate. All three author the same way in
+the editor, ship the same animation file, and expose the same API.
 
-Use the Compose and React runtimes when the app you want to animate is already an Android
-or web app. Author against them in the editor exactly as you would for iOS — just know
-that on Compose, shipping the result is not yet a solved path.
+The SwiftUI runtime is the one kept most current — it is where new work lands first, and
+its cubic-spline interpolation is the reference the other two approximate.
 
 ## Next
 

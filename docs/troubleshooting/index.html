@@ -1400,7 +1400,7 @@ filter in Console.app or <code>xcrun simctl spawn booted log stream</code>.</p>
 <li>Is the page loaded in the editor's own web view? The runtime dials
   <code>ws://127.0.0.1:8080</code>, so a page served from another machine cannot reach it.</li>
 <li>Is the page served over <code>https</code>? A secure page refuses a <code>ws://</code> dial outright.</li>
-<li>Does the app have at least one <code>&lt;Inertiaable&gt;</code>? A container with no tagged views
+<li>Does the app have at least one <code>&lt;Inertia&gt;</code>? A container with no tagged views
   reports a tree with only its root.</li>
 <li>Is anything else holding port <strong>8080</strong>?</li>
 </ul>
@@ -1479,9 +1479,11 @@ you thought it was, every offset in it is scaled against the wrong box.</p>
 <p>Check that the container wraps what you intend — usually the root view, filling the screen
 — and that nothing between it and the animated view constrains the frame in a way you did
 not mean.</p>
-<p>This bites hardest on Compose, where <code>InertiaContainer</code> measures itself with
-<code>wrapContentSize()</code>: give it content that fills the screen, or every <code>translate</code> in it
-resolves against a smaller box than the one you authored against.</p>
+<p>All three containers fill the space their host offers them — <code>GeometryReader</code> plus
+<code>.frame(maxWidth:maxHeight: .infinity)</code> on SwiftUI, <code>fillMaxSize()</code> on Compose,
+<code>width: 100%; height: 100%</code> on React — so they resolve <code>translate</code> against the same
+rectangle. What differs is what the <em>host</em> offers: a container nested inside something that
+constrains it gets the smaller box, and every offset in it scales down with it.</p>
 <h2 id="the-animation-reads-differently-on-ios-than-on-android-or-the-web">The animation reads differently on iOS than on Android or the web<a class="headerlink" href="#the-animation-reads-differently-on-ios-than-on-android-or-the-web" title="Permanent link">&para;</a></h2>
 <p>Expected, within limits. SwiftUI fits a cubic spline across the whole track, so motion can
 overshoot a keyframe on the way to the next one. Compose and React solve each segment

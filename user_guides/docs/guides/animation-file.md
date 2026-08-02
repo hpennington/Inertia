@@ -48,7 +48,7 @@ HTTP in React, and over the editor's socket in all three.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `id` | string | Matches the id the animated view was tagged with — `.inertia("card0")`, `Inertiaable(hierarchyIdPrefix = "card0")`, `<Inertiaable hierarchyIdPrefix="card0">`. |
+| `id` | string | Matches the id the animated view was tagged with — `.inertia("card0")`, `Inertia(id = "card0")`, `<Inertia id="card0">`. |
 | `initialValues` | object | The pose the view sits at before the animation runs. |
 | `invokeType` | `"auto"` \| `"trigger"` | Whether it plays as soon as its schema arrives, or waits to be triggered. |
 | `keyframes` | array | The poses to animate through, in order. |
