@@ -355,10 +355,36 @@ public final class InertiaDataModel{
     /// the playhead's clock and the animation on screen loop or stop together.
     public var isRepeating: Bool = true
 
-    /// How long one loop lasts, as set on the editor's timeline. Applies from
-    /// the next tick of the clock, so resizing the timeline mid-run stretches
-    /// the loop rather than waiting for it to be restarted.
+    /// How long one loop lasts.
+    ///
+    /// Seeded from the schemas — the loop is part of what was authored, so a
+    /// shipped build loops over the span its animation was drawn against
+    /// without anything having to tell it — and moved from there by the
+    /// editor's timeline. Applies from the next tick of the clock, so resizing
+    /// the timeline mid-run stretches the loop rather than waiting for it to be
+    /// restarted.
     public var loopDuration: CGFloat = InertiaPlayback.defaultLoopDuration
+
+    /// The loop `schemas` were authored against.
+    ///
+    /// The longest, where a hand-edited file disagrees with itself: the loop is
+    /// what every track is padded out to, and the shorter answer would cut the
+    /// track that asked for more off at the knees.
+    static func authoredLoopDuration(of schemas: [InertiaID: InertiaAnimationSchema]) -> CGFloat? {
+        schemas.values.map(\.loopDuration).max()
+    }
+
+    /// Takes the loop length from the schemas now loaded.
+    ///
+    /// Called wherever `inertiaSchemas` is replaced or added to. An empty set
+    /// leaves the current loop alone rather than snapping back to the default —
+    /// the editor clears schemas between sends, and the timeline is not asking
+    /// for a different length when it does.
+    func adoptLoopDurationFromSchemas() {
+        guard let authored = Self.authoredLoopDuration(of: inertiaSchemas) else { return }
+
+        loopDuration = InertiaPlayback.clampLoopDuration(authored)
+    }
 
     /// One turn of the timeline: where a run ends, and where a repeating one
     /// wraps back to the start.
@@ -668,6 +694,11 @@ public final class InertiaDataModel{
         // Initialize states for all schema keys
         self.states = inertiaSchemas.keys.reduce(into: [:]) { result, key in
             result[key] = InertiaAnimationState(id: key, trigger: false, isCancelled: false)
+        }
+        // Schemas loaded off disk carry the loop they were authored against —
+        // in a shipped build nothing else ever says what it is.
+        if let authored = Self.authoredLoopDuration(of: inertiaSchemas) {
+            self.loopDuration = InertiaPlayback.clampLoopDuration(authored)
         }
     }
 }
@@ -1816,6 +1847,11 @@ struct InertiaEditable<Content: View>: View {
             }
         }
 
+        // The loop travels with the schemas, so a project opened at a length
+        // other than the default plays at it from the first send rather than
+        // waiting for the timeline to be nudged.
+        inertiaDataModel?.adoptLoopDurationFromSchemas()
+
         // Schemas arriving from the editor are the other order round: the
         // actionables are already on screen, and this is the moment the runtime
         // learns which of them start on their own.
@@ -2105,7 +2141,7 @@ public enum InertiaAnimationInvokeType: String, Codable, CustomStringConvertible
 public struct InertiaAnimationSchema: Codable, Identifiable, Equatable, CustomStringConvertible {
     public var description: String {
 """
-{"id": \(id), "initialValues": \(initialValues), "invokeType": \(invokeType), "keyframes": \(keyframes), shapes: \(shapes)}
+{"id": \(id), "initialValues": \(initialValues), "invokeType": \(invokeType), "keyframes": \(keyframes), shapes: \(shapes), loopDuration: \(loopDuration)}
 """
     }
 
@@ -2117,13 +2153,25 @@ public struct InertiaAnimationSchema: Codable, Identifiable, Equatable, CustomSt
     /// animation recorded before shapes existed — or one that simply wants
     /// none — still decodes.
     public let shapes: [InertiaShape]
+    /// How long one loop of the timeline this was authored on lasts.
+    ///
+    /// A property of the animation rather than of the editor that recorded it:
+    /// a track is padded out to the loop, so an animation played back at a
+    /// length other than the one it was drawn against holds — or truncates —
+    /// where its author did not mean it to. Every schema in a project carries
+    /// the same value, which is what the editor's one timeline slider writes.
+    ///
+    /// Optional to author, so an animation recorded before the loop was part of
+    /// the schema — or one happy with the default — still decodes.
+    public let loopDuration: CGFloat
 
-    public init(id: InertiaID, initialValues: InertiaAnimationValues, invokeType: InertiaAnimationInvokeType, keyframes: [InertiaAnimationKeyframe], shapes: [InertiaShape] = []) {
+    public init(id: InertiaID, initialValues: InertiaAnimationValues, invokeType: InertiaAnimationInvokeType, keyframes: [InertiaAnimationKeyframe], shapes: [InertiaShape] = [], loopDuration: CGFloat = InertiaPlayback.defaultLoopDuration) {
         self.id = id
         self.initialValues = initialValues
         self.invokeType = invokeType
         self.keyframes = keyframes
         self.shapes = shapes
+        self.loopDuration = InertiaPlayback.clampLoopDuration(loopDuration)
     }
 
     public init(from decoder: Decoder) throws {
@@ -2133,6 +2181,25 @@ public struct InertiaAnimationSchema: Codable, Identifiable, Equatable, CustomSt
         self.invokeType = try container.decode(InertiaAnimationInvokeType.self, forKey: .invokeType)
         self.keyframes = try container.decode([InertiaAnimationKeyframe].self, forKey: .keyframes)
         self.shapes = try container.decodeIfPresent([InertiaShape].self, forKey: .shapes) ?? []
+        self.loopDuration = InertiaPlayback.clampLoopDuration(
+            try container.decodeIfPresent(CGFloat.self, forKey: .loopDuration) ?? InertiaPlayback.defaultLoopDuration
+        )
+    }
+
+    /// The same animation, authored against a loop of `loopDuration`.
+    ///
+    /// Every other field is a `let` and stays exactly as it was: the loop is
+    /// project-wide, so the editor restamps it across schemas it is otherwise
+    /// not editing.
+    public func with(loopDuration: CGFloat) -> InertiaAnimationSchema {
+        InertiaAnimationSchema(
+            id: id,
+            initialValues: initialValues,
+            invokeType: invokeType,
+            keyframes: keyframes,
+            shapes: shapes,
+            loopDuration: loopDuration
+        )
     }
 }
 
