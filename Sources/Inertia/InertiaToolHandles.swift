@@ -337,8 +337,13 @@ struct InertiaToolHandles: View {
             .gesture(gesture(anchor: origin) { start, location in
                 var edit = InertiaToolEdit()
                 // Measured along the track from where the gesture opened, so the
-                // knob tracks the pointer instead of jumping to it.
-                let travelled = (location.x - (start.anchor.x + start.reference.dx)) / width
+                // knob tracks the pointer instead of jumping to it. Against the
+                // track as it is *drawn*: the drag reports container points,
+                // while the chrome is laid out in the node's own space and
+                // counter-scaled, so the two only agree once the node's scale is
+                // put back in.
+                let drawnWidth = max(self.size.width * start.values.scale, 60)
+                let travelled = (location.x - (start.anchor.x + start.reference.dx)) / drawnWidth
                 edit.opacity = min(1, max(0, start.values.opacity + travelled)) - start.values.opacity
                 return edit
             })
