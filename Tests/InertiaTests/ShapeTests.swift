@@ -192,7 +192,7 @@ final class ShapeTests: XCTestCase {
             keyframes: [],
             shapes: [
                 InertiaShape(
-                    shape: InertiaShapeProperties(id: "123", type: .rectangle, width: 2, height: 2),
+                    shape: InertiaShapeProperties(id: "123", type: .rectangle, width: 2, height: 2, color: InertiaColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
                     vertices: nil,
                     animation: InertiaAnimationSchema(
                         id: "shape0",
@@ -260,5 +260,111 @@ final class ShapeTests: XCTestCase {
         XCTAssertEqual(reread.first, shape)
         XCTAssertEqual(reread.first?.animation?.keyframes.count, 2)
         XCTAssertEqual(reread.first?.shape?.type, .rectangle)
+    }
+
+    // MARK: - The vectors a description resolves to
+
+    /// The box a described vector encloses, which is what says whether it came
+    /// out the shape it was asked for.
+    private func drawnBounds(_ type: InertiaShapeType, _ width: CGFloat, _ height: CGFloat) throws -> CGRect {
+        let shape = InertiaShape(
+            shape: InertiaShapeProperties(
+                id: "123",
+                type: type,
+                width: width,
+                height: height,
+                color: InertiaColor(red: 1, green: 0, blue: 0, alpha: 1)
+            ),
+            vertices: nil
+        )
+
+        return try XCTUnwrap([shape].bounds)
+    }
+
+    /// The two descriptions that carry two measurements have to spend both. A
+    /// rectangle sized by one of them is the bug this replaced: every vector
+    /// came out square, whatever box it had been dragged out over.
+    func testRectangleAndOvalFillTheBoxTheyWereDrawnIn() throws {
+        for type in [InertiaShapeType.rectangle, .oval] {
+            let bounds = try drawnBounds(type, 3, 1)
+
+            XCTAssertEqual(bounds.width, 3, accuracy: 0.0001, "\(type)")
+            XCTAssertEqual(bounds.height, 1, accuracy: 0.0001, "\(type)")
+        }
+    }
+
+    /// The three descriptions with one measurement rather than two stay
+    /// themselves whatever box they were drawn in — sized, all three, by its
+    /// longer side.
+    func testSquareCircleAndTriangleStayRegularInALopsidedBox() throws {
+        for type in [InertiaShapeType.square, .circle, .triangle] {
+            let bounds = try drawnBounds(type, 3, 1)
+
+            XCTAssertEqual(bounds.width, 3, accuracy: 0.0001, "\(type)")
+        }
+
+        // The triangle is the one that isn't as tall as it is wide: it is drawn
+        // as an equilateral one, so its height is the altitude of its base.
+        XCTAssertEqual(try drawnBounds(.square, 3, 1).height, 3, accuracy: 0.0001)
+        XCTAssertEqual(try drawnBounds(.circle, 3, 1).height, 3, accuracy: 0.0001)
+        XCTAssertEqual(try drawnBounds(.triangle, 3, 1).height, 3 * sqrt(3) / 2, accuracy: 0.0001)
+    }
+
+    /// A round vector is drawn as the many-sided polygon that reads as one, and
+    /// every one of those corners sits on the ellipse — which is what stops it
+    /// being the squared-off box it used to be drawn as.
+    func testOvalIsARingOfCornersOnItsEllipse() throws {
+        let shape = InertiaShape(
+            shape: InertiaShapeProperties(
+                id: "123",
+                type: .oval,
+                width: 4,
+                height: 2,
+                color: InertiaColor(red: 0, green: 0.5, blue: 1, alpha: 1)
+            ),
+            vertices: nil
+        )
+
+        XCTAssertEqual(shape.vertices.count, OvalNode.segments)
+
+        for vertex in shape.vertices {
+            // x²/a² + y²/b² = 1, for a ring centred on the origin the
+            // description is measured from.
+            let position = vertex.position
+            XCTAssertEqual(pow(position.x / 2, 2) + pow(position.y / 1, 2), 1, accuracy: 0.0001)
+        }
+
+        // The ring is convex, so the fan the renderer draws covers it exactly:
+        // one triangle per corner but the two the fan turns about.
+        XCTAssertEqual(shape.triangles.count, (OvalNode.segments - 2) * 3)
+    }
+
+    /// The colour the description carries is the colour the corners come out,
+    /// rather than the red placeholder every described vector used to be drawn
+    /// in whatever the editor had recorded against it.
+    func testDescribedShapeIsDrawnInItsOwnColor() throws {
+        let shape = InertiaShape(
+            shape: InertiaShapeProperties(
+                id: "123",
+                type: .rectangle,
+                width: 1,
+                height: 1,
+                color: InertiaColor(red: 0.25, green: 0.5, blue: 0.75, alpha: 0.5)
+            ),
+            vertices: nil
+        )
+
+        let corner = try XCTUnwrap(shape.vertices.first)
+
+        XCTAssertEqual(corner.color.red, 0.25, accuracy: 0.0001)
+        XCTAssertEqual(corner.color.green, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(corner.color.blue, 0.75, accuracy: 0.0001)
+        XCTAssertEqual(corner.color.alpha, 0.5, accuracy: 0.0001)
+    }
+
+    /// The palette and the wire format are one list: a vector the toolbar offers
+    /// that no description can carry is a shape that cannot be drawn.
+    func testEveryVectorInThePaletteIsADescribableShape() {
+        XCTAssertEqual(InertiaVector.allCases.map(\.shapeType.rawValue), InertiaVector.allCases.map(\.rawValue))
     }
 }

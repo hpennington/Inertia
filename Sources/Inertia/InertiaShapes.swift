@@ -7,8 +7,12 @@
 
 import SwiftUI
 
+/// The kinds of vector a shape can be described as, rather than spelled out
+/// corner by corner. A bare string on the wire, like every other enum here.
 public enum InertiaShapeType: String, Codable {
     case rectangle
+    case square
+    case circle
     case oval
     case triangle
 }
@@ -18,12 +22,14 @@ public struct InertiaShapeProperties: Codable, Equatable {
     let type: InertiaShapeType
     let width: CGFloat
     let height: CGFloat
+    let color: InertiaColor
 
-    public init(id: InertiaID, type: InertiaShapeType, width: CGFloat, height: CGFloat) {
+    public init(id: InertiaID, type: InertiaShapeType, width: CGFloat, height: CGFloat, color: InertiaColor) {
         self.id = id
         self.type = type
         self.width = width
         self.height = height
+        self.color = color
     }
 }
 
@@ -66,17 +72,35 @@ public final class InertiaShape: Codable, Equatable, CustomStringConvertible {
         }
     }
 
+    /// The ring of corners a described vector is drawn from, in the actionable's
+    /// own units and centred on its top-left corner — the origin the description
+    /// is measured from.
+    ///
+    /// Matches the Kotlin and WebGL runtimes corner for corner, so one authored
+    /// vector is the same drawing on all three. A rectangle comes out as the two
+    /// triangles of a quad rather than four corners; the fan in `triangles`
+    /// re-covers the same area from them.
+    ///
+    /// A square, a circle and a triangle are the descriptions with one
+    /// measurement rather than two, so each is sized by the longer side of the
+    /// box it was drawn in — the shape stays square, stays round, stays a
+    /// triangle whatever box it was dragged out over.
     private func getVertices() -> [Vertex]? {
         guard let shape else {
             return nil
         }
+        let color = shape.color.cgColor
         switch shape.type {
         case .rectangle:
-            return SquareNode(id: shape.id, zIndex: 0, size: max(shape.width, shape.height), color: CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)).metalCanvasNode.vertices
+            return RectangleNode(id: shape.id, zIndex: 0, width: shape.width, height: shape.height, color: color).metalCanvasNode.vertices
+        case .square:
+            return SquareNode(id: shape.id, zIndex: 0, size: max(shape.width, shape.height), color: color).metalCanvasNode.vertices
+        case .circle:
+            return CircleNode(id: shape.id, zIndex: 0, diameter: max(shape.width, shape.height), color: color).metalCanvasNode.vertices
         case .oval:
-            return SquareNode(id: shape.id, zIndex: 0, size: max(shape.width, shape.height), color: CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)).metalCanvasNode.vertices
+            return OvalNode(id: shape.id, zIndex: 0, width: shape.width, height: shape.height, color: color).metalCanvasNode.vertices
         case .triangle:
-            return TriangleNode(id: shape.id, size: max(shape.width, shape.height), center: .zero, color: CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)).metalCanvasNode.vertices
+            return TriangleNode(id: shape.id, size: max(shape.width, shape.height), center: .zero, color: color).metalCanvasNode.vertices
         }
     }
 
@@ -185,33 +209,117 @@ public struct TriangleNode {
         let height = size * sqrt(3) / 2  // Height of the triangle (from top to base)
         let halfBase = size / 2  // Half of the base length
         
-        let rgb = color.components!
+        let vertexColor = color.vertexColor
         self.metalCanvasNode = MetalCanvasNode(id: id, vertices:  [
-            Vertex(position: InertiaPoint(x: center.x, y: center.y + height / 2), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3]))),
-            Vertex(position: InertiaPoint(x: center.x - halfBase, y: center.y - height / 2), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3]))),
-            Vertex(position: InertiaPoint(x: center.x + halfBase, y: center.y - height / 2), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3]))),
+            Vertex(position: InertiaPoint(x: center.x, y: center.y + height / 2), color: vertexColor),
+            Vertex(position: InertiaPoint(x: center.x - halfBase, y: center.y - height / 2), color: vertexColor),
+            Vertex(position: InertiaPoint(x: center.x + halfBase, y: center.y - height / 2), color: vertexColor),
         ], zIndex: 0)
     }
 }
 
+public struct RectangleNode {
+    public let id: InertiaID
+    public let metalCanvasNode: MetalCanvasNode
+
+    public init(id: InertiaID, zIndex: Int, width: CGFloat, height: CGFloat, center: CGPoint = .zero, color: CGColor) {
+        self.id = id
+        // Calculate the corners of the rectangle, which is drawn about its centre
+        let halfWidth = width / 2
+        let halfHeight = height / 2
+        let vertexColor = color.vertexColor
+        let topLeft = Vertex(position: InertiaPoint(x: center.x - halfWidth, y: center.y - halfHeight), color: vertexColor)
+        let topRight = Vertex(position: InertiaPoint(x: center.x + halfWidth, y: center.y - halfHeight), color: vertexColor)
+        let bottomLeft = Vertex(position: InertiaPoint(x: center.x - halfWidth, y: center.y + halfHeight), color: vertexColor)
+        let bottomRight = Vertex(position: InertiaPoint(x: center.x + halfWidth, y: center.y + halfHeight), color: vertexColor)
+
+        // Define vertices for two triangles forming the rectangle
+        self.metalCanvasNode = MetalCanvasNode(id: id, vertices: [
+            topLeft, topRight, bottomRight,
+            topLeft, bottomLeft, bottomRight
+        ], zIndex: zIndex)
+    }
+}
+
+/// A square is the rectangle whose sides are equal, and is drawn as one.
 public struct SquareNode {
     let id: InertiaID
     let metalCanvasNode: MetalCanvasNode
 
     public init(id: InertiaID, zIndex: Int, size: CGFloat, center: CGPoint = .zero, color: CGColor) {
         self.id = id
-        // Calculate vertices of the square
-        let halfSize = size / 2
-        let rgb = color.components!
-        let topLeft = Vertex(position: InertiaPoint(x: center.x - halfSize, y: center.y - halfSize), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3])))
-        let topRight = Vertex(position: InertiaPoint(x: center.x + halfSize, y: center.y - halfSize), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3])))
-        let bottomLeft = Vertex(position: InertiaPoint(x: center.x - halfSize, y: center.y + halfSize), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3])))
-        let bottomRight = Vertex(position: InertiaPoint(x: center.x + halfSize, y: center.y + halfSize), color: InertiaColor(red: Float(rgb[0]), green: Float(rgb[1]), blue: Float(rgb[2]), alpha: Float(rgb[3])))
-        
-        // Define vertices for two triangles forming the squares
-        self.metalCanvasNode = MetalCanvasNode(id: id, vertices: [
-            topLeft, topRight, bottomRight,
-            topLeft, bottomLeft, bottomRight
-        ], zIndex: 0)
+        self.metalCanvasNode = RectangleNode(id: id, zIndex: zIndex, width: size, height: size, center: center, color: color).metalCanvasNode
+    }
+}
+
+public struct OvalNode {
+    /// How many corners the ring is cut into. An oval has no corners of its own,
+    /// so it is drawn as the many-sided polygon that reads as one at the sizes a
+    /// shape is authored at — and the same count on every runtime, so an oval
+    /// authored once is the same drawing wherever it is played back.
+    public static let segments = 48
+
+    public let id: InertiaID
+    public let metalCanvasNode: MetalCanvasNode
+
+    public init(id: InertiaID, zIndex: Int, width: CGFloat, height: CGFloat, center: CGPoint = .zero, color: CGColor) {
+        self.id = id
+        // Step around the ellipse inscribed in the box, one corner per segment.
+        // The ring is convex, so the fan the renderer draws it with covers it
+        // exactly from any corner of it.
+        let radiusX = width / 2
+        let radiusY = height / 2
+        let vertexColor = color.vertexColor
+
+        self.metalCanvasNode = MetalCanvasNode(id: id, vertices: (0..<Self.segments).map { segment in
+            let angle = 2 * CGFloat.pi * CGFloat(segment) / CGFloat(Self.segments)
+            return Vertex(
+                position: InertiaPoint(
+                    x: center.x + radiusX * cos(angle),
+                    y: center.y + radiusY * sin(angle)
+                ),
+                color: vertexColor
+            )
+        }, zIndex: zIndex)
+    }
+}
+
+/// A circle is the oval whose axes are equal, and is drawn as one.
+public struct CircleNode {
+    public let id: InertiaID
+    public let metalCanvasNode: MetalCanvasNode
+
+    public init(id: InertiaID, zIndex: Int, diameter: CGFloat, center: CGPoint = .zero, color: CGColor) {
+        self.id = id
+        self.metalCanvasNode = OvalNode(id: id, zIndex: zIndex, width: diameter, height: diameter, center: center, color: color).metalCanvasNode
+    }
+}
+
+private extension InertiaColor {
+    /// The described colour as Core Graphics states it, which is the colour the
+    /// shape nodes are built from.
+    var cgColor: CGColor {
+        CGColor(red: CGFloat(red), green: CGFloat(green), blue: CGFloat(blue), alpha: CGFloat(alpha))
+    }
+}
+
+private extension CGColor {
+    /// The colour as a corner carries it. A colour that isn't stated as RGBA —
+    /// a grey, most often — is read as the one channel it does have, rather
+    /// than indexing past the end of a component list that is shorter than the
+    /// four channels a vertex wants.
+    var vertexColor: InertiaColor {
+        let components = components ?? []
+        guard components.count >= 4 else {
+            let white = Float(components.first ?? 0)
+            return InertiaColor(red: white, green: white, blue: white, alpha: Float(components.last ?? 1))
+        }
+
+        return InertiaColor(
+            red: Float(components[0]),
+            green: Float(components[1]),
+            blue: Float(components[2]),
+            alpha: Float(components[3])
+        )
     }
 }

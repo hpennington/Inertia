@@ -1310,9 +1310,26 @@ struct InertiaEditable<Content: View>: View {
     /// other tool edits through the chrome in `toolHandles`, so a drag across
     /// the body of a node does nothing — the same way a modal tool behaves in
     /// any other editor.
+    ///
+    /// The move tool's own chrome — its two axis arrows — is driven by this same
+    /// gesture rather than by a handle of its own, so this covers a press on one
+    /// of those too. See `InertiaTranslateAxes`.
     private var isBodyDraggable: Bool {
         isEditable && activeTool == .translate
     }
+
+    /// What a move gesture in progress was opened on.
+    private struct BodyDrag {
+        /// The axis the arrow the press landed on pins this move to, or `nil` for
+        /// a press on the node itself, which is free in both.
+        let axis: InertiaTranslateAxis?
+    }
+
+    /// Taken once, when the gesture opens, rather than tested per event: the test
+    /// is against where the node is *drawn*, and this gesture is what is moving
+    /// it — the press stays where it was while the arrow it landed on travels
+    /// away from it.
+    @State private var bodyDrag: BodyDrag? = nil
 
     /// Measured in the container's space rather than the node's own.
     ///
@@ -1325,15 +1342,39 @@ struct InertiaEditable<Content: View>: View {
         DragGesture(coordinateSpace: .named(inertiaContainerId ?? ""))
             .onChanged { value in
                 if isBodyDraggable {
-                    apply(InertiaToolEdit(translate: value.translation))
+                    let drag = bodyDrag ?? beginBodyDrag(at: value.startLocation)
+                    apply(InertiaToolEdit(translate: drag.axis?.constrain(value.translation) ?? value.translation))
                 }
             }
             .onEnded { value in
                 if isBodyDraggable {
-                    apply(InertiaToolEdit(translate: value.translation))
+                    let drag = bodyDrag ?? beginBodyDrag(at: value.startLocation)
+                    apply(InertiaToolEdit(translate: drag.axis?.constrain(value.translation) ?? value.translation))
                     commitEdit()
                 }
+                bodyDrag = nil
             }
+    }
+
+    /// Opens a move gesture, keyed off the axis arrow the press landed on — if
+    /// any — as the arrows are drawn right now, before this gesture has moved
+    /// anything.
+    ///
+    /// Assigned during `onChanged`, which is what makes the first event of a
+    /// gesture the one that opens it; SwiftUI gives no separate hook. Mirrors
+    /// `InertiaToolHandles.begin(anchor:at:)`.
+    private func beginBodyDrag(at location: CGPoint) -> BodyDrag {
+        let scale = displayedValues.scale
+        let drag = BodyDrag(
+            axis: InertiaTranslateAxes.axis(
+                at: location,
+                drawnCenter: currentCenter,
+                drawnSize: CGSize(width: layoutFrame.width * scale, height: layoutFrame.height * scale)
+            )
+        )
+
+        bodyDrag = drag
+        return drag
     }
 
     /// Shows what a gesture has produced so far, and reports it to the editor's
@@ -1396,7 +1437,7 @@ struct InertiaEditable<Content: View>: View {
     /// The chrome for the active tool, drawn over a selected node.
     @ViewBuilder
     private var toolHandles: some View {
-        if isEditable, activeTool != .translate {
+        if isEditable {
             InertiaToolHandles(
                 tool: activeTool,
                 values: displayedValues,

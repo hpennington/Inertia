@@ -29,6 +29,46 @@ public enum InertiaTool: String, Codable, Sendable, CaseIterable, Identifiable, 
     public var id: String { rawValue }
 }
 
+/// Which vector a drag in the runtime's viewport draws.
+///
+/// The other half of the toolbar: ``InertiaTool`` says what a drag does to a
+/// node that is already there, and this says what a drag brings into being. It
+/// lives here for the same reason the tool does — the gesture happens in the app
+/// under test, so the choice has to reach the runtime to mean anything.
+///
+/// One case per ``InertiaShapeType``, because a drawn vector is recorded as a
+/// described shape: what the palette offers and what the wire can carry are the
+/// same list, and `shapeType` is where the two meet.
+public enum InertiaVector: String, Codable, Sendable, CaseIterable, Identifiable, Hashable {
+    case rectangle
+    case square
+    case circle
+    case oval
+    case triangle
+
+    public var id: String { rawValue }
+
+    /// The description a vector drawn with this is recorded as.
+    ///
+    /// Switched rather than built from the raw value, so a case added to either
+    /// enum without the other stops compiling here rather than failing to
+    /// resolve at the point something is being drawn.
+    public var shapeType: InertiaShapeType {
+        switch self {
+        case .rectangle:
+            return .rectangle
+        case .square:
+            return .square
+        case .circle:
+            return .circle
+        case .oval:
+            return .oval
+        case .triangle:
+            return .triangle
+        }
+    }
+}
+
 public enum InertiaMessage {
     public enum MessageType: String, Codable {
         case actionable

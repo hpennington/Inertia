@@ -50,6 +50,73 @@ struct InertiaToolEdit: Equatable {
     }
 }
 
+/// Which way one of the move tool's axis arrows lets a drag move the node.
+///
+/// The node's own body stays free in both directions; an arrow pins one
+/// component of the drag to zero, for the moves that have to keep a row or a
+/// column. Screen axes, not the node's own — see `InertiaTranslateAxes`.
+enum InertiaTranslateAxis: Hashable, CaseIterable {
+    case horizontal
+    case vertical
+
+    /// The drag with the component this axis does not author dropped.
+    func constrain(_ translation: CGSize) -> CGSize {
+        switch self {
+        case .horizontal:
+            return CGSize(width: translation.width, height: 0)
+        case .vertical:
+            return CGSize(width: 0, height: translation.height)
+        }
+    }
+}
+
+/// Where the move tool's two axis arrows sit, in the container's coordinate
+/// space.
+///
+/// Shared by the chrome that draws them and the gesture that runs them, because
+/// the arrows carry no gesture of their own: the node's own drag — the one that
+/// already moves it freely — is what a press on an arrow opens, and it asks this
+/// which axis that press picked. One gesture rather than one per arrow keeps the
+/// two out of each other's way; a knob with a `DragGesture` inside a node that
+/// has one of its own leaves which of them wins up to SwiftUI.
+///
+/// Measured from the node's *drawn* box and axis-aligned however the node has
+/// been turned, since what an arrow constrains is horizontal and vertical on
+/// screen. The chrome is counter-rotated to match — see
+/// `InertiaToolHandles.translateAxisHandles`.
+enum InertiaTranslateAxes {
+    /// From the drawn edge of the node's box out to the arrow's tail.
+    static let gap: CGFloat = 22
+    static let length: CGFloat = 14
+    static let halfWidth: CGFloat = 7
+    /// How far from an arrow's middle a press still takes it. Generous next to
+    /// the arrow itself, which is small, and matched by the hit area the chrome
+    /// holds out.
+    static let touchRadius: CGFloat = 24
+
+    /// The middle of one arrow, which is both what it is drawn about and what a
+    /// press is measured against.
+    static func center(_ axis: InertiaTranslateAxis, drawnCenter: CGPoint, drawnSize: CGSize) -> CGPoint {
+        let reach = gap + length / 2
+
+        switch axis {
+        case .horizontal:
+            return CGPoint(x: drawnCenter.x + drawnSize.width / 2 + reach, y: drawnCenter.y)
+        case .vertical:
+            return CGPoint(x: drawnCenter.x, y: drawnCenter.y - drawnSize.height / 2 - reach)
+        }
+    }
+
+    /// The axis a press picked, or `nil` for anywhere else — the body of the
+    /// node included, which is a free move.
+    static func axis(at point: CGPoint, drawnCenter: CGPoint, drawnSize: CGSize) -> InertiaTranslateAxis? {
+        InertiaTranslateAxis.allCases.first { axis in
+            let middle = center(axis, drawnCenter: drawnCenter, drawnSize: drawnSize)
+            return hypot(point.x - middle.x, point.y - middle.y) <= touchRadius
+        }
+    }
+}
+
 extension InertiaAnimationValues {
     /// This transform with an in-progress edit folded into it — what the node is
     /// drawn at while a handle is being dragged, and what the editor is told
@@ -118,6 +185,31 @@ extension InertiaAnimationValues {
             x: anchor.x + dx * cos(radians) - dy * sin(radians),
             y: anchor.y + dx * sin(radians) + dy * cos(radians)
         )
+    }
+}
+
+/// A filled arrowhead pointing along one screen axis: right for the horizontal
+/// one, up for the vertical one.
+///
+/// One head rather than two: both directions of an axis are draggable, and the
+/// arrow only has to read as the axis it stands for.
+private struct InertiaAxisArrow: Shape {
+    let axis: InertiaTranslateAxis
+
+    func path(in rect: CGRect) -> Path {
+        Path { path in
+            switch axis {
+            case .horizontal:
+                path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+                path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            case .vertical:
+                path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+                path.addLine(to: CGPoint(x: rect.midX, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            }
+            path.closeSubpath()
+        }
     }
 }
 
@@ -193,9 +285,11 @@ struct InertiaToolHandles: View {
             ZStack(alignment: .topLeading) {
                 switch tool {
                 case .translate:
-                    // The whole node is the handle — see `InertiaEditable`'s own
-                    // drag gesture, which is live only for this tool.
-                    EmptyView()
+                    // The whole node is the free handle — see
+                    // `InertiaEditable`'s own drag gesture, which is live only
+                    // for this tool. These two arrows are the same drag pinned
+                    // to one axis.
+                    translateAxisHandles
                 case .rotate:
                     rotationHandle(anchor: .zero, radius: rotateRadius, knob: rotateKnob)
                 case .rotateCenter:
@@ -250,6 +344,24 @@ struct InertiaToolHandles: View {
         ]
     }
 
+    /// The axis arrows' measurements, taken back into the node's own box: the
+    /// chrome is counter-scaled, so what lands on screen is what
+    /// `InertiaTranslateAxes` says — which is what a press is tested against.
+    private var axisGap: CGFloat { InertiaTranslateAxes.gap * chromeScale }
+    private var axisLength: CGFloat { InertiaTranslateAxes.length * chromeScale }
+    private var axisHalfWidth: CGFloat { InertiaTranslateAxes.halfWidth * chromeScale }
+
+    /// Where one arrow starts, out past the middle of the edge it points
+    /// through. It runs from here to `axisLength` further out.
+    private func axisTail(_ axis: InertiaTranslateAxis) -> CGPoint {
+        switch axis {
+        case .horizontal:
+            return CGPoint(x: size.width + axisGap, y: size.height / 2)
+        case .vertical:
+            return CGPoint(x: size.width / 2, y: -axisGap)
+        }
+    }
+
     private var opacityBarWidth: CGFloat { max(size.width, 60 * chromeScale) }
 
     private var opacityBarOrigin: CGPoint {
@@ -294,6 +406,63 @@ struct InertiaToolHandles: View {
                 }
                 return edit
             })
+    }
+
+    /// The move tool's two arrows, one along each screen axis, each drawn from
+    /// the node's center out past the edge it points through.
+    ///
+    /// Counter-rotated as a group, so they keep pointing along the screen's axes
+    /// rather than the node's — which is what they pin a drag to. Undoing the sum
+    /// of the two rotations the node carries, about this group's own center,
+    /// leaves that center exactly where the node's transform put it — a rotation
+    /// fixes its own anchor — and cancels the turn the arrows would otherwise
+    /// inherit, since a uniform scale commutes with a rotation and the scale is
+    /// all that is left.
+    ///
+    /// Hittable and gestureless. A press has to land on *something* for the
+    /// node's own drag to be offered it, and an arrow hangs outside the node's
+    /// box — but which axis that press picked is decided by
+    /// `InertiaTranslateAxes`, not by which view took it.
+    @ViewBuilder
+    private var translateAxisHandles: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(InertiaTranslateAxis.allCases, id: \.self) { axis in
+                axisArrow(axis)
+            }
+        }
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .rotationEffect(Angle(degrees: -(values.rotate + values.rotateCenter)))
+    }
+
+    @ViewBuilder
+    private func axisArrow(_ axis: InertiaTranslateAxis) -> some View {
+        let tail = axisTail(axis)
+
+        Path { path in
+            path.move(to: centerPoint)
+            path.addLine(to: tail)
+        }
+        .stroke(Color.green.opacity(0.6), lineWidth: chromeLineWidth)
+        .allowsHitTesting(false)
+
+        InertiaAxisArrow(axis: axis)
+            .fill(Color.green)
+            .overlay { InertiaAxisArrow(axis: axis).stroke(Color.white, lineWidth: lineWidth) }
+            .frame(
+                width: axis == .horizontal ? axisLength : axisHalfWidth * 2,
+                height: axis == .horizontal ? axisHalfWidth * 2 : axisLength
+            )
+            // The same circle `InertiaTranslateAxes.axis(at:)` tests a press
+            // against — a `Circle` is inscribed in its frame, whose narrow side
+            // is the arrow's width — so every press this view takes picks an axis
+            // and every press that picks one lands on a view.
+            .contentShape(
+                Circle().inset(by: -(InertiaTranslateAxes.touchRadius - InertiaTranslateAxes.halfWidth) * chromeScale)
+            )
+            .offset(
+                x: axis == .horizontal ? tail.x : tail.x - axisHalfWidth,
+                y: axis == .horizontal ? tail.y - axisHalfWidth : tail.y - axisLength
+            )
     }
 
     /// One knob per corner. Any of them scales the node about its center, by how
