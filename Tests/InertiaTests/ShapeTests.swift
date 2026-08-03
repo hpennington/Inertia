@@ -155,11 +155,11 @@ final class ShapeTests: XCTestCase {
     func testShapeIsNormalizedIntoTheCanvasBounds() {
         let shape = InertiaShape(id: "normalized", vertices: [corner(-0.5, 0), corner(1.5, 0), corner(1.5, 2)])
 
-        let normalized = shape.normalized(to: CGRect(x: -0.5, y: 0, width: 2, height: 2))
+        let normalized = shape.triangles(normalizedTo: CGRect(x: -0.5, y: 0, width: 2, height: 2))
 
-        XCTAssertEqual(normalized.vertices[0].position, InertiaPoint(x: 0, y: 0))
-        XCTAssertEqual(normalized.vertices[1].position, InertiaPoint(x: 1, y: 0))
-        XCTAssertEqual(normalized.vertices[2].position, InertiaPoint(x: 1, y: 1))
+        XCTAssertEqual(normalized[0].position, InertiaPoint(x: 0, y: 0))
+        XCTAssertEqual(normalized[1].position, InertiaPoint(x: 1, y: 0))
+        XCTAssertEqual(normalized[2].position, InertiaPoint(x: 1, y: 1))
     }
 
     /// Fewer than three corners enclose nothing, and handing the renderer a
@@ -191,7 +191,7 @@ final class ShapeTests: XCTestCase {
             invokeType: .auto,
             keyframes: [],
             shapes: [
-                InertiaShape(id: "card2-rectangle", shape: InertiaShapeProperties(id: "123", type: .rectangle, width: 2, height: 2, color: InertiaColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                InertiaShape(id: "card2-rectangle", shape: InertiaShapeProperties(id: "123", type: .rectangle, width: 2, height: 2, fill: InertiaColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
                     vertices: nil,
                     animation: InertiaAnimationSchema(
                         id: "shape0",
@@ -224,28 +224,32 @@ final class ShapeTests: XCTestCase {
     }
 
     /// A described shape has no corners on the wire; the ones it is drawn from
-    /// are worked out from the description. A rectangle is the two triangles of
-    /// a quad, so it reaches the renderer as six corners.
+    /// are worked out from the description. A rectangle is its four corners, and
+    /// the fan that covers them is the two triangles of a quad.
     func testDescribedShapeIsDrawnFromItsDescription() throws {
         let shape = try decodeDrawn()
 
         XCTAssertNil(shape._vertices)
-        XCTAssertEqual(shape.vertices.count, 6)
+        XCTAssertEqual(shape.vertices.count, 4)
+        XCTAssertEqual(shape.triangles.count, 6)
         XCTAssertNotNil([shape].bounds)
     }
 
-    /// Normalizing is about where a shape lands on the canvas, not about what it
-    /// then does — so the track has to come through it. It is the last thing to
-    /// touch a shape before the renderer, and a shape that lost its animation
-    /// here would be drawn in the right place and never move.
-    func testNormalizingKeepsTheShapesAnimation() throws {
+    /// Normalizing is the last thing to touch a shape before the renderer, and
+    /// what it hands over is the drawing rather than the outline — so everything
+    /// the shape paints has to come through it, at the size the canvas is.
+    func testNormalizingKeepsEverythingTheShapeDraws() throws {
         let shape = try decodeDrawn()
         let bounds = try XCTUnwrap([shape].bounds)
 
-        let normalized = shape.normalized(to: bounds)
+        let normalized = shape.triangles(normalizedTo: bounds)
 
-        XCTAssertEqual(normalized.animation?.id, "shape0")
-        XCTAssertEqual(normalized.vertices.count, shape.vertices.count)
+        XCTAssertEqual(normalized.count, shape.triangles.count)
+        XCTAssertEqual(normalized.map(\.color), shape.triangles.map(\.color))
+        // The shape filled its own bounds, so normalizing lands it on the unit
+        // box: every corner inside 0...1, and the far ones exactly on it.
+        XCTAssertEqual(try XCTUnwrap(normalized.map(\.position.x).min()), 0, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(normalized.map(\.position.x).max()), 1, accuracy: 0.0001)
     }
 
     /// The same round trip the authored corners make: a track attached to a
@@ -271,7 +275,7 @@ final class ShapeTests: XCTestCase {
                 type: type,
                 width: width,
                 height: height,
-                color: InertiaColor(red: 1, green: 0, blue: 0, alpha: 1)
+                fill: InertiaColor(red: 1, green: 0, blue: 0, alpha: 1)
             ),
             vertices: nil
         )
@@ -317,12 +321,12 @@ final class ShapeTests: XCTestCase {
                 type: .oval,
                 width: 4,
                 height: 2,
-                color: InertiaColor(red: 0, green: 0.5, blue: 1, alpha: 1)
+                fill: InertiaColor(red: 0, green: 0.5, blue: 1, alpha: 1)
             ),
             vertices: nil
         )
 
-        XCTAssertEqual(shape.vertices.count, OvalNode.segments)
+        XCTAssertEqual(shape.vertices.count, InertiaShapeProperties.ovalSegments)
 
         for vertex in shape.vertices {
             // x²/a² + y²/b² = 1, for a ring centred on the origin the
@@ -333,7 +337,7 @@ final class ShapeTests: XCTestCase {
 
         // The ring is convex, so the fan the renderer draws covers it exactly:
         // one triangle per corner but the two the fan turns about.
-        XCTAssertEqual(shape.triangles.count, (OvalNode.segments - 2) * 3)
+        XCTAssertEqual(shape.triangles.count, (InertiaShapeProperties.ovalSegments - 2) * 3)
     }
 
     /// The colour the description carries is the colour the corners come out,
@@ -345,7 +349,7 @@ final class ShapeTests: XCTestCase {
                 type: .rectangle,
                 width: 1,
                 height: 1,
-                color: InertiaColor(red: 0.25, green: 0.5, blue: 0.75, alpha: 0.5)
+                fill: InertiaColor(red: 0.25, green: 0.5, blue: 0.75, alpha: 0.5)
             ),
             vertices: nil
         )
@@ -356,6 +360,126 @@ final class ShapeTests: XCTestCase {
         XCTAssertEqual(corner.color.green, 0.5, accuracy: 0.0001)
         XCTAssertEqual(corner.color.blue, 0.75, accuracy: 0.0001)
         XCTAssertEqual(corner.color.alpha, 0.5, accuracy: 0.0001)
+    }
+
+    // MARK: - Filling and stroking a described vector
+
+    private func painted(
+        _ type: InertiaShapeType = .rectangle,
+        width: CGFloat = 2,
+        height: CGFloat = 2,
+        fill: InertiaColor? = nil,
+        stroke: InertiaColor? = nil,
+        strokeWidth: CGFloat = 0
+    ) -> InertiaShape {
+        InertiaShape(
+            id: "painted",
+            shape: InertiaShapeProperties(
+                id: "123",
+                type: type,
+                width: width,
+                height: height,
+                fill: fill,
+                stroke: stroke,
+                strokeWidth: strokeWidth
+            ),
+            vertices: nil
+        )
+    }
+
+    private let red = InertiaColor(red: 1, green: 0, blue: 0, alpha: 1)
+    private let blue = InertiaColor(red: 0, green: 0, blue: 1, alpha: 1)
+
+    /// The two halves of painting a vector are independent: either alone is a
+    /// shape, and neither drags the other along with it.
+    func testFillAndStrokeAreDrawnIndependently() throws {
+        let filled = painted(fill: red)
+        let stroked = painted(stroke: blue, strokeWidth: 0.1)
+        let both = painted(fill: red, stroke: blue, strokeWidth: 0.1)
+
+        XCTAssertTrue(filled.triangles.allSatisfy { $0.color == red })
+        XCTAssertTrue(stroked.triangles.allSatisfy { $0.color == blue })
+        XCTAssertEqual(both.triangles.count, filled.triangles.count + stroked.triangles.count)
+
+        // The fill first, so the outline is drawn over the area it encloses
+        // rather than under it — the renderer blends straight down the list.
+        XCTAssertEqual(both.triangles.prefix(filled.triangles.count).map(\.color), filled.triangles.map(\.color))
+    }
+
+    /// A shape with neither draws nothing, which is the one combination there is
+    /// no reason to author — and a stroke colour with no width, or a width with
+    /// no colour, is each half of an outline that was never asked for.
+    func testShapeWithNothingToPaintWithDrawsNothing() {
+        XCTAssertEqual(painted().triangles, [])
+        XCTAssertEqual(painted(stroke: blue).triangles, [])
+        XCTAssertEqual(painted(strokeWidth: 0.1).triangles, [])
+    }
+
+    /// The stroke is drawn inside the outline, so a shape occupies the box it
+    /// was authored at whether or not it is stroked: adding an outline never
+    /// moves the shape or grows the canvas fitted to it.
+    func testStrokeIsDrawnInsideTheShapesOwnBox() throws {
+        let plain = try XCTUnwrap([painted(fill: red)].bounds)
+        let thick = try XCTUnwrap([painted(fill: red, stroke: blue, strokeWidth: 0.4)].bounds)
+
+        XCTAssertEqual(thick, plain)
+
+        // And nothing the stroke draws reaches past that box either.
+        for vertex in painted(stroke: blue, strokeWidth: 0.4).triangles {
+            XCTAssertTrue(plain.insetBy(dx: -0.0001, dy: -0.0001).contains(CGPoint(x: vertex.position.x, y: vertex.position.y)))
+        }
+    }
+
+    /// The band is an even thickness all the way round, corners included: the
+    /// inner ring of a stroked square is the square inset by the stroke on every
+    /// side, which is what the mitre at each corner is for.
+    func testStrokeIsAnEvenThicknessAroundTheShape() throws {
+        let stroked = painted(.square, width: 2, height: 2, stroke: blue, strokeWidth: 0.25)
+
+        // The outline runs ±1 from the centre; the inside of the band should run
+        // ±0.75, and nothing should land between the two on both axes at once.
+        let inner = stroked.triangles.filter { abs($0.position.x) < 0.9999 && abs($0.position.y) < 0.9999 }
+        XCTAssertFalse(inner.isEmpty)
+
+        for vertex in inner {
+            XCTAssertEqual(Swift.max(abs(vertex.position.x), abs(vertex.position.y)), 0.75, accuracy: 0.0001)
+        }
+    }
+
+    /// A stroke thicker than the shape has room for would turn the inner ring
+    /// inside out — corners crossing past each other and the band folding back
+    /// through itself. Held where the ring closes, which is a solid shape.
+    func testStrokeThickerThanTheShapeIsDrawnSolid() {
+        let overstroked = painted(.square, width: 2, height: 2, stroke: blue, strokeWidth: 10)
+
+        // Every corner of the band is either on the outline or at the centre it
+        // closed to; none of it has crossed to the far side.
+        for vertex in overstroked.triangles {
+            XCTAssertLessThanOrEqual(abs(vertex.position.x), 1.0001)
+            XCTAssertLessThanOrEqual(abs(vertex.position.y), 1.0001)
+        }
+    }
+
+    /// Every described vector can be stroked, not just the ones with corners:
+    /// a round one is stroked around all 48 of the segments it is cut into, and
+    /// a triangle around its three sharp corners.
+    func testEveryDescribedVectorCanBeStroked() throws {
+        for type in [InertiaShapeType.rectangle, .square, .circle, .oval, .triangle] {
+            let stroked = painted(type, width: 3, height: 1, stroke: blue, strokeWidth: 0.1)
+            let corners = stroked.vertices.count
+
+            // Two triangles per edge of the outline, and the outline closes.
+            XCTAssertEqual(stroked.triangles.count, corners * 6, "\(type)")
+        }
+    }
+
+    /// A shape authored corner by corner carries its colour on the corners
+    /// themselves, so it is all fill — stroking is something a *described*
+    /// vector is asked for.
+    func testShapeAuthoredCornerByCornerIsAllFill() {
+        let shape = InertiaShape(id: "corners", vertices: [corner(0, 0), corner(1, 0), corner(1, 1)])
+
+        XCTAssertEqual(shape.triangles.count, 3)
     }
 
     /// The palette and the wire format are one list: a vector the toolbar offers

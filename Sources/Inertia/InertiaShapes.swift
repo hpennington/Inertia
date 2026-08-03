@@ -17,19 +17,81 @@ public enum InertiaShapeType: String, Codable {
     case triangle
 }
 
+/// A drawn vector as the editor records it: what it is, how big, and how it is
+/// painted — the size in the same multiples of the actionable its corners would
+/// have been measured in.
+///
+/// Painting is the two halves a vector has always had everywhere else: `fill`
+/// floods the area the outline encloses, `stroke` draws the outline itself, and
+/// either may be left out. A shape with no fill is an outline on nothing; a
+/// shape with no stroke is the flat area a described vector used to be; a shape
+/// with neither draws nothing at all, which is the one combination there is no
+/// reason to author.
 public struct InertiaShapeProperties: Codable, Equatable {
     public let id: InertiaID
     public let type: InertiaShapeType
     public let width: CGFloat
     public let height: CGFloat
-    public let color: InertiaColor
 
-    public init(id: InertiaID, type: InertiaShapeType, width: CGFloat, height: CGFloat, color: InertiaColor) {
+    /// The colour flooding the outline, or nil for a shape that is only its
+    /// outline.
+    public let fill: InertiaColor?
+
+    /// The colour of the outline itself, or nil for a shape that is only its
+    /// area. Draws nothing without a `strokeWidth` to draw it at.
+    public let stroke: InertiaColor?
+
+    /// How thick the outline is, in the units the shape is sized in — multiples
+    /// of the actionable's own frame, the same as `width` and `height`, so a
+    /// stroke keeps its weight relative to the shape at every size that frame
+    /// takes.
+    ///
+    /// The stroke is drawn *inside* the outline: a shape occupies exactly the
+    /// box it was authored at whether or not it is stroked, so adding a stroke
+    /// never moves the shape or grows the canvas it is drawn on. A width past
+    /// half the shape's smaller side would turn the ring inside out, so it is
+    /// held there — a stroke that thick is a solid shape, and is drawn as one.
+    public let strokeWidth: CGFloat
+
+    public init(
+        id: InertiaID,
+        type: InertiaShapeType,
+        width: CGFloat,
+        height: CGFloat,
+        fill: InertiaColor? = nil,
+        stroke: InertiaColor? = nil,
+        strokeWidth: CGFloat = 0
+    ) {
         self.id = id
         self.type = type
         self.width = width
         self.height = height
-        self.color = color
+        self.fill = fill
+        self.stroke = stroke
+        self.strokeWidth = strokeWidth
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case type
+        case width
+        case height
+        case fill
+        case stroke
+        case strokeWidth
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(InertiaID.self, forKey: .id)
+        type = try container.decode(InertiaShapeType.self, forKey: .type)
+        width = try container.decode(CGFloat.self, forKey: .width)
+        height = try container.decode(CGFloat.self, forKey: .height)
+        fill = try container.decodeIfPresent(InertiaColor.self, forKey: .fill)
+        stroke = try container.decodeIfPresent(InertiaColor.self, forKey: .stroke)
+        // Absent is the unstroked shape rather than a malformed one, so a vector
+        // authored as a plain fill is written without either stroke key.
+        strokeWidth = try container.decodeIfPresent(CGFloat.self, forKey: .strokeWidth) ?? 0
     }
 }
 
@@ -71,45 +133,19 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     public let _vertices: [Vertex]?
 
     /// The ring of corners the renderer draws, however the shape was authored.
+    ///
+    /// A described vector resolves to its outline carrying the colour it is
+    /// filled with — or, for a shape that is only its outline, the colour it is
+    /// stroked with, so an unfilled shape still says where it is to everything
+    /// that measures a shape by its corners.
     public var vertices: [Vertex] {
         if let _vertices {
             return _vertices
-        } else if let vertices = getVertices() {
-            return vertices
+        } else if let shape {
+            let color = shape.fill ?? shape.stroke ?? InertiaColor(red: 0, green: 0, blue: 0, alpha: 0)
+            return shape.outline.map { Vertex(position: $0, color: color) }
         } else {
             return []
-        }
-    }
-
-    /// The ring of corners a described vector is drawn from, in the actionable's
-    /// own units and centred on its top-left corner — the origin the description
-    /// is measured from.
-    ///
-    /// Matches the Kotlin and WebGL runtimes corner for corner, so one authored
-    /// vector is the same drawing on all three. A rectangle comes out as the two
-    /// triangles of a quad rather than four corners; the fan in `triangles`
-    /// re-covers the same area from them.
-    ///
-    /// A square, a circle and a triangle are the descriptions with one
-    /// measurement rather than two, so each is sized by the longer side of the
-    /// box it was drawn in — the shape stays square, stays round, stays a
-    /// triangle whatever box it was dragged out over.
-    private func getVertices() -> [Vertex]? {
-        guard let shape else {
-            return nil
-        }
-        let color = shape.color.cgColor
-        switch shape.type {
-        case .rectangle:
-            return RectangleNode(id: shape.id, zIndex: 0, width: shape.width, height: shape.height, color: color).metalCanvasNode.vertices
-        case .square:
-            return SquareNode(id: shape.id, zIndex: 0, size: max(shape.width, shape.height), color: color).metalCanvasNode.vertices
-        case .circle:
-            return CircleNode(id: shape.id, zIndex: 0, diameter: max(shape.width, shape.height), color: color).metalCanvasNode.vertices
-        case .oval:
-            return OvalNode(id: shape.id, zIndex: 0, width: shape.width, height: shape.height, color: color).metalCanvasNode.vertices
-        case .triangle:
-            return TriangleNode(id: shape.id, size: max(shape.width, shape.height), center: .zero, color: color).metalCanvasNode.vertices
         }
     }
 
@@ -147,41 +183,227 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         InertiaShape(id: id, shape: shape, vertices: _vertices, animation: animation)
     }
 
-    /// The same shape restated against `bounds` — the canvas's own box — so
-    /// (0, 0) is the canvas's top-left corner and (1, 1) its bottom-right,
-    /// which is the space the renderer draws in.
+    /// Everything this shape draws, as the one triangle list the renderer takes:
+    /// the fill first, then the stroke over it.
     ///
-    /// The corners are resolved on the way through: whatever the shape was
-    /// authored as, what comes out is the ring that lands in `bounds`. Its
-    /// animation rides along, since normalizing is about where the shape is
-    /// drawn and not about what it then does.
-    func normalized(to bounds: CGRect) -> InertiaShape {
-        guard bounds.width > 0, bounds.height > 0 else { return self }
+    /// The order is the order they are drawn in — the renderer blends
+    /// source-over down the list and keeps no depth — which is what puts the
+    /// outline on top of the area it encloses rather than under it. A shape
+    /// authored corner by corner is all fill, since a stroke is something a
+    /// *described* vector carries.
+    var triangles: [Vertex] {
+        guard let shape, _vertices == nil else {
+            return fan(vertices)
+        }
 
-        return InertiaShape(
-            id: id,
-            vertices: vertices.map { vertex in
-                Vertex(
-                    position: InertiaPoint(
-                        x: (vertex.position.x - bounds.minX) / bounds.width,
-                        y: (vertex.position.y - bounds.minY) / bounds.height
-                    ),
-                    color: vertex.color
-                )
-            },
-            animation: animation
-        )
+        return shape.fillTriangles + shape.strokeTriangles
     }
 
-    /// The shape as the triangle list the renderer draws: a fan around the
-    /// first corner, so three corners are a triangle and four a quad. Fewer
-    /// than three enclose no area and contribute nothing.
-    var triangles: [Vertex] {
-        guard vertices.count >= 3 else { return [] }
+    /// Everything this shape draws, restated against `bounds` — the canvas's own
+    /// box — so (0, 0) is the canvas's top-left corner and (1, 1) its
+    /// bottom-right, which is the space the renderer draws in.
+    ///
+    /// Triangles rather than corners, because by this point the shape *is* its
+    /// drawing: the fill and the stroke have been resolved into one list, and a
+    /// ring of corners could no longer say which of the two it was.
+    func triangles(normalizedTo bounds: CGRect) -> [Vertex] {
+        guard bounds.width > 0, bounds.height > 0 else { return triangles }
 
-        return (1..<(vertices.count - 1)).flatMap {
-            [vertices[0], vertices[$0], vertices[$0 + 1]]
+        return triangles.map { vertex in
+            Vertex(
+                position: InertiaPoint(
+                    x: (vertex.position.x - bounds.minX) / bounds.width,
+                    y: (vertex.position.y - bounds.minY) / bounds.height
+                ),
+                color: vertex.color
+            )
         }
+    }
+}
+
+/// A ring of corners as the triangle list the renderer draws: a fan around the
+/// first corner, so three corners are a triangle and four a quad. Fewer than
+/// three enclose no area and contribute nothing.
+///
+/// Every ring a shape resolves to is convex, so the fan covers it exactly from
+/// whichever corner it starts at.
+func fan(_ vertices: [Vertex]) -> [Vertex] {
+    guard vertices.count >= 3 else { return [] }
+
+    return (1..<(vertices.count - 1)).flatMap {
+        [vertices[0], vertices[$0], vertices[$0 + 1]]
+    }
+}
+
+public extension InertiaShapeProperties {
+    /// How many corners a round vector's ring is cut into. An oval has no
+    /// corners of its own, so it is drawn as the many-sided polygon that reads
+    /// as one at the sizes a shape is authored at — and the same count on every
+    /// runtime, so an oval authored once is the same drawing wherever it is
+    /// played back.
+    static let ovalSegments = 48
+
+    /// The ring of corners a described vector is drawn from, in the actionable's
+    /// own units and centred on its top-left corner — the origin the description
+    /// is measured from.
+    ///
+    /// Matches the Kotlin and WebGL runtimes corner for corner, so one authored
+    /// vector is the same drawing on all three.
+    ///
+    /// A square, a circle and a triangle are the descriptions with one
+    /// measurement rather than two, so each is sized by the longer side of the
+    /// box it was drawn in — the shape stays square, stays round, stays a
+    /// triangle whatever box it was dragged out over.
+    var outline: [InertiaPoint] {
+        let size = max(width, height)
+
+        /// The ring inscribed in a box: one corner per segment, stepping around
+        /// the ellipse.
+        func ring(_ width: CGFloat, _ height: CGFloat) -> [InertiaPoint] {
+            let radiusX = width / 2
+            let radiusY = height / 2
+
+            return (0..<Self.ovalSegments).map { segment in
+                let angle = 2 * CGFloat.pi * CGFloat(segment) / CGFloat(Self.ovalSegments)
+                return InertiaPoint(x: radiusX * cos(angle), y: radiusY * sin(angle))
+            }
+        }
+
+        /// The four corners of a box, drawn about its centre.
+        func quad(_ width: CGFloat, _ height: CGFloat) -> [InertiaPoint] {
+            let halfWidth = width / 2
+            let halfHeight = height / 2
+            return [
+                InertiaPoint(x: -halfWidth, y: -halfHeight),
+                InertiaPoint(x: halfWidth, y: -halfHeight),
+                InertiaPoint(x: halfWidth, y: halfHeight),
+                InertiaPoint(x: -halfWidth, y: halfHeight)
+            ]
+        }
+
+        switch type {
+        case .rectangle:
+            return quad(width, height)
+        case .square:
+            return quad(size, size)
+        case .circle:
+            return ring(size, size)
+        case .oval:
+            return ring(width, height)
+        case .triangle:
+            // An isosceles triangle with mirror symmetry about the y-axis.
+            let triangleHeight = size * sqrt(3) / 2
+            let halfBase = size / 2
+            return [
+                InertiaPoint(x: 0, y: triangleHeight / 2),
+                InertiaPoint(x: -halfBase, y: -triangleHeight / 2),
+                InertiaPoint(x: halfBase, y: -triangleHeight / 2)
+            ]
+        }
+    }
+
+    /// The area the outline encloses, as triangles. Empty for a shape with no
+    /// fill, which is an outline drawn on nothing.
+    var fillTriangles: [Vertex] {
+        guard let fill else { return [] }
+
+        return fan(outline.map { Vertex(position: $0, color: fill) })
+    }
+
+    /// The outline itself, as triangles: the band between the ring and the same
+    /// ring inset by `strokeWidth`.
+    ///
+    /// Inset rather than centred or outset, so a stroke stays inside the box the
+    /// shape was authored at — see `strokeWidth`. Each corner is mitred, so the
+    /// band turns a corner in one piece rather than leaving the wedge that
+    /// offsetting each edge on its own would.
+    ///
+    /// Empty unless the shape was given both a colour and a width to draw the
+    /// outline with.
+    var strokeTriangles: [Vertex] {
+        guard let stroke, strokeWidth > 0 else { return [] }
+
+        let outline = outline
+        guard outline.count >= 3 else { return [] }
+
+        // A stroke thicker than the shape has room for would turn the inner ring
+        // inside out. Held at the point where the ring closes on itself, which
+        // is a shape drawn solid in the stroke's colour.
+        let inset = min(strokeWidth, min(width, height) / 2)
+        let inner = outline.inset(by: inset)
+
+        return (0..<outline.count).flatMap { index -> [Vertex] in
+            let next = (index + 1) % outline.count
+            let corner = { (point: InertiaPoint) in Vertex(position: point, color: stroke) }
+
+            return [
+                corner(outline[index]), corner(outline[next]), corner(inner[next]),
+                corner(outline[index]), corner(inner[next]), corner(inner[index])
+            ]
+        }
+    }
+}
+
+private extension Array where Element == InertiaPoint {
+    /// The same ring moved `distance` towards its own inside, corner by corner.
+    ///
+    /// Each corner travels along the bisector of the two edges meeting at it,
+    /// far enough that both edges end up exactly `distance` in — which is what
+    /// makes the band an even thickness all the way round instead of thinning at
+    /// the corners. Very sharp corners want to travel a very long way, so the
+    /// distance is capped; the ring is convex and the cap only ever pulls a
+    /// spike back in.
+    ///
+    /// Which way "inside" is depends on which way the ring was wound, so that is
+    /// measured rather than assumed: the sign of the area it encloses.
+    func inset(by distance: CGFloat) -> [InertiaPoint] {
+        let winding: CGFloat = signedArea < 0 ? -1 : 1
+
+        return indices.map { index in
+            let previous = self[(index - 1 + count) % count]
+            let corner = self[index]
+            let next = self[(index + 1) % count]
+
+            // The inward normal of each edge meeting at this corner.
+            let incoming = normal(from: previous, to: corner, winding: winding)
+            let outgoing = normal(from: corner, to: next, winding: winding)
+
+            let bisector = normalized(InertiaPoint(
+                x: incoming.x + outgoing.x,
+                y: incoming.y + outgoing.y
+            ))
+
+            // How far along the bisector puts both edges `distance` in. Zero
+            // when the two edges double back on each other, which is a corner
+            // with no inside to move towards.
+            let projection = bisector.x * outgoing.x + bisector.y * outgoing.y
+            guard projection > 0.1 else { return corner }
+
+            let travel = distance / projection
+            return InertiaPoint(x: corner.x + bisector.x * travel, y: corner.y + bisector.y * travel)
+        }
+    }
+
+    /// Twice the area the ring encloses, signed by the direction it is wound in.
+    /// Only the sign is read.
+    var signedArea: CGFloat {
+        indices.reduce(0) { total, index in
+            let corner = self[index]
+            let next = self[(index + 1) % count]
+            return total + (corner.x * next.y - next.x * corner.y)
+        }
+    }
+
+    /// The unit normal of an edge, pointing at the ring's inside.
+    func normal(from start: InertiaPoint, to end: InertiaPoint, winding: CGFloat) -> InertiaPoint {
+        let edge = InertiaPoint(x: end.x - start.x, y: end.y - start.y)
+        return normalized(InertiaPoint(x: -edge.y * winding, y: edge.x * winding))
+    }
+
+    func normalized(_ point: InertiaPoint) -> InertiaPoint {
+        let length = sqrt(point.x * point.x + point.y * point.y)
+        guard length > 0 else { return InertiaPoint(x: 0, y: 0) }
+        return InertiaPoint(x: point.x / length, y: point.y / length)
     }
 }
 
@@ -219,130 +441,5 @@ public extension Collection where Element == InertiaShape {
 
         let bounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
         return bounds.width > 0 && bounds.height > 0 ? bounds : nil
-    }
-}
-
-public struct TriangleNode {
-    public let id: InertiaID
-    public let metalCanvasNode: MetalCanvasNode
-    
-    public init(id: InertiaID, size: CGFloat, center: CGPoint, color: CGColor) {
-        self.id = id
-        // Define vertices of an isosceles triangle with mirror reflection symmetry along the x-axis
-        let height = size * sqrt(3) / 2  // Height of the triangle (from top to base)
-        let halfBase = size / 2  // Half of the base length
-        
-        let vertexColor = color.vertexColor
-        self.metalCanvasNode = MetalCanvasNode(id: id, vertices:  [
-            Vertex(position: InertiaPoint(x: center.x, y: center.y + height / 2), color: vertexColor),
-            Vertex(position: InertiaPoint(x: center.x - halfBase, y: center.y - height / 2), color: vertexColor),
-            Vertex(position: InertiaPoint(x: center.x + halfBase, y: center.y - height / 2), color: vertexColor),
-        ], zIndex: 0)
-    }
-}
-
-public struct RectangleNode {
-    public let id: InertiaID
-    public let metalCanvasNode: MetalCanvasNode
-
-    public init(id: InertiaID, zIndex: Int, width: CGFloat, height: CGFloat, center: CGPoint = .zero, color: CGColor) {
-        self.id = id
-        // Calculate the corners of the rectangle, which is drawn about its centre
-        let halfWidth = width / 2
-        let halfHeight = height / 2
-        let vertexColor = color.vertexColor
-        let topLeft = Vertex(position: InertiaPoint(x: center.x - halfWidth, y: center.y - halfHeight), color: vertexColor)
-        let topRight = Vertex(position: InertiaPoint(x: center.x + halfWidth, y: center.y - halfHeight), color: vertexColor)
-        let bottomLeft = Vertex(position: InertiaPoint(x: center.x - halfWidth, y: center.y + halfHeight), color: vertexColor)
-        let bottomRight = Vertex(position: InertiaPoint(x: center.x + halfWidth, y: center.y + halfHeight), color: vertexColor)
-
-        // Define vertices for two triangles forming the rectangle
-        self.metalCanvasNode = MetalCanvasNode(id: id, vertices: [
-            topLeft, topRight, bottomRight,
-            topLeft, bottomLeft, bottomRight
-        ], zIndex: zIndex)
-    }
-}
-
-/// A square is the rectangle whose sides are equal, and is drawn as one.
-public struct SquareNode {
-    let id: InertiaID
-    let metalCanvasNode: MetalCanvasNode
-
-    public init(id: InertiaID, zIndex: Int, size: CGFloat, center: CGPoint = .zero, color: CGColor) {
-        self.id = id
-        self.metalCanvasNode = RectangleNode(id: id, zIndex: zIndex, width: size, height: size, center: center, color: color).metalCanvasNode
-    }
-}
-
-public struct OvalNode {
-    /// How many corners the ring is cut into. An oval has no corners of its own,
-    /// so it is drawn as the many-sided polygon that reads as one at the sizes a
-    /// shape is authored at — and the same count on every runtime, so an oval
-    /// authored once is the same drawing wherever it is played back.
-    public static let segments = 48
-
-    public let id: InertiaID
-    public let metalCanvasNode: MetalCanvasNode
-
-    public init(id: InertiaID, zIndex: Int, width: CGFloat, height: CGFloat, center: CGPoint = .zero, color: CGColor) {
-        self.id = id
-        // Step around the ellipse inscribed in the box, one corner per segment.
-        // The ring is convex, so the fan the renderer draws it with covers it
-        // exactly from any corner of it.
-        let radiusX = width / 2
-        let radiusY = height / 2
-        let vertexColor = color.vertexColor
-
-        self.metalCanvasNode = MetalCanvasNode(id: id, vertices: (0..<Self.segments).map { segment in
-            let angle = 2 * CGFloat.pi * CGFloat(segment) / CGFloat(Self.segments)
-            return Vertex(
-                position: InertiaPoint(
-                    x: center.x + radiusX * cos(angle),
-                    y: center.y + radiusY * sin(angle)
-                ),
-                color: vertexColor
-            )
-        }, zIndex: zIndex)
-    }
-}
-
-/// A circle is the oval whose axes are equal, and is drawn as one.
-public struct CircleNode {
-    public let id: InertiaID
-    public let metalCanvasNode: MetalCanvasNode
-
-    public init(id: InertiaID, zIndex: Int, diameter: CGFloat, center: CGPoint = .zero, color: CGColor) {
-        self.id = id
-        self.metalCanvasNode = OvalNode(id: id, zIndex: zIndex, width: diameter, height: diameter, center: center, color: color).metalCanvasNode
-    }
-}
-
-private extension InertiaColor {
-    /// The described colour as Core Graphics states it, which is the colour the
-    /// shape nodes are built from.
-    var cgColor: CGColor {
-        CGColor(red: CGFloat(red), green: CGFloat(green), blue: CGFloat(blue), alpha: CGFloat(alpha))
-    }
-}
-
-private extension CGColor {
-    /// The colour as a corner carries it. A colour that isn't stated as RGBA —
-    /// a grey, most often — is read as the one channel it does have, rather
-    /// than indexing past the end of a component list that is shorter than the
-    /// four channels a vertex wants.
-    var vertexColor: InertiaColor {
-        let components = components ?? []
-        guard components.count >= 4 else {
-            let white = Float(components.first ?? 0)
-            return InertiaColor(red: white, green: white, blue: white, alpha: Float(components.last ?? 1))
-        }
-
-        return InertiaColor(
-            red: Float(components[0]),
-            green: Float(components[1]),
-            blue: Float(components[2]),
-            alpha: Float(components[3])
-        )
     }
 }

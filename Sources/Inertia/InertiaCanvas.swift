@@ -23,16 +23,15 @@ typealias ViewRepresentable = UIViewRepresentable
 /// views it covers stay hit-testable through it.
 public struct InertiaCanvas: ViewRepresentable {
     private let vm: InertiaViewModel
-    private let shapes: [InertiaShape]
 
-    public init(vm: InertiaViewModel, shapes: [InertiaShape]) {
+    /// Every shape on this canvas already flattened into the one triangle list
+    /// the renderer draws, in the canvas's own normalized space — fills and
+    /// strokes both, in the order they are to be drawn.
+    private let vertices: [Vertex]
+
+    public init(vm: InertiaViewModel, vertices: [Vertex]) {
         self.vm = vm
-        self.shapes = shapes
-    }
-
-    /// Every shape flattened into the one triangle list the renderer draws.
-    private var vertices: [Vertex] {
-        shapes.flatMap { $0.triangles }
+        self.vertices = vertices
     }
 
     private func makeRenderer() -> InertiaVertexRenderer {
@@ -180,7 +179,7 @@ struct InertiaShapesView: View {
 
             InertiaCanvas(
                 vm: vm,
-                shapes: shapes.map { $0.normalized(to: bounds) }
+                vertices: shapes.flatMap { $0.triangles(normalizedTo: bounds) }
             )
             .allowsHitTesting(false)
             .frame(width: box.width, height: box.height)
@@ -268,12 +267,6 @@ struct InertiaShapesView: View {
             }
         }
     }
-}
-
-public struct MetalCanvasNode: Equatable, Codable {
-    public let id: InertiaID
-    public let vertices: [Vertex]
-    public let zIndex: Int
 }
 
 #if os(macOS)

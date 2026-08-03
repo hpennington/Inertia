@@ -433,7 +433,15 @@ track of its own:
 ```json
 "shapes": [
   {
-    "shape": { "id": "…", "type": "rectangle", "width": 0.5, "height": 0.5 },
+    "shape": {
+      "id": "…",
+      "type": "rectangle",
+      "width": 0.5,
+      "height": 0.5,
+      "fill": { "red": 0.2, "green": 0.4, "blue": 0.9, "alpha": 1 },
+      "stroke": { "red": 1, "green": 1, "blue": 1, "alpha": 1 },
+      "strokeWidth": 0.02
+    },
     "animation": null
   },
   {
@@ -448,7 +456,10 @@ track of its own:
 | Field | Meaning |
 | --- | --- |
 | `vertices` | Corners as authored: `position` in multiples of the actionable, `color` in 0–1 RGBA |
-| `shape` | A described vector instead — `type` is `rectangle`, `oval`, or `triangle`, sized in the same multiples |
+| `shape` | A described vector instead — `type` is `rectangle`, `square`, `circle`, `oval`, or `triangle`, sized in the same multiples |
+| `shape.fill` | The colour flooding the outline, 0–1 RGBA. Omit for a shape that is only its outline |
+| `shape.stroke` | The colour of the outline itself, 0–1 RGBA. Omit for a shape that is only its area |
+| `shape.strokeWidth` | Outline thickness, in the same multiples of the actionable the shape is sized in. Drawn *inside* the outline, so a stroke never grows the shape's box. Defaults to `0`, which is no outline |
 | `animation` | A track for this shape alone. Omitted or `null` makes it a backdrop moved by the actionable |
 
 ## Editor mode vs. release
@@ -476,8 +487,9 @@ The runtimes are deliberately parallel, but they are not at the same level of ma
   with a cubic ease-in-out, which never overshoots. The poses at the keyframes are
   identical; the paths between them are not.
 - **Shape rendering is per-platform.** SwiftUI draws through Metal, Compose through
-  OpenGL ES 2.0, React through WebGL. The vertices and colours are the same on all three;
-  the compositing is each platform's own.
+  OpenGL ES 2.0, React through WebGL. The vertices and colours are the same on all three —
+  fills and strokes included, down to the corner — but the compositing is each platform's
+  own.
 - **The editor installs and launches builds on the iOS Simulator only.** On Android and web
   you launch the app yourself; everything after that is the same.
 
