@@ -157,10 +157,25 @@ extension InertiaAnimationValues {
     /// gesture math does, because a rotation is an angle swept about a point and
     /// that point has to be in the space the drag reports its locations in.
     func drawnPoint(_ point: CGPoint, in layoutFrame: CGRect, containerSize: CGSize) -> CGPoint {
+        drawnContainerPoint(
+            CGPoint(x: layoutFrame.minX + point.x, y: layoutFrame.minY + point.y),
+            in: layoutFrame,
+            containerSize: containerSize
+        )
+    }
+
+    /// The same, for a point already given in the container's space rather than
+    /// in `layoutFrame`'s own box.
+    ///
+    /// What composes two of these. A shape's handles sit inside the actionable's
+    /// transform as well as the shape's own, so the anchor a gesture is measured
+    /// about is this transform applied to a point the inner one has already
+    /// moved — and that point is a container point, not an offset into a box.
+    func drawnContainerPoint(_ point: CGPoint, in layoutFrame: CGRect, containerSize: CGSize) -> CGPoint {
         let center = CGPoint(x: layoutFrame.midX, y: layoutFrame.midY)
         let topLeft = CGPoint(x: layoutFrame.minX, y: layoutFrame.minY)
 
-        var result = CGPoint(x: layoutFrame.minX + point.x, y: layoutFrame.minY + point.y)
+        var result = point
         result = CGPoint(
             x: center.x + (result.x - center.x) * scale,
             y: center.y + (result.y - center.y) * scale
@@ -171,6 +186,23 @@ extension InertiaAnimationValues {
         return CGPoint(
             x: result.x + translate.width * containerSize.width,
             y: result.y + translate.height * containerSize.height
+        )
+    }
+
+    /// A drag measured on screen, restated in the space *inside* this transform
+    /// — which is where an offset stacked under it is measured.
+    ///
+    /// A shape is moved by an offset applied within the actionable's own
+    /// rotation and scale, so a drag to the right across a turned actionable is
+    /// not a move to the right in the space the shape's offset lands in. Undoing
+    /// the turn and the scale is what keeps the shape under the pointer.
+    func unapplying(_ translation: CGSize) -> CGSize {
+        let radians = -(rotate + rotateCenter) * .pi / 180
+        let divisor = scale.isFinite && abs(scale) > InertiaToolHandles.minimumScale ? scale : 1
+
+        return CGSize(
+            width: (translation.width * cos(radians) - translation.height * sin(radians)) / divisor,
+            height: (translation.width * sin(radians) + translation.height * cos(radians)) / divisor
         )
     }
 
@@ -213,6 +245,18 @@ private struct InertiaAxisArrow: Shape {
     }
 }
 
+/// A transform something's handles are drawn inside of, rather than beside.
+///
+/// See ``InertiaToolHandles/outer``. The pair is what the actionable's animation
+/// is to a shape drawn behind it: the values it is displayed with, and the box
+/// those values turn and scale about.
+struct InertiaOuterTransform: Equatable {
+    let values: InertiaAnimationValues
+    let layoutFrame: CGRect
+
+    static let none = InertiaOuterTransform(values: .identity, layoutFrame: .zero)
+}
+
 /// The handles a selected actionable shows for the active tool.
 ///
 /// Sits in the node's overlay, inside everything that transforms it, so the
@@ -234,6 +278,14 @@ struct InertiaToolHandles: View {
     /// locations in. Without one there is nothing to measure an angle against,
     /// so the handles stay off.
     let containerSpace: String?
+    /// The transform these handles sit *inside*, and the box it turns about.
+    ///
+    /// Nil for an actionable, whose handles sit directly in the container. A
+    /// shape's do not: they are inside the actionable's own animation as well as
+    /// the shape's, so the anchor a gesture turns or scales about has to be
+    /// carried out through that second transform before it can be measured
+    /// against a pointer reporting container coordinates.
+    var outer: InertiaOuterTransform? = nil
     /// The edit the gesture has produced so far, replaced on every change.
     let onChange: (InertiaToolEdit) -> Void
     /// The gesture is over — fold what it produced into the node's position and
@@ -261,7 +313,10 @@ struct InertiaToolHandles: View {
     /// Divided through by the scale the node is drawn at so the chrome keeps its
     /// size on screen.
     private var chromeScale: CGFloat {
-        let scale = values.scale
+        // Both transforms the chrome is drawn inside of, so a knob keeps its
+        // size on screen however the shape *and* the actionable behind it have
+        // been scaled.
+        let scale = values.scale * (outer?.values.scale ?? 1)
         return scale.isFinite && scale > Self.minimumScale ? 1 / scale : 1
     }
 
@@ -598,7 +653,15 @@ struct InertiaToolHandles: View {
     /// Takes the gesture's opening state, keyed off the anchor as it is drawn
     /// right now — before this gesture has moved anything.
     private func begin(anchor: CGPoint, at location: CGPoint) -> GestureStart {
-        let drawnAnchor = values.drawnPoint(anchor, in: layoutFrame, containerSize: containerSize)
+        var drawnAnchor = values.drawnPoint(anchor, in: layoutFrame, containerSize: containerSize)
+        if let outer {
+            drawnAnchor = outer.values.drawnContainerPoint(
+                drawnAnchor,
+                in: outer.layoutFrame,
+                containerSize: containerSize
+            )
+        }
+
         let start = GestureStart(
             anchor: drawnAnchor,
             reference: vector(from: drawnAnchor, to: location),

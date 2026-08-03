@@ -18,11 +18,11 @@ public enum InertiaShapeType: String, Codable {
 }
 
 public struct InertiaShapeProperties: Codable, Equatable {
-    let id: InertiaID
-    let type: InertiaShapeType
-    let width: CGFloat
-    let height: CGFloat
-    let color: InertiaColor
+    public let id: InertiaID
+    public let type: InertiaShapeType
+    public let width: CGFloat
+    public let height: CGFloat
+    public let color: InertiaColor
 
     public init(id: InertiaID, type: InertiaShapeType, width: CGFloat, height: CGFloat, color: InertiaColor) {
         self.id = id
@@ -45,16 +45,25 @@ public struct InertiaShapeProperties: Codable, Equatable {
 /// A shape may also carry an animation of its own, which is what makes it a
 /// drawing rather than a backdrop: the corners say what is drawn, the animation
 /// says how it moves, and the actionable it was authored against carries both.
-public final class InertiaShape: Codable, Equatable, CustomStringConvertible {
+public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringConvertible {
     public static func ==(lhs: InertiaShape, rhs: InertiaShape) -> Bool {
-        return lhs.vertices == rhs.vertices && lhs.animation == rhs.animation
+        return lhs.id == rhs.id && lhs.vertices == rhs.vertices && lhs.animation == rhs.animation
     }
 
     public var description: String {
         """
-        {"vertices": \(vertices.count), "animated": \(animation != nil)}
+        {"id": \(id), "vertices": \(vertices.count), "animated": \(animation != nil)}
         """
     }
+
+    /// What this shape is, to anything that has to point at it: the editor's
+    /// hierarchy panel, the selection sent back to the runtime, and the edit
+    /// that selection authors.
+    ///
+    /// A shape used to be addressable only by where it sat — whose schema held
+    /// it, and how far down the list — which is a name that changes when the
+    /// shape either side of it is deleted. This does not.
+    public let id: InertiaID
 
     /// The corners as authored, when they were authored one by one. A shape
     /// described by `shape` instead has none of its own and is drawn from that
@@ -114,15 +123,28 @@ public final class InertiaShape: Codable, Equatable, CustomStringConvertible {
     /// always been on the wire, and the leading underscore is only how the
     /// resolved list and the authored one are told apart in here.
     private enum CodingKeys: String, CodingKey {
+        case id
         case _vertices = "vertices"
         case animation
         case shape
     }
 
-    public init(shape: InertiaShapeProperties? = nil, vertices: [Vertex]?, animation: InertiaAnimationSchema? = nil) {
+    public init(id: InertiaID, shape: InertiaShapeProperties? = nil, vertices: [Vertex]?, animation: InertiaAnimationSchema? = nil) {
+        self.id = id
         self.shape = shape
         self._vertices = vertices
         self.animation = animation
+    }
+
+    /// The same shape carrying a different track — what the editor writes back
+    /// when a gesture on a selected shape is recorded.
+    ///
+    /// The corners travel across as they were *authored* rather than as they
+    /// resolve: a described shape given its animation this way is still a
+    /// description, and does not quietly become the ring of corners it happens
+    /// to draw as right now.
+    public func with(animation: InertiaAnimationSchema?) -> InertiaShape {
+        InertiaShape(id: id, shape: shape, vertices: _vertices, animation: animation)
     }
 
     /// The same shape restated against `bounds` — the canvas's own box — so
@@ -137,6 +159,7 @@ public final class InertiaShape: Codable, Equatable, CustomStringConvertible {
         guard bounds.width > 0, bounds.height > 0 else { return self }
 
         return InertiaShape(
+            id: id,
             vertices: vertices.map { vertex in
                 Vertex(
                     position: InertiaPoint(

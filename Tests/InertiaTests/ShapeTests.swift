@@ -30,7 +30,7 @@ final class ShapeTests: XCTestCase {
             invokeType: .trigger,
             keyframes: [],
             shapes: [
-                InertiaShape(vertices: [
+                InertiaShape(id: "card0-shape", vertices: [
                     shapedCorner(0, 0, 0.35, 0.1, 0.85),
                     shapedCorner(1, 0, 0.1, 0.55, 0.95),
                     shapedCorner(1, 1, 0.1, 0.85, 0.75),
@@ -103,7 +103,7 @@ final class ShapeTests: XCTestCase {
     func testShapeIsTriangulatedAsAFan() throws {
         let corners = (0..<4).map { corner(Double($0), Double($0)) }
 
-        let triangles = InertiaShape(vertices: corners).triangles
+        let triangles = InertiaShape(id: "fan", vertices: corners).triangles
 
         XCTAssertEqual(triangles.count, 6)
         XCTAssertEqual(triangles.map(\.position.x), [0, 1, 2, 0, 2, 3])
@@ -112,7 +112,7 @@ final class ShapeTests: XCTestCase {
     /// A shape that fits the actionable exactly gives a canvas that is the
     /// actionable: the unit box, at its origin.
     func testBoundsOfAShapeFillingTheActionable() {
-        let shape = InertiaShape(vertices: [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)])
+        let shape = InertiaShape(id: "filling", vertices: [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)])
 
         XCTAssertEqual([shape].bounds, CGRect(x: 0, y: 0, width: 1, height: 1))
     }
@@ -124,7 +124,7 @@ final class ShapeTests: XCTestCase {
     /// its right edge, and -0.5 half its width before its left, so the canvas
     /// spans 1.7 of it.
     func testBoundsGrowToHoldShapesOutsideTheActionable() throws {
-        let shape = InertiaShape(vertices: [corner(-0.5, 0), corner(1.2, 0), corner(1.2, 3)])
+        let shape = InertiaShape(id: "overflowing", vertices: [corner(-0.5, 0), corner(1.2, 0), corner(1.2, 3)])
 
         let bounds = try XCTUnwrap([shape].bounds)
 
@@ -135,8 +135,8 @@ final class ShapeTests: XCTestCase {
 
     /// Several shapes share one canvas, so the box has to hold all of them.
     func testBoundsSpanEveryShape() {
-        let left = InertiaShape(vertices: [corner(-1, 0), corner(0, 0), corner(0, 1)])
-        let right = InertiaShape(vertices: [corner(1, 0), corner(2, 0), corner(2, 0.5)])
+        let left = InertiaShape(id: "left", vertices: [corner(-1, 0), corner(0, 0), corner(0, 1)])
+        let right = InertiaShape(id: "right", vertices: [corner(1, 0), corner(2, 0), corner(2, 0.5)])
 
         XCTAssertEqual([left, right].bounds, CGRect(x: -1, y: 0, width: 3, height: 1))
     }
@@ -145,15 +145,15 @@ final class ShapeTests: XCTestCase {
     /// there is nothing to draw.
     func testBoundsOfEmptyOrDegenerateShapesAreNil() {
         XCTAssertNil([InertiaShape]().bounds)
-        XCTAssertNil([InertiaShape(vertices: [])].bounds)
-        XCTAssertNil([InertiaShape(vertices: [corner(1, 0), corner(1, 1)])].bounds)
+        XCTAssertNil([InertiaShape(id: "empty", vertices: [])].bounds)
+        XCTAssertNil([InertiaShape(id: "degenerate", vertices: [corner(1, 0), corner(1, 1)])].bounds)
     }
 
     /// Whatever box the canvas ends up being, the renderer is handed the shape
     /// in the canvas's own 0...1 space — so the corner that defined the far edge
     /// of the bounds lands exactly on it.
     func testShapeIsNormalizedIntoTheCanvasBounds() {
-        let shape = InertiaShape(vertices: [corner(-0.5, 0), corner(1.5, 0), corner(1.5, 2)])
+        let shape = InertiaShape(id: "normalized", vertices: [corner(-0.5, 0), corner(1.5, 0), corner(1.5, 2)])
 
         let normalized = shape.normalized(to: CGRect(x: -0.5, y: 0, width: 2, height: 2))
 
@@ -165,8 +165,8 @@ final class ShapeTests: XCTestCase {
     /// Fewer than three corners enclose nothing, and handing the renderer a
     /// partial triangle would have it read past the end of the list.
     func testShapeWithTooFewCornersDrawsNothing() {
-        XCTAssertEqual(InertiaShape(vertices: []).triangles, [])
-        XCTAssertEqual(InertiaShape(vertices: [corner(0, 0), corner(1, 1)]).triangles, [])
+        XCTAssertEqual(InertiaShape(id: "no-corners", vertices: []).triangles, [])
+        XCTAssertEqual(InertiaShape(id: "one-line", vertices: [corner(0, 0), corner(1, 1)]).triangles, [])
     }
 
     // MARK: - Shapes that carry an animation
@@ -191,8 +191,7 @@ final class ShapeTests: XCTestCase {
             invokeType: .auto,
             keyframes: [],
             shapes: [
-                InertiaShape(
-                    shape: InertiaShapeProperties(id: "123", type: .rectangle, width: 2, height: 2, color: InertiaColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                InertiaShape(id: "card2-rectangle", shape: InertiaShapeProperties(id: "123", type: .rectangle, width: 2, height: 2, color: InertiaColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
                     vertices: nil,
                     animation: InertiaAnimationSchema(
                         id: "shape0",
@@ -267,8 +266,7 @@ final class ShapeTests: XCTestCase {
     /// The box a described vector encloses, which is what says whether it came
     /// out the shape it was asked for.
     private func drawnBounds(_ type: InertiaShapeType, _ width: CGFloat, _ height: CGFloat) throws -> CGRect {
-        let shape = InertiaShape(
-            shape: InertiaShapeProperties(
+        let shape = InertiaShape(id: "drawn", shape: InertiaShapeProperties(
                 id: "123",
                 type: type,
                 width: width,
@@ -314,8 +312,7 @@ final class ShapeTests: XCTestCase {
     /// every one of those corners sits on the ellipse — which is what stops it
     /// being the squared-off box it used to be drawn as.
     func testOvalIsARingOfCornersOnItsEllipse() throws {
-        let shape = InertiaShape(
-            shape: InertiaShapeProperties(
+        let shape = InertiaShape(id: "oval", shape: InertiaShapeProperties(
                 id: "123",
                 type: .oval,
                 width: 4,
@@ -343,8 +340,7 @@ final class ShapeTests: XCTestCase {
     /// rather than the red placeholder every described vector used to be drawn
     /// in whatever the editor had recorded against it.
     func testDescribedShapeIsDrawnInItsOwnColor() throws {
-        let shape = InertiaShape(
-            shape: InertiaShapeProperties(
+        let shape = InertiaShape(id: "colored", shape: InertiaShapeProperties(
                 id: "123",
                 type: .rectangle,
                 width: 1,

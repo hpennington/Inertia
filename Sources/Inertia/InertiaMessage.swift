@@ -186,6 +186,13 @@ public enum InertiaMessage {
     ///
     /// Generalizes ``MessageTranslation``, which the React and Compose runtimes
     /// still send and which the editor reads as an edit that only translates.
+    ///
+    /// One message however the gesture was aimed. A shape is selected and
+    /// edited as an ``ActionableIdPair`` like anything else — its own id, under
+    /// the schema that carries it — because the tool and the five values are
+    /// the same work whether what moved was a view or a shape drawn behind one.
+    /// Which of the two an id names is not on the wire: both ends hold the
+    /// schemas, and both resolve it by looking.
     public struct MessageEdit: Codable {
         public let tool: InertiaTool
         public let values: InertiaAnimationValues

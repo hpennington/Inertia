@@ -1247,6 +1247,14 @@ struct InertiaEditable<Content: View>: View {
     /// both the animation and the editor's gestures. The shapes are projected
     /// from it, the guides are boxed to it, and the handles turn about it.
     @State private var layoutFrame: CGRect = .zero
+    /// The same two edits, per shape drawn behind this node, keyed by shape id.
+    ///
+    /// Held here rather than in the canvas because the canvas is rebuilt from
+    /// the schema on every change, which would throw a gesture away halfway
+    /// through it. A shape gets its own entries so that dragging one leaves the
+    /// node it is drawn behind — and every other shape on it — where they were.
+    @State private var shapeGestureEdits: [InertiaID: InertiaToolEdit] = [:]
+    @State private var shapeSettledEdits: [InertiaID: InertiaToolEdit] = [:]
 
     /// Everything the editor's gestures have added on top of the schema:
     /// what previous ones settled at, plus what this one has done so far.
@@ -1465,6 +1473,62 @@ struct InertiaEditable<Content: View>: View {
         )
     }
 
+    /// Whether the editor has picked this shape, by its own id — the same
+    /// selection the actionables are picked out of, since a shape is selected
+    /// as an `ActionableIdPair` like anything else.
+    private func isSelected(shape: InertiaShape) -> Bool {
+        inertiaDataModel?.actionableIdPairs.contains { $0.hierarchyId == shape.id } ?? false
+    }
+
+    /// Everything a shape drawn behind this node needs in order to be picked and
+    /// dragged, or nil when nothing here is selectable.
+    ///
+    /// The shapes sit inside this node's own transform, so they are handed it as
+    /// their outer one — see `InertiaToolHandles.outer`.
+    private var shapeEditing: InertiaShapeEditing? {
+        guard inertiaDataModel?.isActionable ?? false else { return nil }
+
+        return InertiaShapeEditing(
+            isSelected: { isSelected(shape: $0) },
+            tool: activeTool,
+            containerSpace: inertiaContainerId,
+            outer: InertiaOuterTransform(values: displayedValues, layoutFrame: layoutFrame),
+            edit: { shape in
+                (shapeSettledEdits[shape.id] ?? .none) + (shapeGestureEdits[shape.id] ?? .none)
+            },
+            onChange: { shape, edit in
+                shapeGestureEdits[shape.id] = edit
+            },
+            onEnded: { shape in commitShapeEdit(shape) }
+        )
+    }
+
+    /// Ends a gesture on a shape: folds it in so the next one starts from where
+    /// this one left it, and hands the result to the editor.
+    ///
+    /// The same `MessageEdit` an actionable sends, naming the shape's own id
+    /// under the schema that carries it — which is exactly how it was selected.
+    /// Measured from the shape's authored starting values rather than from
+    /// wherever its track has it, for the reason `authoredValues` gives.
+    private func commitShapeEdit(_ shape: InertiaShape) {
+        let settled = (shapeSettledEdits[shape.id] ?? .none) + (shapeGestureEdits[shape.id] ?? .none)
+        shapeSettledEdits[shape.id] = settled
+        shapeGestureEdits[shape.id] = nil
+
+        let authored = (shape.animation?.initialValues ?? .identity).sanitized
+            .applying(settled, containerSize: inertiaContainerSize)
+
+        manager.sendMessage(
+            InertiaMessage.MessageEdit(
+                tool: activeTool,
+                values: authored,
+                actionableIds: [
+                    ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: shape.id)
+                ]
+            )
+        )
+    }
+
     /// The chrome for the active tool, drawn over a selected node.
     @ViewBuilder
     private var toolHandles: some View {
@@ -1566,7 +1630,8 @@ struct InertiaEditable<Content: View>: View {
                 shapes: shapes,
                 size: size,
                 containerSize: inertiaContainerSize,
-                values: shapeDisplayValues(for:)
+                values: shapeDisplayValues(for:),
+                editing: shapeEditing
             )
         }
     }
@@ -1579,6 +1644,14 @@ struct InertiaEditable<Content: View>: View {
     @ViewBuilder
     private var containerCanvas: some View {
         backgroundView(for: layoutFrame.size)
+            // What `onChange(of: initialValues)` does for the node, for the
+            // shapes: the canvases already draw where the schema says they
+            // start, so an edit still stacked on top of that would count the
+            // gesture the editor has just written back a second time.
+            .onChange(of: shapes) { _, _ in
+                shapeSettledEdits = [:]
+                shapeGestureEdits = [:]
+            }
     }
 
     /// The track the animator plays: held out to the full loop when repeating,
@@ -1670,12 +1743,19 @@ struct InertiaEditable<Content: View>: View {
             // moment it did, which threw away the state underneath it —
             // including the id it had been indexed under — mid-gesture.
             let values = displayedValues
+            // Worked out ahead of the chain rather than inside it: the type
+            // checker charges these two multiplications against the whole body,
+            // which is long enough already.
+            let offset = CGSize(
+                width: values.translate.width * inertiaContainerSize.width,
+                height: values.translate.height * inertiaContainerSize.height
+            )
 
             wrappedContent
                 .scaleEffect(values.scale)
                 .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
                 .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
-                .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
+                .offset(x: offset.width, y: offset.height)
                 .opacity(values.opacity)
         }
 
@@ -1693,6 +1773,7 @@ struct InertiaEditable<Content: View>: View {
             settledEdit = .none
             gestureEdit = .none
         }
+
 
         // Outside the animation and outside the editor's gestures, so the shapes
         // are projected from where this node was laid out rather than from
