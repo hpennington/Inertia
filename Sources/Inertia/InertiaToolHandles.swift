@@ -175,7 +175,11 @@ struct InertiaToolHandles: View {
 
     private var knobRadius: CGFloat { 6 * chromeScale }
     private var knobGap: CGFloat { 22 * chromeScale }
-    private var lineWidth: CGFloat { 1 * chromeScale }
+    /// The knob's own outline, which stays fine next to the chrome it sits on.
+    private var lineWidth: CGFloat { 1.5 * chromeScale }
+    /// The rings and the track: heavier than a hairline so they read against
+    /// whatever the app happens to be drawing underneath them.
+    private var chromeLineWidth: CGFloat { 3 * chromeScale }
 
     private var isValid: Bool {
         size.width > 0 && size.height > 0
@@ -262,7 +266,10 @@ struct InertiaToolHandles: View {
         Circle()
             .strokeBorder(
                 Color.green.opacity(0.6),
-                style: StrokeStyle(lineWidth: lineWidth, dash: [4 * chromeScale, 4 * chromeScale])
+                style: StrokeStyle(
+                    lineWidth: chromeLineWidth,
+                    dash: [9 * chromeScale, 7 * chromeScale]
+                )
             )
             .frame(width: radius * 2, height: radius * 2)
             .offset(x: anchor.x - radius, y: anchor.y - radius)
@@ -272,7 +279,7 @@ struct InertiaToolHandles: View {
             path.move(to: anchor)
             path.addLine(to: knob)
         }
-        .stroke(Color.green.opacity(0.6), lineWidth: lineWidth)
+        .stroke(Color.green.opacity(0.6), lineWidth: chromeLineWidth)
         .allowsHitTesting(false)
 
         knobView
@@ -317,7 +324,7 @@ struct InertiaToolHandles: View {
     private var opacityHandle: some View {
         let origin = opacityBarOrigin
         let width = opacityBarWidth
-        let height = 4 * chromeScale
+        let height = 7 * chromeScale
         let filled = width * min(1, max(0, values.opacity))
 
         Capsule()
@@ -366,13 +373,13 @@ struct InertiaToolHandles: View {
     private var readout: some View {
         if let text = readoutText {
             Text(text)
-                .font(.system(size: 17 * chromeScale, weight: .semibold, design: .monospaced))
+                .font(.system(size: 24 * chromeScale, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Color.white)
-                .padding(.horizontal, 9 * chromeScale)
-                .padding(.vertical, 4 * chromeScale)
+                .padding(.horizontal, 12 * chromeScale)
+                .padding(.vertical, 6 * chromeScale)
                 .background(Color.green, in: Capsule())
                 .fixedSize()
-                .offset(x: 0, y: -knobGap - 30 * chromeScale)
+                .offset(x: 0, y: -knobGap - 42 * chromeScale)
                 .allowsHitTesting(false)
         }
     }
