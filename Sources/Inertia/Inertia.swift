@@ -1221,6 +1221,32 @@ struct InertiaEditable<Content: View>: View {
         )
     }
 
+    /// The offset the schema already draws this node at, in points — the
+    /// animation in `body` applies it, and the drag is stacked on top. It is
+    /// deliberately not part of `totalOffset`, which is only what the gestures
+    /// have added on top of it.
+    private var initialOffset: CGSize {
+        let translate = (initialValues ?? .identity).sanitized.translate
+        return CGSize(
+            width: translate.width * inertiaContainerSize.width,
+            height: translate.height * inertiaContainerSize.height
+        )
+    }
+
+    /// Where this node has ended up relative to where layout put it: the offset
+    /// its schema starts it at plus everything the drag has moved it by.
+    ///
+    /// This is what the editor is told, and it has to carry the schema's own
+    /// offset. A translation sent as the drag alone is written back over the
+    /// offset it was measured from rather than added to it, so a node with an
+    /// initial offset jumped back by it the moment the new schema landed.
+    private var authoredOffset: CGSize {
+        CGSize(
+            width: initialOffset.width + totalOffset.width,
+            height: initialOffset.height + totalOffset.height
+        )
+    }
+
     /// Where the node's center currently sits in the container, i.e. its layout
     /// position moved by the accumulated drag.
     private var currentCenter: CGPoint {
@@ -1276,8 +1302,8 @@ struct InertiaEditable<Content: View>: View {
                     inertiaDataModel?.selectedNodeSize = selectedSize
                     manager.sendMessage(
                         InertiaMessage.MessageSelectedNodeProperties(
-                            positionX: totalOffset.width,
-                            positionY: totalOffset.height,
+                            positionX: authoredOffset.width,
+                            positionY: authoredOffset.height,
                             sizeX: selectedSize.width,
                             sizeY: selectedSize.height
                         )
@@ -1288,16 +1314,19 @@ struct InertiaEditable<Content: View>: View {
                 if isDraggable {
                     dragOffset = value.translation
                     // Fold this gesture into the accumulated position so the
-                    // next one starts from where the node actually is.
+                    // next one starts from where the node actually is. The
+                    // authored position is taken alongside it, since it is the
+                    // one the editor is told about.
                     let settled = totalOffset
+                    let authored = authoredOffset
                     startOffset = settled
                     dragOffset = .zero
                     inertiaDataModel?.showGrid = false
                     if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
                         manager.sendMessage(
                             InertiaMessage.MessageTranslation(
-                                translationX: (settled.width) / (inertiaContainerSize.width),
-                                translationY: (settled.height) / (inertiaContainerSize.height),
+                                translationX: (authored.width) / (inertiaContainerSize.width),
+                                translationY: (authored.height) / (inertiaContainerSize.height),
                                 actionableIds: actionableIdPairs
                             )
                         )
