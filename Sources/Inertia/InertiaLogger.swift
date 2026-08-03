@@ -49,7 +49,7 @@ public enum InertiaLogLevel: Int, Comparable, CustomStringConvertible {
 /// while chasing an animation-mapping bug.
 public enum InertiaLog {
     /// Messages below this level are dropped. Defaults to `.info`.
-    public static var level: InertiaLogLevel = .verbose
+    public static var level: InertiaLogLevel = .error
 
     public static func verbose(_ message: @autoclosure () -> String) {
         log(.verbose, message())

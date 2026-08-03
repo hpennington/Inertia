@@ -65,6 +65,7 @@ public final class InertiaWebSocketClient {
     public var messageReceivedSchema: ((_ schemas: [InertiaSchemaWrapper]) -> Void)? = nil
     public var messageReceivedSignal: ((_ signal: AnimationSignal, _ sequence: Int) -> Void)? = nil
     public var messageReceivedIsActionable: ((_ isActionable: Bool) -> Void)? = nil
+    public var messageReceivedTool: ((_ tool: InertiaTool) -> Void)? = nil
 
     // Plumbing below is deliberately not observed: `isConnected` is the only
     // thing the view tree reacts to, and registering the send path's state with
@@ -367,9 +368,18 @@ public final class InertiaWebSocketClient {
             }
             InertiaLog.verbose("Received message (data): \(message)")
             DispatchQueue.main.async { self.messageReceivedSignal?(message.signal, message.sequence) }
+        case .tool:
+            guard let message = try? InertiaCoding.decode(InertiaMessage.MessageTool.self, from: messageWrapper.payload) else {
+                return
+            }
+            InertiaLog.verbose("Received message (data): \(message)")
+            DispatchQueue.main.async { self.messageReceivedTool?(message.tool) }
         case .translationEnded:
             // Runtime-to-editor only.
             InertiaLog.warning("Unexpected translationEnded from editor")
+        case .edit:
+            // Runtime-to-editor only.
+            InertiaLog.warning("Unexpected edit from editor")
         case .selectedNodeProperties:
             // Runtime-to-editor only.
             InertiaLog.warning("Unexpected selectedNodeProperties from editor")
@@ -395,6 +405,10 @@ public final class InertiaWebSocketClient {
 
     public func sendMessage(_ message: InertiaMessage.MessageTranslation) {
         send(type: .translationEnded, payload: message)
+    }
+
+    public func sendMessage(_ message: InertiaMessage.MessageEdit) {
+        send(type: .edit, payload: message)
     }
 
     public func sendMessage(_ message: InertiaMessage.MessagePlaybackProgress) {

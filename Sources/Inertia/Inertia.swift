@@ -329,6 +329,11 @@ public final class InertiaDataModel{
     var selectedNodeCenter: CGPoint = .zero
     var selectedNodeSize: CGSize = .zero
     var isActionable: Bool = false
+    /// Which property a gesture on a selected node edits, as picked in the
+    /// editor's toolbar. `.translate` until the editor says otherwise, which is
+    /// also what a runtime that reconnects mid-session falls back to until the
+    /// editor resends.
+    var activeTool: InertiaTool = .translate
     var isRunning:Bool = false
 
     /// The `sequence` of the last `MessageSignal` this runtime has applied.
@@ -1195,64 +1200,68 @@ private extension View {
 }
 
 struct InertiaEditable<Content: View>: View {
-    @State private var dragOffset: CGSize = .zero
     @State private var animation: InertiaAnimationSchema? = nil
     @State private var contentSize: CGSize = .zero
     @State private var vm = InertiaViewModel()
     @State private var hierarchyId: String? = nil
-    @State private var selectedSize: CGSize = .zero
-    /// The node's laid-out center in the container's coordinate space, before any
-    /// drag offset. Measured outside `.offset` so it stays the layout position.
-    @State private var baseCenter: CGPoint = .zero
-    /// Where the node sat before the current gesture began. `DragGesture`
-    /// reports translation relative to its own start, so without carrying the
-    /// accumulated offset every drag after the first snaps back to the origin.
-    @State private var startOffset: CGSize = .zero
+    /// What the gesture in progress has changed so far. Replaced on every move,
+    /// so a tool only ever contributes the one property it edits.
+    @State private var gestureEdit: InertiaToolEdit = .none
+    /// What the gestures before this one left behind, still waiting for the
+    /// editor to fold them into the schema. `DragGesture` reports movement
+    /// relative to its own start, so without carrying this every gesture after
+    /// the first would snap the node back to where its schema puts it.
+    @State private var settledEdit: InertiaToolEdit = .none
     /// This node's box in the container's space, as laid out — measured outside
-    /// both the animation and the drag. The shapes are projected from it.
+    /// both the animation and the editor's gestures. The shapes are projected
+    /// from it, the guides are boxed to it, and the handles turn about it.
     @State private var layoutFrame: CGRect = .zero
 
-    /// The node's position in the container: everything before this gesture
-    /// plus what this gesture has moved so far.
-    private var totalOffset: CGSize {
-        CGSize(
-            width: startOffset.width + dragOffset.width,
-            height: startOffset.height + dragOffset.height
-        )
+    /// Everything the editor's gestures have added on top of the schema:
+    /// what previous ones settled at, plus what this one has done so far.
+    private var totalEdit: InertiaToolEdit {
+        settledEdit + gestureEdit
     }
 
-    /// The offset the schema already draws this node at, in points — the
-    /// animation in `body` applies it, and the drag is stacked on top. It is
-    /// deliberately not part of `totalOffset`, which is only what the gestures
-    /// have added on top of it.
-    private var initialOffset: CGSize {
-        let translate = (initialValues ?? .identity).sanitized.translate
-        return CGSize(
-            width: translate.width * inertiaContainerSize.width,
-            height: translate.height * inertiaContainerSize.height
-        )
+    /// The edit actually on screen. Held back unless this node is the one being
+    /// edited, for the same reason the drag used to be: an edit is a gesture,
+    /// not a position — what an actionable *is* at rests in its schema. Applied
+    /// unconditionally, a node deselected before the editor had pushed the
+    /// gesture back stayed stuck where it had been left, with nothing on screen
+    /// agreeing that it belonged there.
+    private var liveEdit: InertiaToolEdit {
+        isEditable ? totalEdit : .none
     }
 
-    /// Where this node has ended up relative to where layout put it: the offset
-    /// its schema starts it at plus everything the drag has moved it by.
+    /// The values the node is drawn at right now: whatever the schema shows —
+    /// its starting values, or where the run has got to — with the gesture in
+    /// progress folded in.
+    private var displayedValues: InertiaAnimationValues {
+        let base = (animation ?? getAnimation).map { displayValues(for: $0) } ?? .identity
+        return base.applying(liveEdit, containerSize: inertiaContainerSize)
+    }
+
+    /// What the editor is told once a gesture ends.
     ///
-    /// This is what the editor is told, and it has to carry the schema's own
-    /// offset. A translation sent as the drag alone is written back over the
-    /// offset it was measured from rather than added to it, so a node with an
-    /// initial offset jumped back by it the moment the new schema landed.
-    private var authoredOffset: CGSize {
-        CGSize(
-            width: initialOffset.width + totalOffset.width,
-            height: initialOffset.height + totalOffset.height
-        )
+    /// Measured from the schema's *starting* values rather than from wherever
+    /// playback has the node at: a keyframe recorded from a scrubbed position
+    /// would otherwise bake the track's own interpolation into itself. It has to
+    /// carry those starting values, too — an edit sent as the gesture alone is
+    /// written back over the transform it was measured from rather than added to
+    /// it, so a node with an initial offset jumped back by it the moment the new
+    /// schema landed.
+    private var authoredValues: InertiaAnimationValues {
+        (initialValues ?? .identity).sanitized
+            .applying(totalEdit, containerSize: inertiaContainerSize)
     }
 
-    /// Where the node's center currently sits in the container, i.e. its layout
-    /// position moved by the accumulated drag.
+    /// Where the node's center currently sits in the container: its layout
+    /// position moved by everything on screen.
     private var currentCenter: CGPoint {
-        CGPoint(
-            x: baseCenter.x + totalOffset.width,
-            y: baseCenter.y + totalOffset.height
+        displayedValues.drawnPoint(
+            CGPoint(x: layoutFrame.width / 2, y: layoutFrame.height / 2),
+            in: layoutFrame,
+            containerSize: inertiaContainerSize
         )
     }
 
@@ -1284,58 +1293,122 @@ struct InertiaEditable<Content: View>: View {
         return isSelected
     }
 
-    /// Only a selected node moves. Dragging is how the editor edits the
-    /// selection, and `onEnded` sends the translation against *all* selected
-    /// pairs — so letting an unselected node drag both moves something the user
-    /// never picked and attributes its translation to the wrong nodes.
-    private var isDraggable: Bool {
+    /// Only a selected node takes an editor gesture. Editing acts on the
+    /// selection, and a committed edit is attributed to *all* selected pairs —
+    /// so letting an unselected node be dragged both changes something the user
+    /// never picked and attributes the change to the wrong nodes.
+    private var isEditable: Bool {
         (inertiaDataModel?.isActionable ?? false) && isSelected
     }
 
+    /// Which tool the editor has the viewport in.
+    private var activeTool: InertiaTool {
+        inertiaDataModel?.activeTool ?? .translate
+    }
+
+    /// The whole node is the handle for the move tool, and only for it. Every
+    /// other tool edits through the chrome in `toolHandles`, so a drag across
+    /// the body of a node does nothing — the same way a modal tool behaves in
+    /// any other editor.
+    private var isBodyDraggable: Bool {
+        isEditable && activeTool == .translate
+    }
+
+    /// Measured in the container's space rather than the node's own.
+    ///
+    /// The transforms that move the node are applied outside this gesture, so a
+    /// translation taken locally is measured against a coordinate space the
+    /// gesture is itself dragging out from under the pointer — the node ends up
+    /// chasing the cursor a fraction of a move at a time, and the guides tracking
+    /// it stutter. The container is the one frame nothing here moves.
     var dragGesture: some Gesture {
-        DragGesture()
+        DragGesture(coordinateSpace: .named(inertiaContainerId ?? ""))
             .onChanged { value in
-                if isDraggable {
-                    dragOffset = value.translation
-                    inertiaDataModel?.showGrid = true
-                    inertiaDataModel?.selectedNodeCenter = currentCenter
-                    inertiaDataModel?.selectedNodeSize = selectedSize
-                    manager.sendMessage(
-                        InertiaMessage.MessageSelectedNodeProperties(
-                            positionX: authoredOffset.width,
-                            positionY: authoredOffset.height,
-                            sizeX: selectedSize.width,
-                            sizeY: selectedSize.height
-                        )
-                    )
+                if isBodyDraggable {
+                    apply(InertiaToolEdit(translate: value.translation))
                 }
             }
             .onEnded { value in
-                if isDraggable {
-                    dragOffset = value.translation
-                    // Fold this gesture into the accumulated position so the
-                    // next one starts from where the node actually is. The
-                    // authored position is taken alongside it, since it is the
-                    // one the editor is told about.
-                    let settled = totalOffset
-                    let authored = authoredOffset
-                    startOffset = settled
-                    dragOffset = .zero
-                    inertiaDataModel?.showGrid = false
-                    if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
-                        manager.sendMessage(
-                            InertiaMessage.MessageTranslation(
-                                translationX: (authored.width) / (inertiaContainerSize.width),
-                                translationY: (authored.height) / (inertiaContainerSize.height),
-                                actionableIds: actionableIdPairs
-                            )
-                        )
-                    }
-
+                if isBodyDraggable {
+                    apply(InertiaToolEdit(translate: value.translation))
+                    commitEdit()
                 }
             }
     }
-    
+
+    /// Shows what a gesture has produced so far, and reports it to the editor's
+    /// inspector. Nothing is authored yet — see `commitEdit`.
+    private func apply(_ edit: InertiaToolEdit) {
+        gestureEdit = edit
+
+        // The guides box a node in as it is moved. They mean nothing for a
+        // rotation or an opacity, where the node stays where layout put it.
+        let isMoving = activeTool == .translate
+        inertiaDataModel?.showGrid = isMoving
+        if isMoving {
+            // The box the node is *drawn* in, not the one it was laid out in:
+            // scale is about the center, so an actionable its schema scales up
+            // keeps its center and grows around it.
+            let scale = displayedValues.scale
+            inertiaDataModel?.selectedNodeCenter = currentCenter
+            inertiaDataModel?.selectedNodeSize = CGSize(
+                width: layoutFrame.width * scale,
+                height: layoutFrame.height * scale
+            )
+        }
+
+        let authored = authoredValues
+        manager.sendMessage(
+            InertiaMessage.MessageSelectedNodeProperties(
+                positionX: authored.translate.width * inertiaContainerSize.width,
+                positionY: authored.translate.height * inertiaContainerSize.height,
+                sizeX: layoutFrame.width,
+                sizeY: layoutFrame.height,
+                values: authored
+            )
+        )
+    }
+
+    /// Ends a gesture: folds it into what the node is showing so the next one
+    /// starts from where this one left it, and hands the result to the editor to
+    /// be written into the schema.
+    ///
+    /// One `MessageEdit` whatever the tool, carrying the whole transform: a
+    /// keyframe holds all five values, so the four this gesture did not touch
+    /// have to travel with the one it did.
+    private func commitEdit() {
+        let authored = authoredValues
+        settledEdit = totalEdit
+        gestureEdit = .none
+        inertiaDataModel?.showGrid = false
+
+        guard let actionableIdPairs = inertiaDataModel?.actionableIdPairs else { return }
+
+        manager.sendMessage(
+            InertiaMessage.MessageEdit(
+                tool: activeTool,
+                values: authored,
+                actionableIds: actionableIdPairs
+            )
+        )
+    }
+
+    /// The chrome for the active tool, drawn over a selected node.
+    @ViewBuilder
+    private var toolHandles: some View {
+        if isEditable, activeTool != .translate {
+            InertiaToolHandles(
+                tool: activeTool,
+                values: displayedValues,
+                layoutFrame: layoutFrame,
+                containerSize: inertiaContainerSize,
+                containerSpace: inertiaContainerId,
+                onChange: { apply($0) },
+                onEnded: { commitEdit() }
+            )
+        }
+    }
+
     var wrappedContent: some View {
         ZStack(alignment: .center) {
             content
@@ -1383,26 +1456,16 @@ struct InertiaEditable<Content: View>: View {
                     .strokeBorder(Color.green, lineWidth: 2)
             }
         }
-        // Only while this node is the one being edited. A drag is a gesture, not
-        // a position: what an actionable *is* at rests in its schema, which the
-        // animation above draws. Applied unconditionally, a node deselected
-        // before the editor had pushed the drag back stayed stuck where it had
-        // been left, with nothing on screen agreeing that it belonged there.
-        // Same gate as the Compose runtime's `.offset { if (isSelected …) }`.
-        .offset(isDraggable ? totalOffset : .zero)
-        // Masked off rather than merely inert when this node isn't selected: an
-        // attached DragGesture claims the drag even when its handlers do
-        // nothing, which would stop a selected ancestor from being dragged. The
+        // Inside everything that transforms the node, so the handles stay glued
+        // to it as it turns and scales, and above the selection border so a knob
+        // sitting on the edge is the thing that gets grabbed.
+        .overlay { toolHandles }
+        // Masked off rather than merely inert when this node isn't being moved:
+        // an attached DragGesture claims the drag even when its handlers do
+        // nothing, which would stop a selected ancestor from being dragged, and
+        // would swallow the drags meant for this node's own tool handles. The
         // tap that selects lives on the subviews, so `.subviews` keeps it live.
-        .gesture(dragGesture, including: isDraggable ? .all : .subviews)
-        // Measured one level out: `.offset` is a geometry effect that carries the
-        // view's own background and overlays with it, so anything attached inside
-        // this wrapper reports the *dragged* position. The enclosing ZStack keeps
-        // the layout frame, which is what `currentCenter` adds the drag to.
-        .measuringLayoutFrame(in: inertiaContainerId) { frame in
-            selectedSize = frame.size
-            baseCenter = CGPoint(x: frame.midX, y: frame.midY)
-        }
+        .gesture(dragGesture, including: isBodyDraggable ? .all : .subviews)
     }
     
     /// The shapes authored against this actionable, if it has any. Read off the
@@ -1524,22 +1587,28 @@ struct InertiaEditable<Content: View>: View {
     
     var body: some View {
         Group {
-            if let animation = animation ?? getAnimation {
-                let values = displayValues(for: animation)
+            // One stack for the schema and the gesture together, rather than the
+            // gesture applied somewhere inside the animation's own modifiers:
+            // what the editor is sent is a single set of values, and this is what
+            // makes the node's appearance agree with them.
+            //
+            // Unconditional, and the identity transform when there is neither an
+            // animation nor a gesture. A node that grew its modifiers only once
+            // it had something to show was a *different* view to SwiftUI the
+            // moment it did, which threw away the state underneath it —
+            // including the id it had been indexed under — mid-gesture.
+            let values = displayedValues
 
-                wrappedContent
-                    .scaleEffect(values.scale)
-                    .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
-                    .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
-                    .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
-                    .opacity(values.opacity)
-            } else {
-                wrappedContent
-            }
+            wrappedContent
+                .scaleEffect(values.scale)
+                .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
+                .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
+                .offset(x: values.translate.width * inertiaContainerSize.width, y: values.translate.height * inertiaContainerSize.height)
+                .opacity(values.opacity)
         }
 
         // The animation above already puts this node where the schema says it
-        // starts, so the drag stacked on top of it goes back to zero whenever
+        // starts, so the edit stacked on top of it goes back to zero whenever
         // those values change: by then the gesture has been authored into the
         // schema, and leaving it in place would count the same move twice. It is
         // also what returns a node to the origin when the editor resets an
@@ -1549,14 +1618,16 @@ struct InertiaEditable<Content: View>: View {
         // Matches `LaunchedEffect(animation?.initialValues)` in the Compose
         // runtime and the `pos` effect in the React one.
         .onChange(of: initialValues) { _, _ in
-            startOffset = .zero
-            dragOffset = .zero
+            settledEdit = .none
+            gestureEdit = .none
         }
 
-        // Outside the animation and outside the drag, so the shapes are
-        // projected from where this node was laid out rather than from wherever
-        // it has been drawn or dragged to. Both of those then move the canvas
-        // as rendering effects, which is what keeps it stuck to the node.
+        // Outside the animation and outside the editor's gestures, so the shapes
+        // are projected from where this node was laid out rather than from
+        // wherever it has been drawn or dragged to, the guides box the node
+        // itself, and the handles turn about a fixed frame. All of those
+        // transforms then move the result as rendering effects, which is what
+        // keeps the canvas and the chrome stuck to the node.
         .measuringLayoutFrame(in: inertiaContainerId) { frame in
             layoutFrame = frame
         }
@@ -1572,6 +1643,7 @@ struct InertiaEditable<Content: View>: View {
             manager.messageReceived = handleMessage
             manager.messageReceivedSchema = handleMessageSchema
             manager.messageReceivedIsActionable = handleMessageActionable
+            manager.messageReceivedTool = handleMessageTool(tool:)
             manager.messageReceivedSignal = handleMessageSignal(_:sequence:)
         }
         .onChange(of: manager.isConnected, { oldValue, newValue in
@@ -1711,6 +1783,15 @@ struct InertiaEditable<Content: View>: View {
     
     func handleMessageActionable(isActionable: Bool) {
         inertiaDataModel?.isActionable = isActionable
+    }
+
+    /// The editor has switched tools. Any gesture in progress is dropped rather
+    /// than carried over: it was opened against the old tool's handle, and the
+    /// property it was editing is not the one the new tool would author.
+    func handleMessageTool(tool: InertiaTool) {
+        gestureEdit = .none
+        inertiaDataModel?.showGrid = false
+        inertiaDataModel?.activeTool = tool
     }
 }
 

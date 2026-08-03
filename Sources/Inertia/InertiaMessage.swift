@@ -12,6 +12,23 @@
 
 import Foundation
 
+/// What a drag in the runtime's viewport edits.
+///
+/// Picked in the editor's toolbar and pushed to the runtime, because the gesture
+/// happens in the app under test rather than in the editor. One case per
+/// property of ``InertiaAnimationValues``: the toolbar, the timeline's
+/// per-property rows and the handles a selected node grows are three views of
+/// the same five numbers.
+public enum InertiaTool: String, Codable, Sendable, CaseIterable, Identifiable, Hashable {
+    case translate
+    case rotate
+    case rotateCenter
+    case opacity
+    case scale
+
+    public var id: String { rawValue }
+}
+
 public enum InertiaMessage {
     public enum MessageType: String, Codable {
         case actionable
@@ -21,6 +38,8 @@ public enum InertiaMessage {
         case selectedNodeProperties
         case signal
         case playbackProgress
+        case tool
+        case edit
     }
 
     public struct MessageWrapper: Codable {
@@ -43,17 +62,53 @@ public enum InertiaMessage {
         }
     }
     
+    /// Sent while a gesture is in progress, for the editor's inspector.
+    ///
+    /// `values` is what the selection would be authored at if the gesture ended
+    /// now, and is absent from runtimes that only ever move a node — the field
+    /// is decoded with `decodeIfPresent` so a translate-only runtime's message
+    /// still reads.
     public struct MessageSelectedNodeProperties: Codable {
         public let positionX: CGFloat
         public let positionY: CGFloat
         public let sizeX: CGFloat
         public let sizeY: CGFloat
-        
-        public init(positionX: CGFloat, positionY: CGFloat, sizeX: CGFloat, sizeY: CGFloat) {
+        public let values: InertiaAnimationValues?
+
+        public init(
+            positionX: CGFloat,
+            positionY: CGFloat,
+            sizeX: CGFloat,
+            sizeY: CGFloat,
+            values: InertiaAnimationValues? = nil
+        ) {
             self.positionX = positionX
             self.positionY = positionY
             self.sizeX = sizeX
             self.sizeY = sizeY
+            self.values = values
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case positionX, positionY, sizeX, sizeY, values
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            positionX = try container.decode(CGFloat.self, forKey: .positionX)
+            positionY = try container.decode(CGFloat.self, forKey: .positionY)
+            sizeX = try container.decode(CGFloat.self, forKey: .sizeX)
+            sizeY = try container.decode(CGFloat.self, forKey: .sizeY)
+            values = try container.decodeIfPresent(InertiaAnimationValues.self, forKey: .values)
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(positionX, forKey: .positionX)
+            try container.encode(positionY, forKey: .positionY)
+            try container.encode(sizeX, forKey: .sizeX)
+            try container.encode(sizeY, forKey: .sizeY)
+            try container.encodeIfPresent(values, forKey: .values)
         }
     }
 
@@ -65,6 +120,40 @@ public enum InertiaMessage {
         public init(translationX: CGFloat, translationY: CGFloat, actionableIds: Set<ActionableIdPair>) {
             self.translationX = translationX
             self.translationY = translationY
+            self.actionableIds = actionableIds
+        }
+    }
+
+    /// Editor → runtime: which tool a gesture on a selected node applies.
+    ///
+    /// The runtime opens on ``InertiaTool/translate`` and keeps whatever it was
+    /// last told, so a runtime that reconnects mid-session is sent the current
+    /// tool again rather than being left on the default.
+    public struct MessageTool: Codable {
+        public let tool: InertiaTool
+
+        public init(tool: InertiaTool) {
+            self.tool = tool
+        }
+    }
+
+    /// Runtime → editor: where a gesture left the selection.
+    ///
+    /// Carries the whole transform rather than the one property the active tool
+    /// changed, because that is what the editor records — a keyframe holds all
+    /// five values, and the four the tool did not touch still have to be the
+    /// ones the node is actually sitting at.
+    ///
+    /// Generalizes ``MessageTranslation``, which the React and Compose runtimes
+    /// still send and which the editor reads as an edit that only translates.
+    public struct MessageEdit: Codable {
+        public let tool: InertiaTool
+        public let values: InertiaAnimationValues
+        public let actionableIds: Set<ActionableIdPair>
+
+        public init(tool: InertiaTool, values: InertiaAnimationValues, actionableIds: Set<ActionableIdPair>) {
+            self.tool = tool
+            self.values = values
             self.actionableIds = actionableIds
         }
     }
