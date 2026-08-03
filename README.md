@@ -12,7 +12,7 @@ composable, a real `<div>` — playing through the platform's own animation engi
 
 📚 **[Read the user guides →](https://hpennington.github.io/Inertia/)**
 
-https://github.com/user-attachments/assets/b3251bed-75bd-4967-a8c7-8927c85d3f48
+https://github.com/user-attachments/assets/7da417fa-e707-41e1-bc93-a0ca68540f73
 
 ## Why Inertia
 
