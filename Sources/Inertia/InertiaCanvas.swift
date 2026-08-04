@@ -104,8 +104,8 @@ struct InertiaShapeEditing {
 struct InertiaShapesView: View {
     let vm: InertiaViewModel
     let shapes: [InertiaShape]
-    /// The actionable's laid-out box: the unit the shapes' coordinates are
-    /// multiples of, so a shape saying 1 is exactly this wide.
+    /// The actionable's laid-out box. What a shape's coordinates are multiples
+    /// of is the shorter of its two sides — see `unit`.
     let size: CGSize
     /// The container's box — what a translation of 1 crosses. The same measure
     /// an actionable's own animation is offset by, so a shape and the view it
@@ -118,6 +118,21 @@ struct InertiaShapesView: View {
     /// Present only in the editor, and only while the viewport is in actionable
     /// mode. See `InertiaShapeEditing`.
     var editing: InertiaShapeEditing? = nil
+
+    /// The length a shape's coordinates are multiples of, across and down
+    /// alike: the shorter side of the actionable's box.
+    ///
+    /// One length rather than two is what keeps a described vector the shape it
+    /// was described as. Scaling x by the view's width and y by its height puts
+    /// a shape in a square space that is then stretched to fit the view, so a
+    /// circle of size 1 came out an oval on every view that was not itself
+    /// square, and the taller or wider the view the further from round it got.
+    /// Measured against one side, a circle is round, a square is square, and a
+    /// shape keeps its proportions at every size that view takes.
+    ///
+    /// The shorter side rather than the longer one, so a shape authored at 1
+    /// still fits inside the view it backs in both directions.
+    private var unit: CGFloat { min(size.width, size.height) }
 
     /// Whether a shape is drawn on a canvas of its own rather than sharing the
     /// backdrop.
@@ -214,7 +229,7 @@ struct InertiaShapesView: View {
             // write the take back. Mirrors `InertiaEditable.displayedValues`.
             let edit = shape.map { editing?.edit($0) ?? .none } ?? .none
             let values = transform.applying(edit, containerSize: containerSize)
-            let box = CGSize(width: bounds.width * size.width, height: bounds.height * size.height)
+            let box = CGSize(width: bounds.width * unit, height: bounds.height * unit)
 
             InertiaCanvas(
                 vm: vm,
@@ -230,8 +245,8 @@ struct InertiaShapesView: View {
             .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
             .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
             .offset(
-                x: bounds.midX * size.width + values.translate.width * containerSize.width,
-                y: bounds.midY * size.height + values.translate.height * containerSize.height
+                x: bounds.midX * unit + values.translate.width * containerSize.width,
+                y: bounds.midY * unit + values.translate.height * containerSize.height
             )
             .opacity(values.opacity)
         }
@@ -263,8 +278,8 @@ struct InertiaShapesView: View {
             // origin a shape's coordinates are drawn about — the same half-view
             // step the canvas itself is placed by.
             let layoutFrame = CGRect(
-                x: editing.outer.layoutFrame.minX + size.width / 2 + bounds.minX * size.width,
-                y: editing.outer.layoutFrame.minY + size.height / 2 + bounds.minY * size.height,
+                x: editing.outer.layoutFrame.minX + size.width / 2 + bounds.minX * unit,
+                y: editing.outer.layoutFrame.minY + size.height / 2 + bounds.minY * unit,
                 width: box.width,
                 height: box.height
             )

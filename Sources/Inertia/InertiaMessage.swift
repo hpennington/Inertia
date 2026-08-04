@@ -97,7 +97,7 @@ public enum InertiaMessage {
     /// own points.
     ///
     /// A shape is authored in multiples of the view it is drawn behind — 1 is
-    /// that view's whole width — so the drawing alone never says how big it is.
+    /// that view's shorter side — so the drawing alone never says how big it is.
     /// Only the app under test knows: layout is what decides it, and it decides
     /// it again at every size the app is run at. This is that measurement, sent
     /// as it is taken, so the editor can draw a shape at the size it is really

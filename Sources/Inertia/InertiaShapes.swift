@@ -61,9 +61,9 @@ public struct InertiaShapeProperties: Codable, Equatable {
     public let stroke: InertiaColor?
 
     /// How thick the outline is, in the units the shape is sized in — multiples
-    /// of the actionable's own frame, the same as `width` and `height`, so a
+    /// of the actionable's shorter side, the same as `width` and `height`, so a
     /// stroke keeps its weight relative to the shape at every size that frame
-    /// takes.
+    /// takes, and is the same weight across as it is down.
     ///
     /// The stroke is drawn *inside* the outline: a shape occupies exactly the
     /// box it was authored at whether or not it is stroked, so adding a stroke
@@ -116,11 +116,17 @@ public struct InertiaShapeProperties: Codable, Equatable {
 
 /// A shape as it is authored alongside an animation: a ring of corners, each
 /// carrying its own colour, measured against the actionable it belongs to —
-/// (0, 0) that view's top-left, (1, 1) its bottom-right.
+/// (0, 0) the middle of that view, and 1 its shorter side.
 ///
-/// Nothing holds a shape to that box, though. Coordinates outside 0...1 reach
-/// past the actionable and go on being drawn, because the canvas they land on
-/// is the container's rather than the view's: a shape three times the size of
+/// One side rather than each of them, so a shape is drawn in a square space and
+/// keeps the proportions it was described with: a circle of size 1 is round on a
+/// view of any shape, and only a rectangle or an oval — the two descriptions
+/// that say both of their measurements — is drawn wider than it is tall. See
+/// `InertiaShapesView.unit`.
+///
+/// Nothing holds a shape to that box, though. Coordinates outside -0.5...0.5
+/// reach past the actionable and go on being drawn, because the canvas they land
+/// on is the container's rather than the view's: a shape three times the size of
 /// the card it backs is authored simply by saying 3.
 ///
 /// A shape may also carry an animation of its own, which is what makes it a
@@ -254,7 +260,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     public let shape: InertiaShapeProperties?
 
     /// The shapes drawn inside this one, in the units of *its* box — 1 is this
-    /// shape's whole width, the way 1 is the view's whole width one level up.
+    /// shape's shorter side, the way 1 is the view's shorter side one level up.
     ///
     /// A child is part of its parent's drawing rather than a drawing of its own:
     /// it is drawn on the parent's canvas, and every transform that moves the
@@ -378,26 +384,33 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         )
     }
 
-    /// The box a child's coordinates are multiples of: this shape's own size, in
-    /// whatever units this shape is itself measured in.
+    /// The length a child's coordinates are multiples of: the shorter side of
+    /// this shape's own box, in whatever units this shape is itself measured in.
     ///
     /// A described vector says its size outright. One authored corner by corner
     /// does not, so it is measured — the box its own corners occupy, which is
     /// the same thing the description would have named.
-    var childUnit: CGSize {
+    ///
+    /// One length rather than two, for the reason the actionable's own unit is
+    /// one length — see `InertiaShapesView.unit`. Scaling a child by this box's
+    /// width across and its height down would stretch it in whatever direction
+    /// the parent happens to be longer in, so a circle nested in a wide
+    /// rectangle came out an oval; measured against the shorter side it is the
+    /// circle it was described as, wherever it is nested.
+    var childUnit: CGFloat {
         if let shape, _vertices == nil {
-            return CGSize(width: shape.width, height: shape.height)
+            return Swift.min(shape.width, shape.height)
         }
 
         let positions = vertices.map(\.position)
-        guard let first = positions.first else { return .zero }
+        guard let first = positions.first else { return 0 }
 
         let minX = positions.reduce(first.x) { Swift.min($0, $1.x) }
         let maxX = positions.reduce(first.x) { Swift.max($0, $1.x) }
         let minY = positions.reduce(first.y) { Swift.min($0, $1.y) }
         let maxY = positions.reduce(first.y) { Swift.max($0, $1.y) }
 
-        return CGSize(width: maxX - minX, height: maxY - minY)
+        return Swift.min(maxX - minX, maxY - minY)
     }
 
     /// Everything this shape draws, as the one triangle list the renderer takes:
@@ -437,8 +450,8 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             child.triangles.map { vertex in
                 Vertex(
                     position: InertiaPoint(
-                        x: vertex.position.x * unit.width,
-                        y: vertex.position.y * unit.height
+                        x: vertex.position.x * unit,
+                        y: vertex.position.y * unit
                     ),
                     color: vertex.color
                 )
@@ -502,8 +515,8 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             child.enclosingVertices.map { vertex in
                 Vertex(
                     position: InertiaPoint(
-                        x: vertex.position.x * unit.width,
-                        y: vertex.position.y * unit.height
+                        x: vertex.position.x * unit,
+                        y: vertex.position.y * unit
                     ),
                     color: vertex.color
                 )
@@ -734,9 +747,8 @@ public extension Collection where Element == InertiaShape {
     }
 
     /// The smallest box holding every corner of these shapes, in the units they
-    /// are authored in — multiples of the actionable's own frame, so
-    /// `(0, 0, 1, 1)` is exactly the actionable and `(0, 0, 3, 3)` three times
-    /// it.
+    /// are authored in — multiples of the actionable's shorter side, so a box
+    /// 1 wide is as wide as that side and one 3 wide three times it.
     ///
     /// This is what the canvas is sized and placed by. Sizing it to the shapes
     /// rather than to the container is what keeps a shape whole: a canvas is a
