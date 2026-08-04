@@ -524,6 +524,39 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         })
     }
 
+    /// Every corner the shape called `shapeId` reaches — this shape itself, or
+    /// one nested anywhere inside it — in the units *this* shape is measured in.
+    ///
+    /// Nil when nothing in here answers to that name.
+    ///
+    /// A child is drawn in its parent's box and placed by it, so a nested
+    /// shape's corners are carried back up through every parent between it and
+    /// here: scaled by each one's box on the way, then placed by each one's
+    /// transform. That is the same trip `enclosingVertices` takes a whole
+    /// drawing on, walked down one branch instead of across all of them, which
+    /// is what puts the answer in the space the canvas is fitted to.
+    func enclosingVertices(of shapeId: InertiaID) -> [Vertex]? {
+        guard id != shapeId else { return enclosingVertices }
+
+        let unit = childUnit
+
+        for child in shapes {
+            guard let found = child.enclosingVertices(of: shapeId) else { continue }
+
+            return placed(found.map { vertex in
+                Vertex(
+                    position: InertiaPoint(
+                        x: vertex.position.x * unit,
+                        y: vertex.position.y * unit
+                    ),
+                    color: vertex.color
+                )
+            })
+        }
+
+        return nil
+    }
+
     /// Everything this shape draws, restated against `bounds` — the canvas's own
     /// box — so (0, 0) is the canvas's top-left corner and (1, 1) its
     /// bottom-right, which is the space the renderer draws in.
@@ -761,22 +794,47 @@ public extension Collection where Element == InertiaShape {
     /// Nil when the shapes enclose no area, which is also when there is nothing
     /// to draw.
     var bounds: CGRect? {
-        let positions = flatMap { $0.enclosingVertices.map(\.position) }
-        guard let first = positions.first else { return nil }
+        boundingBox(around: flatMap { $0.enclosingVertices.map(\.position) })
+    }
 
-        var minX = first.x
-        var maxX = first.x
-        var minY = first.y
-        var maxY = first.y
+    /// The box one shape in here occupies, wherever it is nested, in the units
+    /// these shapes are authored in.
+    ///
+    /// The same space `bounds` answers in, so the two can be placed against one
+    /// another on a canvas — which is what the editor draws a selection's border
+    /// from: the border belongs to one shape while the canvas is fitted to the
+    /// whole drawing.
+    ///
+    /// Nil when no shape in here answers to that name, and nil when the one that
+    /// does encloses no area — a border around nothing is nothing to draw.
+    func bounds(of shapeId: InertiaID) -> CGRect? {
+        for shape in self {
+            guard let vertices = shape.enclosingVertices(of: shapeId) else { continue }
 
-        for position in positions {
-            minX = Swift.min(minX, position.x)
-            maxX = Swift.max(maxX, position.x)
-            minY = Swift.min(minY, position.y)
-            maxY = Swift.max(maxY, position.y)
+            return boundingBox(around: vertices.map(\.position))
         }
 
-        let bounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-        return bounds.width > 0 && bounds.height > 0 ? bounds : nil
+        return nil
     }
+}
+
+/// The smallest rect holding every one of `positions`, or nil when they enclose
+/// no area.
+private func boundingBox(around positions: [InertiaPoint]) -> CGRect? {
+    guard let first = positions.first else { return nil }
+
+    var minX = first.x
+    var maxX = first.x
+    var minY = first.y
+    var maxY = first.y
+
+    for position in positions {
+        minX = Swift.min(minX, position.x)
+        maxX = Swift.max(maxX, position.x)
+        minY = Swift.min(minY, position.y)
+        maxY = Swift.max(maxY, position.y)
+    }
+
+    let bounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    return bounds.width > 0 && bounds.height > 0 ? bounds : nil
 }

@@ -584,6 +584,71 @@ final class ShapeTests: XCTestCase {
         XCTAssertEqual(moved.width, stationary.width, accuracy: 0.0001)
     }
 
+    // MARK: - The box one shape occupies
+
+    /// A square of the given size under a name of its own, so a drawing can be
+    /// asked about one of the shapes in it.
+    private func named(
+        _ id: InertiaID,
+        _ size: CGFloat,
+        _ transforms: InertiaAnimationValues? = nil,
+        shapes: [InertiaShape] = []
+    ) -> InertiaShape {
+        InertiaShape(
+            id: id,
+            shape: InertiaShapeProperties(id: "\(id)-properties", type: .rectangle, width: size, height: size, fill: red),
+            vertices: nil,
+            shapes: shapes,
+            transforms: transforms
+        )
+    }
+
+    /// What a selection border is fitted to: one shape's own box, in the same
+    /// units the canvas holding the whole drawing is measured in — so the border
+    /// fences in the vector that was picked rather than everything beside it.
+    func testBoundsOfOneShapeAreItsOwnAndNotTheDrawings() throws {
+        let drawing = [named("left", 1, moved(-2, 0)), named("right", 1, moved(2, 0))]
+
+        let box = try XCTUnwrap(drawing.bounds(of: "right"))
+
+        XCTAssertEqual(box.midX, 2, accuracy: 0.0001)
+        XCTAssertEqual(box.width, 1, accuracy: 0.0001)
+        // The drawing around it spans both, from -2.5 to 2.5.
+        XCTAssertEqual(try XCTUnwrap(drawing.bounds).width, 5, accuracy: 0.0001)
+    }
+
+    /// A nested shape is measured in its parent's box and placed by it, so its
+    /// own box only means anything once it has been carried back up — the same
+    /// numbers `testNestedShapeIsPlacedInItsParentsBox` arrives at from the
+    /// outside.
+    func testBoundsOfANestedShapeAreInTheDrawingsUnits() throws {
+        let child = named("child", 0.5, moved(0.5, 0))
+        let parent = named("parent", 2, nil, shapes: [child])
+
+        let box = try XCTUnwrap([parent].bounds(of: "child"))
+
+        XCTAssertEqual(box.width, 1, accuracy: 0.0001)
+        XCTAssertEqual(box.midX, 1, accuracy: 0.0001)
+    }
+
+    /// Placing the parent moves the box of everything inside it, because that is
+    /// where those shapes are now drawn.
+    func testBoundsOfANestedShapeFollowItsParentsPlacement() throws {
+        let child = named("child", 0.5, moved(0.5, 0))
+        let stationary = try XCTUnwrap([named("parent", 2, nil, shapes: [child])].bounds(of: "child"))
+        let shifted = try XCTUnwrap([named("parent", 2, moved(3, 0), shapes: [child])].bounds(of: "child"))
+
+        XCTAssertEqual(shifted.midX - stationary.midX, 3, accuracy: 0.0001)
+        XCTAssertEqual(shifted.width, stationary.width, accuracy: 0.0001)
+    }
+
+    /// Nothing to point at: a shape that was hidden is not among the ones handed
+    /// over, and a shape that was deleted is nowhere at all.
+    func testBoundsOfAShapeThatIsNotInTheDrawingAreNil() {
+        XCTAssertNil([named("only", 1)].bounds(of: "missing"))
+        XCTAssertNil([InertiaShape]().bounds(of: "only"))
+    }
+
     /// A placement fades the shape through the corners' own alpha, since it has
     /// to survive being flattened into a buffer shared with shapes that are not
     /// faded.
