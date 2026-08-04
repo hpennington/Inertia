@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1336,7 +1336,7 @@ actionable inside it samples.</p>
 <tbody>
 <tr>
 <td><code>dev</code></td>
-<td><code>true</code> takes animations from the editor over the socket; <code>false</code> reads <code>assets/&lt;id&gt;.msgpack</code> and never opens a socket.</td>
+<td><code>true</code> takes animations from the editor over the socket; <code>false</code> reads <code>assets/&lt;id&gt;.inertia</code> and never opens a socket.</td>
 </tr>
 <tr>
 <td><code>id</code></td>
@@ -1371,10 +1371,10 @@ drops any schema whose container id does not match its own. Use <code>id = "anim
 any container you intend to author in the editor.</p>
 </div>
 <h3 id="where-the-animation-comes-from">Where the animation comes from<a class="headerlink" href="#where-the-animation-comes-from" title="Permanent link">&para;</a></h3>
-<p>With <code>dev</code> false the container reads <code>assets/&lt;id&gt;.msgpack</code> and logs an error if the file is
+<p>With <code>dev</code> false the container reads <code>assets/&lt;id&gt;.inertia</code> and logs an error if the file is
 missing or fails to decode — a broken animation leaves the actionables at their layout
 positions rather than bringing the app down. Put the file the editor exported at
-<code>app/src/main/assets/animation.msgpack</code>.</p>
+<code>app/src/main/assets/animation.inertia</code>.</p>
 <p>With <code>dev</code> true it dials <code>baseURL</code> and takes its schemas from the editor. No socket is
 opened when <code>dev</code> is false, so the container is safe to leave in a release build.</p>
 <p>The container fills the space its host offers it (<code>fillMaxSize()</code>). Since <code>translate</code> is a
@@ -1613,7 +1613,7 @@ through as given.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

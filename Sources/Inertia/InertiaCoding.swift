@@ -22,10 +22,10 @@ import MessagePack
 public enum InertiaCoding {
     /// The file extension animation files carry, without the dot.
     ///
-    /// A shipped animation is `<containerId>.msgpack` in the app's bundle, its
+    /// A shipped animation is `<containerId>.inertia` in the app's bundle, its
     /// Android assets, or under the React runtime's `baseURL`; a project's own
-    /// is `animation.msgpack`.
-    public static let fileExtension = "msgpack"
+    /// is `animation.inertia`.
+    public static let fileExtension = "inertia"
 
     public static func encode<T: Encodable>(_ value: T) throws -> Data {
         try MessagePackEncoder().encode(value)

@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1349,13 +1349,13 @@ an Android emulator, or your web dev server in a web view.</p>
 <h2 id="add-the-animation-file-to-your-target">Add the animation file to your target<a class="headerlink" href="#add-the-animation-file-to-your-target" title="Permanent link">&para;</a></h2>
 <p>The runtime loads animations from a <a href="https://msgpack.org">MessagePack</a> resource in
 your app bundle, looked up by the container's <code>id</code>. A container created with
-<code>id: "animation"</code> reads <code>animation.msgpack</code>.</p>
+<code>id: "animation"</code> reads <code>animation.inertia</code>.</p>
 <ol>
 <li>
-<p>Create an empty <code>animation.msgpack</code> next to your Swift sources. The file is
+<p>Create an empty <code>animation.inertia</code> next to your Swift sources. The file is
    binary, so it cannot be typed into an editor — an empty array is the single
    byte <code>0x90</code>:</p>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;\x90&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>animation.msgpack
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;\x90&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>animation.inertia
 </span></code></pre></div>
 </li>
 <li>
@@ -1369,7 +1369,7 @@ your app bundle, looked up by the container's <code>id</code>. A container creat
 initialization and traps if it is missing or fails to decode. An empty
 array is a valid animation file; a missing file is not.</p>
 </div>
-<p>Once the editor is writing animations for this project, you copy its <code>animation.msgpack</code>
+<p>Once the editor is writing animations for this project, you copy its <code>animation.inertia</code>
 over this one. See <a href="../../editor/projects/">Projects</a> for where the editor keeps it.</p>
 <h2 id="add-the-editor-build-flag">Add the editor build flag<a class="headerlink" href="#add-the-editor-build-flag" title="Permanent link">&para;</a></h2>
 <p>Editor mode should be compiled in for development builds only. The convention used by
@@ -1447,8 +1447,8 @@ the editor at:</p>
 <p>Keep this to the hosts you actually need, and prefer a <code>debug</code> source set over the
 main manifest if the app is ever going to be released.</p>
 <h2 id="add-the-animation-file">Add the animation file<a class="headerlink" href="#add-the-animation-file" title="Permanent link">&para;</a></h2>
-<p>Put the <code>animation.msgpack</code> the editor exported in your app's assets:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>app/src/main/assets/animation.msgpack
+<p>Put the <code>animation.inertia</code> the editor exported in your app's assets:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>app/src/main/assets/animation.inertia
 </span></code></pre></div>
 <p>The basename has to match the container's <code>id</code>. With <code>dev = false</code> the container reads
 it from there; with <code>dev = true</code> it ignores the file and takes its schemas from the
@@ -1492,7 +1492,7 @@ the build script deletes <code>node_modules/react</code> before building.</p>
 </span></code></pre></div>
 <h2 id="serve-the-animation-file">Serve the animation file<a class="headerlink" href="#serve-the-animation-file" title="Permanent link">&para;</a></h2>
 <p>Outside editor mode the container does not read a bundled file — it fetches
-<code>&lt;baseURL&gt;/&lt;id&gt;.msgpack</code> over HTTP. Something has to serve the editor's animations
+<code>&lt;baseURL&gt;/&lt;id&gt;.inertia</code> over HTTP. Something has to serve the editor's animations
 directory, with CORS headers, at whatever <code>baseURL</code> you pass:</p>
 <div class="language-sh highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nb">cd</span><span class="w"> </span>MyProject.inertia/animations
 </span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8000</span>
@@ -1628,7 +1628,7 @@ reach for an editor.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

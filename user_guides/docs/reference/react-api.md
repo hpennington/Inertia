@@ -32,7 +32,7 @@ type InertiaContainerProps = {
 | `dev` | `true` takes animations from the editor over the socket and never fetches; `false` fetches from `baseURL` and never opens a socket. |
 | `id` | The container id the editor addresses its schemas to, and the basename of the file fetched outside editor mode. |
 | `hierarchyId` | The id of the container's own node — the root every actionable inside it hangs from. Usually the same string as `id`. |
-| `baseURL` | Where `<id>.msgpack` is fetched from when `dev` is false. **Not** the editor's address. |
+| `baseURL` | Where `<id>.inertia` is fetched from when `dev` is false. **Not** the editor's address. |
 
 ```tsx
 <InertiaContainer dev={isDev} id="animation" hierarchyId="animation" baseURL="http://localhost:8000">
@@ -52,7 +52,7 @@ editor's socket rather than an HTTP origin.
 
 ### Where the animation comes from
 
-With `dev` false the container fetches `` `${baseURL}/${id}.msgpack` `` on mount, and logs an
+With `dev` false the container fetches `` `${baseURL}/${id}.inertia` `` on mount, and logs an
 error if the request fails — a missing file is a still page rather than a crash. The server
 needs CORS headers if it is not the same origin as your app.
 

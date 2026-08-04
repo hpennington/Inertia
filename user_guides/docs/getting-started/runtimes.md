@@ -16,7 +16,7 @@ Every runtime has the same four pieces:
    also selectable and draggable.
 3. **A playback handle** — the app's way to start an animation. Nothing animates until an
    id is triggered.
-4. **An animation file** — `animation.msgpack`, written by the editor.
+4. **An animation file** — `animation.inertia`, written by the editor.
 
 ## The API, side by side
 
@@ -52,7 +52,7 @@ socket in that mode. Where the file comes from differs:
 
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
-| `dev: false` loads | `<id>.msgpack` from the app bundle | `<id>.msgpack` from `assets/` | `fetch("<baseURL>/<id>.msgpack")` |
+| `dev: false` loads | `<id>.inertia` from the app bundle | `<id>.inertia` from `assets/` | `fetch("<baseURL>/<id>.inertia")` |
 | A missing or broken file | **traps** | logs, draws nothing | logs, draws nothing |
 
 The SwiftUI runtime is the strict one: with `dev: false` the container reads the bundled

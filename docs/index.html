@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1185,11 +1185,11 @@ still differ — and they do, in ways worth knowing before you start.</p>
 </ul>
 </div>
 <h2 id="how-it-fits-together">How it fits together<a class="headerlink" href="#how-it-fits-together" title="Permanent link">&para;</a></h2>
-<p><img alt="Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.msgpack your shipped app bundles." class="diagram" src="assets/diagrams/architecture-dark.svg" /></p>
+<p><img alt="Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.inertia your shipped app bundles." class="diagram" src="assets/diagrams/architecture-dark.svg" /></p>
 <p>In <strong>editor mode</strong> the editor hosts a local WebSocket server and your app connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
 back as you edit, so what you see running is the animation as it currently stands.</p>
-<p>In <strong>release mode</strong> none of that is running. The container loads <code>animation.msgpack</code> for
+<p>In <strong>release mode</strong> none of that is running. The container loads <code>animation.inertia</code> for
 itself — out of the app bundle in SwiftUI, over HTTP in React — and plays it on its own
 clock. In SwiftUI the WebSocket client is gated on the same <code>dev</code> flag, so a shipped build
 never dials out. (The Compose runtime does not yet have a release path; see
@@ -1361,7 +1361,7 @@ the shortest route to understanding what Inertia actually does.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

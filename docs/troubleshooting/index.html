@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1350,12 +1350,12 @@
 
 <h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
 <h2 id="the-app-crashes-on-launch-in-a-release-build">The app crashes on launch in a release build<a class="headerlink" href="#the-app-crashes-on-launch-in-a-release-build" title="Permanent link">&para;</a></h2>
-<p>SwiftUI only. <code>InertiaContainer</code> with <code>dev: false</code> reads <code>&lt;id&gt;.msgpack</code> from the bundle during
+<p>SwiftUI only. <code>InertiaContainer</code> with <code>dev: false</code> reads <code>&lt;id&gt;.inertia</code> from the bundle during
 initialization and traps if it is missing or does not decode.</p>
 <p>Check, in order:</p>
 <ol>
 <li>The file exists and its name matches the container's <code>id</code> — <code>id: "animation"</code> needs
-   <code>animation.msgpack</code>.</li>
+   <code>animation.inertia</code>.</li>
 <li>It is listed under <strong>Target → Build Phases → Copy Bundle Resources</strong>.</li>
 <li>It parses. <code>[]</code> is valid; a trailing comma is not.</li>
 </ol>
@@ -1428,13 +1428,13 @@ every tagged view at its initial pose while retrying the dial in the background.
 <p>See <a href="../getting-started/runtimes/">Choosing a runtime</a>, and keep the container out of
 release builds.</p>
 <h2 id="a-react-build-shows-nothing-with-dev-false">A React build shows nothing with <code>dev</code> false<a class="headerlink" href="#a-react-build-shows-nothing-with-dev-false" title="Permanent link">&para;</a></h2>
-<p>The container fetches <code>&lt;baseURL&gt;/&lt;id&gt;.msgpack</code> and logs the failure rather than crashing, so
+<p>The container fetches <code>&lt;baseURL&gt;/&lt;id&gt;.inertia</code> and logs the failure rather than crashing, so
 this is almost always a fetch that did not land. In the console, look for
 <code>[INERTIA_LOG]: Failed to load animation file</code> and check:</p>
 <ol>
 <li>Something is actually serving that path.</li>
 <li>It sends <code>Access-Control-Allow-Origin</code> if it is not the same origin as your page.</li>
-<li><code>baseURL</code> has no trailing slash — the URL is built as <code>`${baseURL}/${id}.msgpack`</code>.</li>
+<li><code>baseURL</code> has no trailing slash — the URL is built as <code>`${baseURL}/${id}.inertia`</code>.</li>
 </ol>
 <h2 id="pressing-play-in-the-editor-does-nothing">Pressing play in the editor does nothing<a class="headerlink" href="#pressing-play-in-the-editor-does-nothing" title="Permanent link">&para;</a></h2>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">SwiftUI</label><label for="__tabbed_2_2">Compose</label><label for="__tabbed_2_3">React</label></div>
@@ -1608,7 +1608,7 @@ directory in version control if the animations matter.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

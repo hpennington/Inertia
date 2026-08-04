@@ -42,7 +42,7 @@ the animation data. Put it at the root of your app.
        the bundle. Drive it from a build flag rather than hardcoding it — see
        [Installation](installation.md).
     2. The animation file's name without its extension. `"animation"` loads
-       `animation.msgpack` from the bundle. Keep this as `"animation"` — it doubles as the
+       `animation.inertia` from the bundle. Keep this as `"animation"` — it doubles as the
        container id the editor sends animations to.
     3. The root node's id in the view hierarchy the editor draws. Any stable string works.
 
@@ -78,7 +78,7 @@ the animation data. Put it at the root of your app.
     ```
 
     1. `true` takes animations from the editor over the socket; `false` reads
-       `assets/animation.msgpack` and never opens one. Wire it to your own build flag.
+       `assets/animation.inertia` and never opens one. Wire it to your own build flag.
     2. The container id the editor addresses its schemas to. Keep it as `"animation"` —
        the runtime drops schemas meant for any other container.
     3. The id of the container's own node, which every actionable inside it hangs from.
@@ -118,7 +118,7 @@ the animation data. Put it at the root of your app.
 
     1. The container id the editor addresses its schemas to, and the basename of the
        file fetched outside editor mode. Keep it as `"animation"`.
-    2. Where `<id>.msgpack` is served from when `dev` is false. It is **not** the editor's
+    2. Where `<id>.inertia` is served from when `dev` is false. It is **not** the editor's
        address — the editor connection is always `ws://127.0.0.1:8080`.
     3. `true` takes animations from the editor over the socket; `false` fetches them from
        `baseURL` and never opens a socket.
@@ -248,7 +248,7 @@ Animations normally come from the editor. The file is binary, so it is not one y
 type out — but reading it as JSON is still the quickest way to see the shape of it. This
 moves `card0` from left of center to center over three seconds:
 
-```json title="animation.msgpack, as JSON"
+```json title="animation.inertia, as JSON"
 [
   {
     "id": "card0",

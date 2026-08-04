@@ -22,7 +22,7 @@ fun InertiaContainer(
 
 | Parameter | Meaning |
 | --- | --- |
-| `dev` | `true` takes animations from the editor over the socket; `false` reads `assets/<id>.msgpack` and never opens a socket. |
+| `dev` | `true` takes animations from the editor over the socket; `false` reads `assets/<id>.inertia` and never opens a socket. |
 | `id` | The container id the editor addresses its schemas to, and the basename of the asset read outside editor mode. Schemas for any other container are dropped. |
 | `hierarchyId` | The id of the container's own node — the root every actionable inside it hangs from. Usually the same string as `id`. |
 | `baseURL` | The editor's WebSocket address, passed through as given — `ws://10.0.2.2:8070` from a stock emulator, a LAN address from a device. |
@@ -50,10 +50,10 @@ SwiftUI has no `baseURL` — it reads from a `Bundle` and reaches the editor at
 
 ### Where the animation comes from
 
-With `dev` false the container reads `assets/<id>.msgpack` and logs an error if the file is
+With `dev` false the container reads `assets/<id>.inertia` and logs an error if the file is
 missing or fails to decode — a broken animation leaves the actionables at their layout
 positions rather than bringing the app down. Put the file the editor exported at
-`app/src/main/assets/animation.msgpack`.
+`app/src/main/assets/animation.inertia`.
 
 With `dev` true it dials `baseURL` and takes its schemas from the editor. No socket is
 opened when `dev` is false, so the container is safe to leave in a release build.

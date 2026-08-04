@@ -2,13 +2,13 @@
 
 ## The app crashes on launch in a release build
 
-SwiftUI only. `InertiaContainer` with `dev: false` reads `<id>.msgpack` from the bundle during
+SwiftUI only. `InertiaContainer` with `dev: false` reads `<id>.inertia` from the bundle during
 initialization and traps if it is missing or does not decode.
 
 Check, in order:
 
 1. The file exists and its name matches the container's `id` — `id: "animation"` needs
-   `animation.msgpack`.
+   `animation.inertia`.
 2. It is listed under **Target → Build Phases → Copy Bundle Resources**.
 3. It parses. `[]` is valid; a trailing comma is not.
 
@@ -93,13 +93,13 @@ release builds.
 
 ## A React build shows nothing with `dev` false
 
-The container fetches `<baseURL>/<id>.msgpack` and logs the failure rather than crashing, so
+The container fetches `<baseURL>/<id>.inertia` and logs the failure rather than crashing, so
 this is almost always a fetch that did not land. In the console, look for
 `[INERTIA_LOG]: Failed to load animation file` and check:
 
 1. Something is actually serving that path.
 2. It sends `Access-Control-Allow-Origin` if it is not the same origin as your page.
-3. `baseURL` has no trailing slash — the URL is built as `` `${baseURL}/${id}.msgpack` ``.
+3. `baseURL` has no trailing slash — the URL is built as `` `${baseURL}/${id}.inertia` ``.
 
 ## Pressing play in the editor does nothing
 

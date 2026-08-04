@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1274,7 +1274,7 @@ every actionable inside it is drawn from.</p>
 </tr>
 <tr>
 <td><code>baseURL</code></td>
-<td>Where <code>&lt;id&gt;.msgpack</code> is fetched from when <code>dev</code> is false. <strong>Not</strong> the editor's address.</td>
+<td>Where <code>&lt;id&gt;.inertia</code> is fetched from when <code>dev</code> is false. <strong>Not</strong> the editor's address.</td>
 </tr>
 </tbody>
 </table>
@@ -1292,7 +1292,7 @@ drops any schema whose container id does not match its own. Use <code>id="animat
 any container you intend to author in the editor.</p>
 </div>
 <h3 id="where-the-animation-comes-from">Where the animation comes from<a class="headerlink" href="#where-the-animation-comes-from" title="Permanent link">&para;</a></h3>
-<p>With <code>dev</code> false the container fetches <code>`${baseURL}/${id}.msgpack`</code> on mount, and logs an
+<p>With <code>dev</code> false the container fetches <code>`${baseURL}/${id}.inertia`</code> on mount, and logs an
 error if the request fails — a missing file is a still page rather than a crash. The server
 needs CORS headers if it is not the same origin as your app.</p>
 <p>With <code>dev</code> true it connects to the editor at <code>ws://127.0.0.1:8080</code>. That address is fixed:
@@ -1527,7 +1527,7 @@ the three places an animation usually goes missing.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

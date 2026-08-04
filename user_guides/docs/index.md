@@ -41,13 +41,13 @@ still differ — and they do, in ways worth knowing before you start.
 
 ## How it fits together
 
-![Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.msgpack your shipped app bundles.](assets/diagrams/architecture-dark.svg){ .diagram }
+![Your app connects to the editor over a local WebSocket, trades the view hierarchy for animation schemas, and the editor writes the animation.inertia your shipped app bundles.](assets/diagrams/architecture-dark.svg){ .diagram }
 
 In **editor mode** the editor hosts a local WebSocket server and your app connects to it.
 The app reports its Inertia-tagged view hierarchy, and the editor pushes animation schemas
 back as you edit, so what you see running is the animation as it currently stands.
 
-In **release mode** none of that is running. The container loads `animation.msgpack` for
+In **release mode** none of that is running. The container loads `animation.inertia` for
 itself — out of the app bundle in SwiftUI, over HTTP in React — and plays it on its own
 clock. In SwiftUI the WebSocket client is gated on the same `dev` flag, so a shipped build
 never dials out. (The Compose runtime does not yet have a release path; see

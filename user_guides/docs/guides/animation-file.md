@@ -7,7 +7,7 @@ app bundle in SwiftUI, over HTTP in React, and over the editor's socket in all t
 The file is binary, so what follows is the same document written out as JSON. The field
 names, types and nesting are exactly what MessagePack carries; only the bytes differ.
 
-```json title="animation.msgpack, as JSON"
+```json title="animation.inertia, as JSON"
 [
   {
     "id": "card0",
@@ -128,7 +128,7 @@ The container's `id` is the file's name. One file holds every animation for that
 
 === "SwiftUI"
 
-    `InertiaContainer(id: "animation", …)` loads `animation.msgpack` from the app bundle.
+    `InertiaContainer(id: "animation", …)` loads `animation.inertia` from the app bundle.
 
     Outside editor mode the file must exist and must decode — the container reads it during
     initialization and **traps** if it cannot. An empty array is a valid file; a missing
@@ -143,7 +143,7 @@ The container's `id` is the file's name. One file holds every animation for that
 === "React"
 
     `<InertiaContainer id="animation" baseURL="http://localhost:8000">` fetches
-    `http://localhost:8000/animation.msgpack`.
+    `http://localhost:8000/animation.inertia`.
 
     A failed fetch is logged and otherwise ignored, so a missing file leaves every tagged
     view at its initial pose rather than crashing. The server needs CORS headers if it is
