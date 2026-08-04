@@ -482,6 +482,130 @@ final class ShapeTests: XCTestCase {
         XCTAssertEqual(shape.triangles.count, 3)
     }
 
+    // MARK: - Where a shape sits in its parent
+
+    /// A square of the given size, placed by `transforms` — the two things that
+    /// together say where a shape ends up.
+    private func placed(
+        _ size: CGFloat,
+        _ transforms: InertiaAnimationValues?,
+        shapes: [InertiaShape] = []
+    ) -> InertiaShape {
+        InertiaShape(
+            id: "placed",
+            shape: InertiaShapeProperties(id: "123", type: .rectangle, width: size, height: size, fill: red),
+            vertices: nil,
+            shapes: shapes,
+            transforms: transforms
+        )
+    }
+
+    private func moved(_ x: CGFloat, _ y: CGFloat) -> InertiaAnimationValues {
+        InertiaAnimationValues(scale: 1, translate: CGSize(width: x, height: y), rotate: 0, rotateCenter: 0, opacity: 1)
+    }
+
+    /// A shape's corners are drawn about the origin of the box that holds it, so
+    /// an unplaced one sits dead centre of its parent — which is where every
+    /// shape authored before placements existed was drawn.
+    func testShapeWithoutTransformsIsDrawnWhereItsCornersSay() throws {
+        let bounds = try XCTUnwrap([placed(2, nil)].bounds)
+
+        XCTAssertEqual(bounds.midX, 0, accuracy: 0.0001)
+        XCTAssertEqual(bounds.midY, 0, accuracy: 0.0001)
+    }
+
+    /// The whole point: the same shape said to sit somewhere else in its parent
+    /// is drawn there, in fractions of that parent's own box.
+    func testTransformsPlaceTheShapeInItsParent() throws {
+        let bounds = try XCTUnwrap([placed(2, moved(0.5, -0.25))].bounds)
+
+        XCTAssertEqual(bounds.midX, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(bounds.midY, -0.25, accuracy: 0.0001)
+        // Moved, not resized.
+        XCTAssertEqual(bounds.width, 2, accuracy: 0.0001)
+    }
+
+    /// Scaling and turning happen about the point the shape was drawn around, so
+    /// a shape left where it was authored grows about its own middle rather than
+    /// sliding off across its parent.
+    func testTransformsScaleAboutThePointTheShapeIsDrawnAround() throws {
+        let scaled = InertiaAnimationValues(scale: 2, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1)
+
+        let bounds = try XCTUnwrap([placed(2, scaled)].bounds)
+
+        XCTAssertEqual(bounds.width, 4, accuracy: 0.0001)
+        XCTAssertEqual(bounds.midX, 0, accuracy: 0.0001)
+    }
+
+    /// A quarter turn of a square is the same square, and a shape moved *and*
+    /// turned turns where it was drawn rather than swinging about its parent's
+    /// middle: the rotation is applied before the move.
+    func testTransformsTurnTheShapeWhereItWasPlaced() throws {
+        let turned = InertiaAnimationValues(
+            scale: 1,
+            translate: CGSize(width: 0.5, height: 0),
+            rotate: 90,
+            rotateCenter: 0,
+            opacity: 1
+        )
+
+        let bounds = try XCTUnwrap([placed(2, turned)].bounds)
+
+        XCTAssertEqual(bounds.midX, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(bounds.midY, 0, accuracy: 0.0001)
+        XCTAssertEqual(bounds.width, 2, accuracy: 0.0001)
+    }
+
+    /// The case a placement is really for: a nested shape is drawn into its
+    /// parent's vertex buffer, so before this there was nothing that could move
+    /// one — every child sat in the middle of its parent. The child's own units
+    /// are its parent's box, so half of a parent two wide is one across.
+    func testNestedShapeIsPlacedInItsParentsBox() throws {
+        let child = placed(0.5, moved(0.5, 0))
+        let parent = placed(2, nil, shapes: [child])
+
+        let bounds = try XCTUnwrap([parent].bounds)
+
+        // The parent spans ±1. The child is a quarter of the parent wide — 0.5
+        // of a box two across — and sits half a parent-width from centre, so it
+        // runs from 0.5 to 1.5 and hangs half of itself past the parent's edge.
+        XCTAssertEqual(bounds.maxX, 1.5, accuracy: 0.0001)
+        XCTAssertEqual(bounds.minX, -1, accuracy: 0.0001)
+    }
+
+    /// A child is part of its parent's drawing, so placing the parent carries
+    /// everything inside it along.
+    func testPlacingAParentCarriesItsChildren() throws {
+        let child = placed(0.5, moved(0.5, 0))
+        let stationary = try XCTUnwrap([placed(2, nil, shapes: [child])].bounds)
+        let moved = try XCTUnwrap([placed(2, self.moved(3, 0), shapes: [child])].bounds)
+
+        XCTAssertEqual(moved.minX - stationary.minX, 3, accuracy: 0.0001)
+        XCTAssertEqual(moved.width, stationary.width, accuracy: 0.0001)
+    }
+
+    /// A placement fades the shape through the corners' own alpha, since it has
+    /// to survive being flattened into a buffer shared with shapes that are not
+    /// faded.
+    func testPlacementFadesTheShapeThroughItsCorners() throws {
+        let faded = InertiaAnimationValues(scale: 1, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 0.5)
+
+        let corner = try XCTUnwrap(placed(2, faded).triangles.first)
+
+        XCTAssertEqual(corner.color.alpha, 0.5, accuracy: 0.0001)
+    }
+
+    /// A placement only lasts a session if saving writes it back out — and an
+    /// animation authored before placements existed has to keep loading, drawn
+    /// where its corners always said.
+    func testTransformsSurviveTheRoundTrip() throws {
+        let encoded = try InertiaCoding.encode([placed(2, moved(0.5, -0.25)), placed(2, nil)])
+        let reread = try InertiaCoding.decode([InertiaShape].self, from: encoded)
+
+        XCTAssertEqual(reread.first?.transforms, moved(0.5, -0.25))
+        XCTAssertNil(reread.last?.transforms)
+    }
+
     /// The palette and the wire format are one list: a vector the toolbar offers
     /// that no description can carry is a shape that cannot be drawn.
     func testEveryVectorInThePaletteIsADescribableShape() {

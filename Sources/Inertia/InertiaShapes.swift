@@ -130,6 +130,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     public static func ==(lhs: InertiaShape, rhs: InertiaShape) -> Bool {
         return lhs.id == rhs.id
             && lhs.vertices == rhs.vertices
+            && lhs.transforms == rhs.transforms
             && lhs.animation == rhs.animation
             && lhs.shapes == rhs.shapes
     }
@@ -194,6 +195,36 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// position says nothing.
     public let position: InertiaShapePosition
 
+    /// Where this shape sits inside whatever holds it: the actionable whose
+    /// canvas it is drawn on, or — for a nested shape — the shape it is drawn
+    /// inside of.
+    ///
+    /// A shape's corners are drawn about the origin of the box that holds it, so
+    /// every described vector was authored dead centre of its parent and there
+    /// was no way to say otherwise: a circle inside a rectangle sat in the
+    /// middle of it, and the only thing that could move it was a track. This is
+    /// that placement said outright, in the same five properties a track
+    /// interpolates — moved, turned, scaled and faded from where it was drawn.
+    ///
+    /// The translation is a fraction of the parent's own box, the way every
+    /// other measurement on a shape is: 0.5 across is half the parent's width,
+    /// whatever that comes out as on screen.
+    ///
+    /// This is placement rather than animation. It is baked into the corners the
+    /// renderer is handed — which is what lets a *nested* shape be placed at all,
+    /// since a child is drawn into its parent's vertex buffer and has no canvas
+    /// of its own to transform — and a track the shape carries plays on top of
+    /// it, moving the shape from where this put it.
+    ///
+    /// Absent is the identity: drawn exactly where its corners say, which is
+    /// where every shape authored before this existed was drawn.
+    public let transforms: InertiaAnimationValues?
+
+    /// The placement actually applied — `transforms`, with a NaN out of a
+    /// hand-edited file falling back to the identity rather than reaching the
+    /// geometry.
+    var placement: InertiaAnimationValues { (transforms ?? .identity).sanitized }
+
     /// The corners as authored, when they were authored one by one. A shape
     /// described by `shape` instead has none of its own and is drawn from that
     /// description, which is what `vertices` resolves.
@@ -242,6 +273,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         case zIndex
         case position
         case ownCanvas
+        case transforms
         case _vertices = "vertices"
         case animation
         case shape
@@ -256,7 +288,8 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         shapes: [InertiaShape] = [],
         zIndex: Int = 0,
         position: InertiaShapePosition = .bottom,
-        ownCanvas: Bool = false
+        ownCanvas: Bool = false,
+        transforms: InertiaAnimationValues? = nil
     ) {
         self.id = id
         self.shape = shape
@@ -266,6 +299,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         self.zIndex = zIndex
         self.position = position
         self.ownCanvas = ownCanvas
+        self.transforms = transforms
     }
 
     public init(from decoder: Decoder) throws {
@@ -286,6 +320,9 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         // Absent is a shape that shares, which is what every shape authored
         // before this asked for one did.
         ownCanvas = try container.decodeIfPresent(Bool.self, forKey: .ownCanvas) ?? false
+        // Absent is a shape drawn exactly where its corners say — the identity
+        // placement every shape authored before this had.
+        transforms = try container.decodeIfPresent(InertiaAnimationValues.self, forKey: .transforms)
     }
 
     /// The same shape carrying a different track — what the editor writes back
@@ -304,7 +341,8 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             shapes: shapes,
             zIndex: zIndex,
             position: position,
-            ownCanvas: ownCanvas
+            ownCanvas: ownCanvas,
+            transforms: transforms
         )
     }
 
@@ -318,7 +356,25 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             shapes: shapes,
             zIndex: zIndex,
             position: position,
-            ownCanvas: ownCanvas
+            ownCanvas: ownCanvas,
+            transforms: transforms
+        )
+    }
+
+    /// The same shape placed somewhere else in its parent — what the editor
+    /// writes back when the viewport is drawing rather than animating, and the
+    /// transform tools are offsetting a shape instead of recording a take.
+    public func with(transforms: InertiaAnimationValues?) -> InertiaShape {
+        InertiaShape(
+            id: id,
+            shape: shape,
+            vertices: _vertices,
+            animation: animation,
+            shapes: shapes,
+            zIndex: zIndex,
+            position: position,
+            ownCanvas: ownCanvas,
+            transforms: transforms
         )
     }
 
@@ -353,7 +409,12 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// outline on top of the area it encloses rather than under it, and the
     /// children on top of both. A shape authored corner by corner is all fill,
     /// since a stroke is something a *described* vector carries.
-    var triangles: [Vertex] {
+    ///
+    /// Everything here comes out placed by `transforms`, children included: a
+    /// child is drawn into this buffer rather than onto a canvas of its own, so
+    /// baking the placement into the corners is the only place a nested shape
+    /// can be moved at all.
+    public var triangles: [Vertex] {
         let own: [Vertex]
         if let shape, _vertices == nil {
             own = shape.fillTriangles + shape.strokeTriangles
@@ -361,17 +422,18 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             own = fan(vertices)
         }
 
-        guard !shapes.isEmpty else { return own }
+        guard !shapes.isEmpty else { return placed(own) }
 
         // A child is measured in this shape's box and centred where this shape
         // is centred, so scaling by that box is the whole of the transform: the
-        // origin the two share needs no offset.
+        // origin the two share needs no offset. Where the child asked to sit in
+        // that box is already in the corners it hands over.
         //
         // Stacked rather than taken in list order: the renderer blends down the
         // list and keeps no depth, so the order they are handed over in *is*
         // their z-ordering.
         let unit = childUnit
-        return own + shapes.stacked.flatMap { child in
+        return placed(own + shapes.stacked.flatMap { child in
             child.triangles.map { vertex in
                 Vertex(
                     position: InertiaPoint(
@@ -381,6 +443,48 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
                     color: vertex.color
                 )
             }
+        })
+    }
+
+    /// `vertices` moved to where `transforms` places this shape in its parent.
+    ///
+    /// Scaled and turned about the origin of the parent's box — which is the
+    /// point a described vector's outline is drawn around, so a shape left where
+    /// it was authored scales and turns about its own middle — and then moved,
+    /// in fractions of that same box.
+    ///
+    /// Both rotations turn about that one point. `rotate` and `rotateCenter`
+    /// differ only in the anchor a view is turned about, and a ring of corners
+    /// has no view box to anchor to, so what a shape does with them is the one
+    /// rotation their sum describes.
+    ///
+    /// Opacity is carried in the corners' own alpha, since the fade has to
+    /// survive being flattened into a buffer shared with shapes that are not
+    /// faded.
+    private func placed(_ vertices: [Vertex]) -> [Vertex] {
+        let placement = placement
+        guard placement != .identity else { return vertices }
+
+        let radians = (placement.rotate + placement.rotateCenter) * .pi / 180
+        let cosine = cos(radians)
+        let sine = sin(radians)
+
+        return vertices.map { vertex in
+            let x = vertex.position.x * placement.scale
+            let y = vertex.position.y * placement.scale
+
+            return Vertex(
+                position: InertiaPoint(
+                    x: x * cosine - y * sine + placement.translate.width,
+                    y: x * sine + y * cosine + placement.translate.height
+                ),
+                color: InertiaColor(
+                    red: vertex.color.red,
+                    green: vertex.color.green,
+                    blue: vertex.color.blue,
+                    alpha: vertex.color.alpha * Float(placement.opacity)
+                )
+            )
         }
     }
 
@@ -390,9 +494,11 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// What the canvas is fitted to — see `Collection.bounds`. A ring of corners
     /// alone would leave a child hanging over the edge of the canvas its parent
     /// sized, and cut it there.
+    /// Placed by `transforms`, the same as the triangles are: the canvas is
+    /// fitted to where the drawing ends up, not to where it was drawn.
     var enclosingVertices: [Vertex] {
         let unit = childUnit
-        return vertices + shapes.flatMap { child in
+        return placed(vertices + shapes.flatMap { child in
             child.enclosingVertices.map { vertex in
                 Vertex(
                     position: InertiaPoint(
@@ -402,7 +508,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
                     color: vertex.color
                 )
             }
-        }
+        })
     }
 
     /// Everything this shape draws, restated against `bounds` — the canvas's own
@@ -412,7 +518,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// Triangles rather than corners, because by this point the shape *is* its
     /// drawing: the fill and the stroke have been resolved into one list, and a
     /// ring of corners could no longer say which of the two it was.
-    func triangles(normalizedTo bounds: CGRect) -> [Vertex] {
+    public func triangles(normalizedTo bounds: CGRect) -> [Vertex] {
         guard bounds.width > 0, bounds.height > 0 else { return triangles }
 
         return triangles.map { vertex in
