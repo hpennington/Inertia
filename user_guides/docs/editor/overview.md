@@ -7,12 +7,12 @@ reports, and records what you drag as keyframes on a timeline.
 ## Layout
 
 ```
-┌───────────────┬─────────────────────────────┬───────────────┐
-│               │                             │               │
-│   Hierarchy   │          Viewport           │  Animations   │
-│               │      (your live app)        │  Properties   │
-│               │                             │               │
-├───────────────┴─────────────────────────────┴───────────────┤
+┌───────────────┬───┬─────────────────────┬───┬───────────────┐
+│               │ T │                     │ T │               │
+│   Hierarchy   │ o │      Viewport       │ r │  Animations   │
+│               │ o │  (your live app)    │ a │  Properties   │
+│               │ l │                     │ n │               │
+├───────────────┴───┴─────────────────────┴───┴───────────────┤
 │                          Timeline                            │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -22,6 +22,9 @@ reports, and records what you drag as keyframes on a timeline.
 The tree of every tagged view in your app, as reported by the running app. Selecting a node
 here selects it in the viewport; selecting in the viewport selects it here. Nodes only
 appear once the app has connected — an empty tree means no connection.
+
+Vectors drawn against a view are listed underneath it, with anything nested inside them
+listed under that — see [Drawing vectors](drawing.md).
 
 ### Viewport
 
@@ -43,11 +46,39 @@ While you drag a selected view, guides are drawn over the viewport: the containe
 lines, plus dashed lines tracking the view's edges and center. They make it possible to
 line something up against the container rather than by eye. All three runtimes draw them.
 
+The scribble toggle at the bottom of the tool palette replaces the app with the **shape
+canvas** — the vectors you have drawn, by themselves, playing at the same playhead. See
+[Drawing vectors](drawing.md#drawing-mode).
+
+### Tool palette
+
+The narrow column between the hierarchy and the viewport. The top half is the five
+**tools** — Move, Rotate, Rotation Center, Opacity, Scale — one of which is always active,
+deciding what a drag on the selected node changes. They are modal: off the record a gesture
+moves where the animation *starts* from, and with recording armed the same gesture writes a
+keyframe at the playhead. The palette turns red to say which of the two it is in.
+
+The lower half is the **vector palette**, which draws shapes into the selected view, and the
+scribble toggle at the very bottom swaps the viewport into drawing mode. Both are covered in
+[Drawing vectors](drawing.md).
+
+### Transform column
+
+The narrow column on the other side of the viewport: the property the active tool edits, as
+a slider and a field. A drag needs the node to be somewhere reachable — off-screen, behind
+another view or scaled to nothing, it is not — and these edit the same values wherever it
+has got to. An edit lands exactly where a drag would land it, so the column follows the
+palette's two modes rather than having any of its own.
+
 ### Animations panel
 
 The animations available in the project, and which of them are attached to the selected
 node. A view with no attached animation has nothing to record into; attaching one gives
-it a track on the timeline.
+it a track on the timeline. Drawings that carry a track of their own are listed under the
+animation that holds them.
+
+While drawing mode is on, this panel describes the selected shape instead — see [Shape
+properties](drawing.md#shape-properties).
 
 ### Timeline
 

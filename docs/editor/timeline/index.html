@@ -16,14 +16,14 @@
         <link rel="prev" href="../projects/">
       
       
-        <link rel="next" href="../../guides/animation-file/">
+        <link rel="next" href="../drawing/">
       
       
         
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -716,6 +716,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../drawing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drawing vectors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1219,6 +1247,12 @@ field, so you can play back without moving the mouse out of the viewport.</p>
 </ol>
 <p>Repeat for each pose. The order you record in does not matter — a keyframe goes where the
 playhead is, not after whatever you recorded last.</p>
+<p>A <a href="../drawing/">drawn vector</a> records the same way: select the shape rather than the view,
+and its keypoints land on a track of its own, drawn as a row indented under the view it is
+drawn behind and marked with a scribble icon. The shape moves <em>with</em> that view as well as
+on its own track. Vectors nested inside another shape are the exception — they are drawn
+into their parent's geometry and have no track, so they are moved with an
+<a href="../drawing/#placing-a-shape-in-its-parent">offset</a> instead.</p>
 <p>Recording on top of an existing keypoint replaces it rather than stacking a second
 keyframe at the same time. Two keypoints closer together than a millisecond or so are
 treated as the same keypoint, because a zero-length keyframe cannot be interpolated.</p>
@@ -1313,13 +1347,13 @@ what was recorded, so recording continues after the existing keyframes.</p>
         
         
           
-          <a href="../../guides/animation-file/" class="md-footer__link md-footer__link--next" aria-label="Next: Animation files">
+          <a href="../drawing/" class="md-footer__link md-footer__link--next" aria-label="Next: Drawing vectors">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Animation files
+                Drawing vectors
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1371,7 +1405,7 @@ what was recorded, so recording continues after the existing keyframes.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

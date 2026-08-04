@@ -37,6 +37,10 @@ still differ — and they do, in ways worth knowing before you start.
 
     What the editor writes, and what the runtimes read.
 
+- :material-shape-outline: **[Draw vectors](editor/drawing.md)**
+
+    Add shapes to a view and animate them.
+
 </div>
 
 ## How it fits together
@@ -67,6 +71,12 @@ Each tagged view gets a track of keyframes over five values:
 
 See [Animatable values](reference/values.md) for the details, including why `translate`
 is normalized rather than in points.
+
+Not everything you animate has to be a view you built. The editor also **draws vectors** —
+rectangles, squares, circles, ovals and triangles, filled and stroked, nested inside one
+another — against any tagged view. They are stored in the same animation file, rendered by
+the runtimes themselves, and each one can carry a track of its own. See [Drawing
+vectors](editor/drawing.md).
 
 ## Platform support
 

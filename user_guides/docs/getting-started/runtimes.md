@@ -76,6 +76,24 @@ each segment independently with a cubic ease-in-out, which never overshoots. The
 therefore reads slightly differently on iOS than on Android or the web; the poses at the
 keyframes are identical, the paths between them are not.
 
+### Drawn vectors
+
+All three runtimes rasterize the [vectors you draw in the editor](../editor/drawing.md)
+themselves — Metal on SwiftUI, OpenGL ES on Compose, WebGL on React — from the shapes
+carried in the animation file. Fills, strokes, nesting, per-shape placement and per-shape
+tracks work the same everywhere.
+
+Two of the stacking controls do not:
+
+| | SwiftUI | Compose | React |
+| --- | --- | --- | --- |
+| `zIndex` — order among siblings | honoured | ignored, drawn in file order | ignored, drawn in file order |
+| `position` — behind or in front of the view's content | honoured | always behind | always behind |
+
+Both fields are written by the editor regardless, and both are ignored cleanly rather than
+failing to decode, so a project authored on iOS still loads on the other two. It just draws
+its shapes in the order they were authored, behind the view's content.
+
 ### Editor transport
 
 All three follow the editor's playhead: pause, resume, seek and loop-duration changes

@@ -131,3 +131,19 @@ intermediate keyframes.
 A keyframe of exactly this leaves the view exactly where layout put it. It is a useful
 value to start and end tracks on, and it is what every runtime falls back to when a pose
 turns out to be undrawable.
+
+## The same five values on a shape
+
+A [drawn vector](../editor/drawing.md) uses this object in two places:
+
+- Its own **track**, which is an ordinary animation object with keyframes over these five
+  values, played on the container's clock.
+- Its **placement** (`transforms`), which says where the shape sits in whatever holds it. It
+  is one pose rather than a track — the same at every point on the timeline — and the shape's
+  own animation plays on top of it.
+
+The two measure `translate` differently. On a shape's track it is a fraction of the
+container's size, exactly as it is for a view — a shape and the view it is drawn behind move
+by the same distance for the same number. On a placement it is in the units the shape is
+sized in: multiples of the shorter side of whatever holds it, which is the view it is drawn
+against, or the parent shape for a nested one. Everything else means what it means above.

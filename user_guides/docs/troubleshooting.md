@@ -67,6 +67,50 @@ Recording has to be armed — the record button on the timeline, red when active
 off, dragging repositions the view in the viewport but writes no keyframe. See
 [Timeline and keyframes](editor/timeline.md).
 
+## The vector palette is dim
+
+A shape is drawn into one view, so the buttons only come alive with **exactly one** row
+selected in the hierarchy. Nothing selected, or two rows selected, and there is no single
+answer to where the shape would go. See [Drawing vectors](editor/drawing.md#inserting-a-shape).
+
+## A shape was inserted but nothing appeared
+
+Work down these in order:
+
+1. **Is it visible at all?** A shape with no fill and no stroke draws nothing. The insert
+   modal refuses that combination, but taking both colours to transparent in the properties
+   panel afterwards does not.
+2. **Is it behind something opaque?** A shape defaults to **Behind** the view's content. Try
+   **In Front** — on iOS; the other two runtimes always draw behind, see [Choosing a
+   runtime](getting-started/runtimes.md#drawn-vectors).
+3. **Is it off-screen?** Sizes and offsets are multiples of the view's shorter side, so a
+   `0.05` shape on a small view is a few points across, and an offset of `2` puts it well
+   outside the screen.
+4. **Is the view on screen?** A shape is measured against the view it was authored on. If
+   that view is not laid out in the app right now, there is nothing to measure it against and
+   nothing is drawn.
+
+## The shape canvas is empty
+
+The message says which of three things happened: **Waiting for the app to connect** (no
+runtime attached), **Every drawing is hidden** (turn an eye button back on in the hierarchy),
+or **Nothing is drawn on the views on screen** (the project's drawings belong to views the
+app is not currently showing).
+
+## A nested shape will not move
+
+A shape drawn inside another has no rendering layer of its own, so it cannot carry a track
+— recording a drag on it does nothing. Move it with an offset instead: drawing mode on,
+recording off, and use the transform column. See
+[Placing a shape in its parent](editor/drawing.md#placing-a-shape-in-its-parent).
+
+## Shapes stack differently on Android or the web
+
+Expected. `zIndex` and **In Front** are honoured by the SwiftUI runtime only; Compose and
+React draw every shape behind the view's content, in the order the file lists them. The
+editor's canvas follows SwiftUI. See [Choosing a
+runtime](getting-started/runtimes.md#drawn-vectors).
+
 ## A view does not animate
 
 The runtime plays a track only once its id has been triggered:

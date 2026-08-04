@@ -55,6 +55,7 @@ names, types and nesting are exactly what MessagePack carries; only the bytes di
 | `initialValues` | object | The pose the view sits at before the animation runs. |
 | `invokeType` | `"auto"` \| `"trigger"` | Whether it plays as soon as its schema arrives, or waits to be triggered. |
 | `keyframes` | array | The poses to animate through, in order. |
+| `shapes` | array | Vectors drawn against this view — empty on an animation with nothing drawn on it, and absent in files written before shapes existed. See [Shape object](#shape-object). |
 
 !!! note "`invokeType` is not honoured on every runtime"
 
@@ -98,6 +99,112 @@ reach, not a keyframe that waits.
 
 Every keyframe carries all five values — there is no notion of animating only one
 property and leaving the others alone. See [Animatable values](../reference/values.md).
+
+## Shape object
+
+An animation may carry vectors drawn against its view — see [Drawing
+vectors](../editor/drawing.md). They ride in the same file, under the animation's `shapes`
+key, and every runtime rasterizes them itself.
+
+```json title="A circle drawn behind card0, with a smaller one inside it"
+{
+  "id": "card0",
+  "invokeType": "auto",
+  "initialValues": { "scale": 1, "translate": [0, 0], "rotate": 0, "rotateCenter": 0, "opacity": 1 },
+  "keyframes": [],
+  "shapes": [
+    {
+      "id": "B4E1C0F2-6C3E-4B0E-9E2C-6A0F1D2E3F44",
+      "zIndex": 0,
+      "position": "bottom",
+      "ownCanvas": false,
+      "transforms": { "scale": 1, "translate": [0.25, 0], "rotate": 0, "rotateCenter": 0, "opacity": 1 },
+      "shape": {
+        "id": "1F7A9C55-1D2B-4E6A-8C1F-7B3D9E0A5C21",
+        "type": "circle",
+        "width": 0.5,
+        "height": 0.5,
+        "fill": { "red": 0.33, "green": 0.35, "blue": 0.86, "alpha": 1 },
+        "strokeWidth": 0
+      },
+      "shapes": [
+        {
+          "id": "9D2E4A17-88C0-4F3B-B5A9-0C6E1D7F2A38",
+          "zIndex": 0,
+          "shape": {
+            "id": "C3B6E5D4-2A19-4870-9FE1-5B4C8D3A2E60",
+            "type": "circle",
+            "width": 0.3,
+            "height": 0.3,
+            "fill": { "red": 1, "green": 1, "blue": 1, "alpha": 1 }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Type | Default when absent | Meaning |
+| --- | --- | --- | --- |
+| `id` | string | — | Unique within the animation. What the editor's selection points at. |
+| `shape` | object | none | The vector description. See below. |
+| `vertices` | array | none | Corners authored one by one, as an alternative to `shape`. The editor does not write these. |
+| `zIndex` | int | `0` | Order among its siblings — higher draws in front. Ties keep file order. |
+| `position` | `"bottom"` \| `"top"` | `"bottom"` | Behind the view's content, or over it. |
+| `ownCanvas` | bool | `false` | Whether the shape gets a rendering layer to itself. |
+| `transforms` | object | identity pose | Where the shape sits in whatever holds it — the same five values a keyframe carries, with `translate` in the units the shape is sized in. |
+| `animation` | object | none | A track of the shape's own, in exactly the format of the animation object above. |
+| `shapes` | array | `[]` | Shapes drawn inside this one, sized in multiples of *its* shorter side. |
+
+### `shape`
+
+| Field | Type | Default when absent | Meaning |
+| --- | --- | --- | --- |
+| `id` | string | — | Identifies the description. |
+| `type` | `"rectangle"` \| `"square"` \| `"circle"` \| `"oval"` \| `"triangle"` | — | Which vector it draws as. |
+| `width`, `height` | number | — | In multiples of the view's shorter side — one length across and down alike, so a circle of `1` is round on a view of any proportion. |
+| `fill` | colour | none | Floods the outline. Absent is a shape that is only its outline. |
+| `stroke` | colour | none | The outline itself. Draws nothing without a `strokeWidth`. |
+| `strokeWidth` | number | `0` | Outline thickness, in the same units as the size, drawn *inside* the outline. Held at half the shape's smaller side. |
+
+A colour is four `0`–`1` floats: `{ "red": …, "green": …, "blue": …, "alpha": … }`, in sRGB.
+A shape with neither `fill` nor `stroke` draws nothing at all.
+
+!!! note "`zIndex` and `position` are read only by the SwiftUI runtime"
+
+    Compose and React have neither field on their shape model. Both ignore the keys rather
+    than failing to decode, and draw every shape behind the view's content in the order the
+    file lists them. See [Choosing a runtime](../getting-started/runtimes.md#drawn-vectors).
+
+### Coordinates
+
+Everything about a shape is measured in multiples of the **shorter side** of the view it is
+authored against — sizes, stroke widths and the translation in `transforms` alike — with the
+origin at that view's centre. A shape's coordinates are not clipped to its view: values past
+the view's edge go on being drawn, because the canvas belongs to the container.
+
+Inside a nested shape, the unit is the parent shape's shorter side rather than the view's.
+
+### Shapes and tracks
+
+A shape's `animation` is a full animation object, played on the same clock as everything
+else in the container, so a drawing moves in time with the view it was authored beside. A
+shape carrying one is drawn on a rendering layer of its own, which is what lets it move
+without dragging its neighbours along.
+
+`transforms` is not a track. It is where the shape is drawn before anything plays — baked
+into the geometry the renderer is handed, the same at every point on the timeline — and an
+`animation` plays on top of it. It is also the only thing that moves a nested shape, which
+has no layer of its own and so ignores an `animation` of its own if one is written by hand.
+
+### Backwards compatibility
+
+Every field above except `id` is optional on the wire, and each absent one means what shapes
+did before it existed: no z-index is the bottom of the stack in file order, no `position` is
+a backdrop, no `ownCanvas` is a shared layer, no `transforms` is drawn exactly where the
+corners say, no `shapes` is nothing nested inside. A file written before any of this reads
+back unchanged.
 
 ## Loop length
 

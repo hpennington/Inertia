@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -620,6 +620,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#tool-palette" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool palette
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transform-column" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transform column
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#animations-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -731,6 +753,34 @@
     
   
     Timeline and keyframes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../drawing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drawing vectors
   
 
     
@@ -1153,6 +1203,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#tool-palette" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool palette
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transform-column" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transform column
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#animations-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1237,12 +1309,12 @@
 Android emulator, or a web page — shows you the Inertia-tagged view hierarchy the app
 reports, and records what you drag as keyframes on a timeline.</p>
 <h2 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌───────────────┬─────────────────────────────┬───────────────┐
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│               │                             │               │
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   Hierarchy   │          Viewport           │  Animations   │
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│               │      (your live app)        │  Properties   │
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│               │                             │               │
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├───────────────┴─────────────────────────────┴───────────────┤
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌───────────────┬───┬─────────────────────┬───┬───────────────┐
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│               │ T │                     │ T │               │
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   Hierarchy   │ o │      Viewport       │ r │  Animations   │
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│               │ o │  (your live app)    │ a │  Properties   │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│               │ l │                     │ n │               │
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├───────────────┴───┴─────────────────────┴───┴───────────────┤
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│                          Timeline                            │
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>└──────────────────────────────────────────────────────────────┘
 </span></code></pre></div>
@@ -1250,6 +1322,8 @@ reports, and records what you drag as keyframes on a timeline.</p>
 <p>The tree of every tagged view in your app, as reported by the running app. Selecting a node
 here selects it in the viewport; selecting in the viewport selects it here. Nodes only
 appear once the app has connected — an empty tree means no connection.</p>
+<p>Vectors drawn against a view are listed underneath it, with anything nested inside them
+listed under that — see <a href="../drawing/">Drawing vectors</a>.</p>
 <h3 id="viewport">Viewport<a class="headerlink" href="#viewport" title="Permanent link">&para;</a></h3>
 <p>Your app, live. You interact with it directly: taps and gestures go through to the app, so
 you can navigate to the screen you want to animate before you start recording. What is
@@ -1286,10 +1360,31 @@ and React runtimes. Compose does not send it, so it stays blank on the Android t
 <p>While you drag a selected view, guides are drawn over the viewport: the container's center
 lines, plus dashed lines tracking the view's edges and center. They make it possible to
 line something up against the container rather than by eye. All three runtimes draw them.</p>
+<p>The scribble toggle at the bottom of the tool palette replaces the app with the <strong>shape
+canvas</strong> — the vectors you have drawn, by themselves, playing at the same playhead. See
+<a href="../drawing/#drawing-mode">Drawing vectors</a>.</p>
+<h3 id="tool-palette">Tool palette<a class="headerlink" href="#tool-palette" title="Permanent link">&para;</a></h3>
+<p>The narrow column between the hierarchy and the viewport. The top half is the five
+<strong>tools</strong> — Move, Rotate, Rotation Center, Opacity, Scale — one of which is always active,
+deciding what a drag on the selected node changes. They are modal: off the record a gesture
+moves where the animation <em>starts</em> from, and with recording armed the same gesture writes a
+keyframe at the playhead. The palette turns red to say which of the two it is in.</p>
+<p>The lower half is the <strong>vector palette</strong>, which draws shapes into the selected view, and the
+scribble toggle at the very bottom swaps the viewport into drawing mode. Both are covered in
+<a href="../drawing/">Drawing vectors</a>.</p>
+<h3 id="transform-column">Transform column<a class="headerlink" href="#transform-column" title="Permanent link">&para;</a></h3>
+<p>The narrow column on the other side of the viewport: the property the active tool edits, as
+a slider and a field. A drag needs the node to be somewhere reachable — off-screen, behind
+another view or scaled to nothing, it is not — and these edit the same values wherever it
+has got to. An edit lands exactly where a drag would land it, so the column follows the
+palette's two modes rather than having any of its own.</p>
 <h3 id="animations-panel">Animations panel<a class="headerlink" href="#animations-panel" title="Permanent link">&para;</a></h3>
 <p>The animations available in the project, and which of them are attached to the selected
 node. A view with no attached animation has nothing to record into; attaching one gives
-it a track on the timeline.</p>
+it a track on the timeline. Drawings that carry a track of their own are listed under the
+animation that holds them.</p>
+<p>While drawing mode is on, this panel describes the selected shape instead — see <a href="../drawing/#shape-properties">Shape
+properties</a>.</p>
 <h3 id="timeline">Timeline<a class="headerlink" href="#timeline" title="Permanent link">&para;</a></h3>
 <p>The playhead, the transport controls, and one row of keypoints per animated view. This
 is where authoring happens — see <a href="../timeline/">Timeline and keyframes</a>.</p>
@@ -1443,7 +1538,7 @@ loads it in a web view. Reloading the page redials the editor.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "content.tabs.link", "search.suggest", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

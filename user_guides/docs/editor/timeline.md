@@ -27,6 +27,13 @@ field, so you can play back without moving the mouse out of the viewport.
 Repeat for each pose. The order you record in does not matter — a keyframe goes where the
 playhead is, not after whatever you recorded last.
 
+A [drawn vector](drawing.md) records the same way: select the shape rather than the view,
+and its keypoints land on a track of its own, drawn as a row indented under the view it is
+drawn behind and marked with a scribble icon. The shape moves *with* that view as well as
+on its own track. Vectors nested inside another shape are the exception — they are drawn
+into their parent's geometry and have no track, so they are moved with an
+[offset](drawing.md#placing-a-shape-in-its-parent) instead.
+
 Recording on top of an existing keypoint replaces it rather than stacking a second
 keyframe at the same time. Two keypoints closer together than a millisecond or so are
 treated as the same keypoint, because a zero-length keyframe cannot be interpolated.

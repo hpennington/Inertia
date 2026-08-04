@@ -93,6 +93,7 @@ nav:
       - Editor tour: editor/overview.md
       - Projects: editor/projects.md
       - Timeline and keyframes: editor/timeline.md
+      - Drawing vectors: editor/drawing.md
   - Guides:
       - Animation files: guides/animation-file.md
       - Triggering animations: guides/triggering.md
