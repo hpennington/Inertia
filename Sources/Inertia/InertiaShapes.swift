@@ -167,6 +167,25 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// can lift it out from behind a shape its parent sits behind.
     public let zIndex: Int
 
+    /// Whether this shape is drawn on a canvas of its own rather than sharing
+    /// one with the shapes beside it.
+    ///
+    /// A canvas is earned rather than asked for by default: a track needs one,
+    /// because a shape that moves independently cannot share a vertex buffer
+    /// with shapes that do not, and so does a selection, because the border and
+    /// handles are fitted to one shape's box. Everything else shares, which is
+    /// what keeps a drawing of forty static shapes to one `MTKView`.
+    ///
+    /// This is that decision made up front instead. A shape asked for on its own
+    /// canvas gets one whether or not it has a track — which is what to reach
+    /// for when one is coming later, or when a shape has to stay a layer of its
+    /// own for anything to be stacked between it and its neighbours.
+    ///
+    /// Costs a canvas. Read on the shapes an actionable holds directly, for now:
+    /// a nested shape is drawn into its parent's vertex buffer, so it has no
+    /// canvas of its own to be given.
+    public let ownCanvas: Bool
+
     /// Which side of the actionable's content this shape is drawn on — see
     /// `InertiaShapePosition`.
     ///
@@ -222,6 +241,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         case id
         case zIndex
         case position
+        case ownCanvas
         case _vertices = "vertices"
         case animation
         case shape
@@ -235,7 +255,8 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         animation: InertiaAnimationSchema? = nil,
         shapes: [InertiaShape] = [],
         zIndex: Int = 0,
-        position: InertiaShapePosition = .bottom
+        position: InertiaShapePosition = .bottom,
+        ownCanvas: Bool = false
     ) {
         self.id = id
         self.shape = shape
@@ -244,6 +265,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         self.shapes = shapes
         self.zIndex = zIndex
         self.position = position
+        self.ownCanvas = ownCanvas
     }
 
     public init(from decoder: Decoder) throws {
@@ -261,6 +283,9 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         zIndex = try container.decodeIfPresent(Int.self, forKey: .zIndex) ?? 0
         // Absent is the backdrop a shape has always been.
         position = try container.decodeIfPresent(InertiaShapePosition.self, forKey: .position) ?? .bottom
+        // Absent is a shape that shares, which is what every shape authored
+        // before this asked for one did.
+        ownCanvas = try container.decodeIfPresent(Bool.self, forKey: .ownCanvas) ?? false
     }
 
     /// The same shape carrying a different track — what the editor writes back
@@ -278,7 +303,8 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             animation: animation,
             shapes: shapes,
             zIndex: zIndex,
-            position: position
+            position: position,
+            ownCanvas: ownCanvas
         )
     }
 
@@ -291,7 +317,8 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             animation: animation,
             shapes: shapes,
             zIndex: zIndex,
-            position: position
+            position: position,
+            ownCanvas: ownCanvas
         )
     }
 

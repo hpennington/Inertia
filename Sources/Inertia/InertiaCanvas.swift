@@ -123,11 +123,14 @@ struct InertiaShapesView: View {
     /// backdrop.
     ///
     /// A track is one reason — it has to be able to move without dragging every
-    /// other shape with it — and being selected is the other: the border and the
+    /// other shape with it — and being selected is another: the border and the
     /// handles are fitted to one shape's box, and a shape sharing a canvas has
     /// no box of its own to fit them to.
+    ///
+    /// The third is simply having been asked for, at insert — see
+    /// `InertiaShape.ownCanvas`.
     private func isDrawnAlone(_ shape: InertiaShape) -> Bool {
-        shape.animation != nil || editing?.isSelected(shape) == true
+        shape.animation != nil || shape.ownCanvas || editing?.isSelected(shape) == true
     }
 
     /// The canvases this view stacks, back to front: the shapes in the order
