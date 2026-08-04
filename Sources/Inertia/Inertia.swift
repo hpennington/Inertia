@@ -394,11 +394,7 @@ public final class InertiaDataModel{
     /// settles. Anything recorded past the end of the loop stretches it, which
     /// keeps every track the same length as every other.
     var playbackDuration: CGFloat {
-        let longestTrack = inertiaSchemas.values
-            .map { schema in schema.playableKeyframes.reduce(CGFloat.zero) { $0 + $1.duration } }
-            .max() ?? .zero
-
-        return max(loopDuration, longestTrack)
+        InertiaPlayback.duration(loop: loopDuration, of: inertiaSchemas.values)
     }
 
     private var clock: Task<Void, Never>? = nil
@@ -1022,25 +1018,19 @@ struct InertiaActionable<Content: View>: View {
         canvasView(for: layoutFrame.size, at: .top)
     }
 
-    /// The track the animator plays: held out to the full loop when repeating,
-    /// so the animation and the editor's playhead share one period.
-    func track(for animation: InertiaAnimationSchema) -> [InertiaAnimationKeyframe] {
-        guard inertiaDataModel?.isRepeating ?? true else { return animation.playableKeyframes }
-
-        return animation.keyframes(filling: inertiaDataModel?.playbackDuration ?? InertiaPlayback.defaultLoopDuration)
-    }
-
-    /// The same track as a timeline that can be evaluated at any point in it,
-    /// which is what scrubbing needs and `keyframeAnimator` — a play button with
-    /// no seek bar — cannot give.
+    /// The track as a timeline that can be evaluated at any point in it, which
+    /// is what scrubbing needs and `keyframeAnimator` — a play button with no
+    /// seek bar — cannot give.
+    ///
+    /// Held out to the full loop when repeating, so the animation and the
+    /// editor's playhead share one period. Built by the schema itself, so the
+    /// editor's canvas — which has no data model to ask — pads and samples the
+    /// same track this does.
     func timeline(for animation: InertiaAnimationSchema) -> KeyframeTimeline<InertiaAnimationValues> {
-        KeyframeTimeline(initialValue: animation.initialValues.sanitized) {
-            KeyframeTrack {
-                for keyframe in track(for: animation) {
-                    CubicKeyframe(keyframe.values, duration: keyframe.duration)
-                }
-            }
-        }
+        let isRepeating = inertiaDataModel?.isRepeating ?? true
+        let loop = inertiaDataModel?.playbackDuration ?? InertiaPlayback.defaultLoopDuration
+
+        return animation.timeline(filling: isRepeating ? loop : nil)
     }
 
     @MainActor
@@ -1736,25 +1726,19 @@ struct InertiaEditable<Content: View>: View {
         canvasView(for: layoutFrame.size, at: .top)
     }
 
-    /// The track the animator plays: held out to the full loop when repeating,
-    /// so the animation and the editor's playhead share one period.
-    func track(for animation: InertiaAnimationSchema) -> [InertiaAnimationKeyframe] {
-        guard inertiaDataModel?.isRepeating ?? true else { return animation.playableKeyframes }
-
-        return animation.keyframes(filling: inertiaDataModel?.playbackDuration ?? InertiaPlayback.defaultLoopDuration)
-    }
-
-    /// The same track as a timeline that can be evaluated at any point in it,
-    /// which is what scrubbing needs and `keyframeAnimator` — a play button with
-    /// no seek bar — cannot give.
+    /// The track as a timeline that can be evaluated at any point in it, which
+    /// is what scrubbing needs and `keyframeAnimator` — a play button with no
+    /// seek bar — cannot give.
+    ///
+    /// Held out to the full loop when repeating, so the animation and the
+    /// editor's playhead share one period. Built by the schema itself, so the
+    /// editor's canvas — which has no data model to ask — pads and samples the
+    /// same track this does.
     func timeline(for animation: InertiaAnimationSchema) -> KeyframeTimeline<InertiaAnimationValues> {
-        KeyframeTimeline(initialValue: animation.initialValues.sanitized) {
-            KeyframeTrack {
-                for keyframe in track(for: animation) {
-                    CubicKeyframe(keyframe.values, duration: keyframe.duration)
-                }
-            }
-        }
+        let isRepeating = inertiaDataModel?.isRepeating ?? true
+        let loop = inertiaDataModel?.playbackDuration ?? InertiaPlayback.defaultLoopDuration
+
+        return animation.timeline(filling: isRepeating ? loop : nil)
     }
 
     /// Whether the run itself is on screen — playing, or parked somewhere in the
@@ -2196,7 +2180,7 @@ public struct InertiaAnimationValues: VectorArithmetic, Animatable, Equatable, C
     }
 }
 
-extension InertiaAnimationValues {
+public extension InertiaAnimationValues {
     /// Draws a thing exactly where it was laid out: what something with no
     /// animation of its own is shown at.
     static let identity = InertiaAnimationValues(scale: 1, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1)
@@ -2213,7 +2197,7 @@ extension InertiaAnimationValues {
     }
 }
 
-extension InertiaAnimationSchema {
+public extension InertiaAnimationSchema {
     /// `CubicKeyframe` divides by the keyframe duration when solving its spline, so a
     /// zero or negative duration produces NaN for every interpolated value. The editor
     /// records `playheadTime - previousTime`, which is zero for two keyframes captured
@@ -2246,6 +2230,56 @@ extension InertiaAnimationSchema {
         return track + [
             InertiaAnimationKeyframe(id: "\(last.id)--hold", values: last.values, duration: remainder)
         ]
+    }
+
+    /// This animation as a timeline that can be read at any point in it, rather
+    /// than a run that can only be started — which is what scrubbing needs, and
+    /// what makes playing and pausing the same operation as scrubbing.
+    ///
+    /// `loop` is the length every track is padded out to, so actionables of
+    /// different lengths come round together. Nil for a run that stops when its
+    /// own keyframes do, which is what a non-repeating animation is.
+    func timeline(filling loop: CGFloat?) -> KeyframeTimeline<InertiaAnimationValues> {
+        let track = loop.map { keyframes(filling: $0) } ?? playableKeyframes
+
+        return KeyframeTimeline(initialValue: initialValues.sanitized) {
+            KeyframeTrack {
+                for keyframe in track {
+                    CubicKeyframe(keyframe.values, duration: keyframe.duration)
+                }
+            }
+        }
+    }
+
+    /// Where this animation has got to at `time`, seconds into the loop.
+    ///
+    /// The one read behind playing, pausing and scrubbing alike — and behind
+    /// every place a schema is drawn: the runtime's own actionables and the
+    /// shapes they carry, and the editor's shape canvas, which draws the same
+    /// schemas with none of the app around them. Sampling in one place is what
+    /// keeps the canvas showing the frame the app is showing.
+    ///
+    /// Sanitized, so a NaN out of a spline solved over a hand-edited file can't
+    /// reach a geometry modifier, which traps.
+    func values(at time: CGFloat, filling loop: CGFloat?) -> InertiaAnimationValues {
+        timeline(filling: loop).value(time: time).sanitized
+    }
+}
+
+public extension InertiaPlayback {
+    /// One turn of the timeline for a set of schemas: the loop, or the longest
+    /// track in them where something was recorded past it.
+    ///
+    /// The runtime works this out for the app it is animating; the editor works
+    /// it out for the schemas it draws on its own canvas. One answer for both,
+    /// so a track padded in here and the same track padded over there are the
+    /// same length and the two playheads mean the same thing.
+    static func duration(loop: CGFloat, of schemas: some Collection<InertiaAnimationSchema>) -> CGFloat {
+        let longestTrack = schemas
+            .map { schema in schema.playableKeyframes.reduce(CGFloat.zero) { $0 + $1.duration } }
+            .max() ?? .zero
+
+        return max(loop, longestTrack)
     }
 }
 

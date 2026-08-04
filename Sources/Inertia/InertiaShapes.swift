@@ -805,6 +805,10 @@ public extension Collection where Element == InertiaShape {
     /// from: the border belongs to one shape while the canvas is fitted to the
     /// whole drawing.
     ///
+    /// Looks *inside* these shapes as well as at them, because a nested shape is
+    /// a row of its own in the editor's hierarchy and can be picked there even
+    /// though it has no canvas of its own.
+    ///
     /// Nil when no shape in here answers to that name, and nil when the one that
     /// does encloses no area — a border around nothing is nothing to draw.
     func bounds(of shapeId: InertiaID) -> CGRect? {
@@ -820,6 +824,9 @@ public extension Collection where Element == InertiaShape {
 
 /// The smallest rect holding every one of `positions`, or nil when they enclose
 /// no area.
+///
+/// Shared by the two ways a drawing is asked for a box — every shape on a
+/// canvas, and one shape out of it — so the two are measured identically.
 private func boundingBox(around positions: [InertiaPoint]) -> CGRect? {
     guard let first = positions.first else { return nil }
 
