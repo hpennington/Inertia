@@ -386,6 +386,34 @@ public final class InertiaDataModel{
         loopDuration = InertiaPlayback.clampLoopDuration(authored)
     }
 
+    /// Takes the project the editor is holding, in place of the one this
+    /// container was drawing.
+    ///
+    /// Everything an animation carries — its track, its shapes, the keypoints on
+    /// them — travels inside its schema, so replacing the map is what makes an
+    /// edit of any kind visible, deletions included. What is no longer sent is
+    /// no longer part of the project: the actionable it was authored against
+    /// goes back to being an ordinary view, and the shapes it drew go with it.
+    ///
+    /// A deleted animation's playback state goes too, rather than being left
+    /// behind marked as running. Nothing is lost by it — a state for an id no
+    /// one holds a schema for reads exactly as one that has not been triggered
+    /// — and an animation authored again under the same name starts from a
+    /// state that agrees it has not run yet.
+    func replaceSchemas(
+        _ schemas: [InertiaID: InertiaAnimationSchema],
+        actionableIdToAnimationIdMap: [String: String]
+    ) {
+        let removed = Set(inertiaSchemas.keys).subtracting(schemas.keys)
+
+        inertiaSchemas = schemas
+        self.actionableIdToAnimationIdMap = actionableIdToAnimationIdMap
+
+        for id in removed {
+            states.removeValue(forKey: id)
+        }
+    }
+
     /// One turn of the timeline: where a run ends, and where a repeating one
     /// wraps back to the start.
     ///
@@ -1986,23 +2014,42 @@ struct InertiaEditable<Content: View>: View {
         }
     }
 
+    /// Takes the whole project from the editor, replacing whatever this runtime
+    /// was holding for this container.
+    ///
+    /// Replaced rather than merged in: the editor sends every animation it has
+    /// on every edit, so the message is a statement of what the project *is*,
+    /// not of what changed in it. Merged in, an animation deleted in the editor
+    /// had nothing to say — the wrapper for it simply stopped arriving — and the
+    /// app under test went on playing it until it was rebuilt. Same for a shape
+    /// or a keypoint dropped from one, which travel inside their schema.
+    ///
+    /// Only what the editor sends is ever in here to lose: a container in `dev`
+    /// starts empty and reads nothing off disk, and a shipped build never opens
+    /// the socket this arrives on.
     func handleMessageSchema(schemaWrappers: [InertiaSchemaWrapper]) {
         InertiaLog.debug("[handleMessageSchema] received \(schemaWrappers.count) schema wrappers")
+
+        var schemas: [InertiaID: InertiaAnimationSchema] = [:]
+        var actionableIdToAnimationIdMap: [String: String] = [:]
+
         for schemaWrapper in schemaWrappers {
             InertiaLog.verbose("[handleMessageSchema] wrapper - containerId: \(schemaWrapper.container.containerId), actionableId: \(schemaWrapper.actionableId), animationId: \(schemaWrapper.animationId)")
             InertiaLog.verbose("[handleMessageSchema] my containerId: \(inertiaDataModel?.containerId ?? "nil")")
 
             if schemaWrapper.container.containerId == inertiaDataModel?.containerId {
-                // Store the mapping from actionable ID to animation ID
-                inertiaDataModel?.actionableIdToAnimationIdMap[schemaWrapper.actionableId] = schemaWrapper.animationId
-                // Store the schema by its animation ID
-                inertiaDataModel?.inertiaSchemas[schemaWrapper.animationId] = schemaWrapper.schema
+                // The mapping from actionable ID to animation ID
+                actionableIdToAnimationIdMap[schemaWrapper.actionableId] = schemaWrapper.animationId
+                // The schema, by its animation ID
+                schemas[schemaWrapper.animationId] = schemaWrapper.schema
                 InertiaLog.info("✅ stored schema - animationId: \(schemaWrapper.animationId) actionableId: \(schemaWrapper.actionableId)")
-                InertiaLog.verbose("map now: \(inertiaDataModel?.actionableIdToAnimationIdMap ?? [:])")
             } else {
                 InertiaLog.warning("❌ skipped - container mismatch")
             }
         }
+
+        inertiaDataModel?.replaceSchemas(schemas, actionableIdToAnimationIdMap: actionableIdToAnimationIdMap)
+        InertiaLog.verbose("map now: \(inertiaDataModel?.actionableIdToAnimationIdMap ?? [:])")
 
         // The loop travels with the schemas, so a project opened at a length
         // other than the default plays at it from the first send rather than

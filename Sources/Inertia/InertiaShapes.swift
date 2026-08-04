@@ -827,6 +827,12 @@ public extension Collection where Element == InertiaShape {
 ///
 /// Shared by the two ways a drawing is asked for a box — every shape on a
 /// canvas, and one shape out of it — so the two are measured identically.
+///
+/// Nil for a box that is not a finite rect, too. A canvas is sized by this box
+/// and placed by its middle, and the middle of an unbounded box is `-∞ + ∞` — a
+/// NaN, which traps the moment it reaches a geometry modifier. One coordinate
+/// out of a hand-edited file is enough to produce one, so it is rejected here
+/// rather than in each of the places that measure against it.
 private func boundingBox(around positions: [InertiaPoint]) -> CGRect? {
     guard let first = positions.first else { return nil }
 
@@ -843,5 +849,9 @@ private func boundingBox(around positions: [InertiaPoint]) -> CGRect? {
     }
 
     let bounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-    return bounds.width > 0 && bounds.height > 0 ? bounds : nil
+    guard bounds.width > 0, bounds.height > 0,
+          minX.isFinite, minY.isFinite, maxX.isFinite, maxY.isFinite
+    else { return nil }
+
+    return bounds
 }
