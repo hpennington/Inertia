@@ -17,6 +17,25 @@ public enum InertiaShapeType: String, Codable {
     case triangle
 }
 
+/// Which side of the actionable's own content a shape is drawn on.
+///
+/// A shape has always been a backdrop: drawn behind whatever the view renders,
+/// so the label over it stays readable and the drawing stays a drawing. `top` is
+/// that same shape put in front instead — a badge, a highlight, a scribble over
+/// the view rather than under it — and it is the same canvas either way, hung
+/// off the view as an overlay instead of a background.
+///
+/// This sits above `zIndex` rather than beside it: a z-index orders the shapes
+/// drawn on one side of the content, and nothing drawn behind a view can be
+/// lifted in front of it by counting higher.
+public enum InertiaShapePosition: String, Codable, Sendable, CaseIterable {
+    /// Behind the actionable's content — where every shape authored before this
+    /// existed was drawn, which is why it is what an absent `position` means.
+    case bottom
+    /// Over the actionable's content.
+    case top
+}
+
 /// A drawn vector as the editor records it: what it is, how big, and how it is
 /// painted — the size in the same multiples of the actionable its corners would
 /// have been measured in.
@@ -130,6 +149,32 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// shape either side of it is deleted. This does not.
     public let id: InertiaID
 
+    /// Where this shape sits in the stack among the shapes it shares a list with
+    /// — its siblings on an actionable's canvas, or the ones drawn inside the
+    /// same parent. Higher draws in front.
+    ///
+    /// Order used to be position: shapes were drawn down the list, so moving one
+    /// in front of another meant moving it in the file, and a shape could not be
+    /// re-stacked without re-authoring the list around it. This is that ordering
+    /// said outright.
+    ///
+    /// Ties keep the order they were authored in, which is what a project
+    /// written before z-indexes existed is: every shape at 0, drawn down the
+    /// list exactly as before.
+    ///
+    /// It orders siblings and nothing else. A child is part of its parent's
+    /// drawing — it is drawn wherever the parent is drawn — so no z-index on it
+    /// can lift it out from behind a shape its parent sits behind.
+    public let zIndex: Int
+
+    /// Which side of the actionable's content this shape is drawn on — see
+    /// `InertiaShapePosition`.
+    ///
+    /// Read on the shapes an actionable holds directly. A nested shape is part
+    /// of its parent's drawing and is drawn wherever the parent is, so its own
+    /// position says nothing.
+    public let position: InertiaShapePosition
+
     /// The corners as authored, when they were authored one by one. A shape
     /// described by `shape` instead has none of its own and is drawn from that
     /// description, which is what `vertices` resolves.
@@ -175,6 +220,8 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// resolved list and the authored one are told apart in here.
     private enum CodingKeys: String, CodingKey {
         case id
+        case zIndex
+        case position
         case _vertices = "vertices"
         case animation
         case shape
@@ -186,13 +233,17 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         shape: InertiaShapeProperties? = nil,
         vertices: [Vertex]?,
         animation: InertiaAnimationSchema? = nil,
-        shapes: [InertiaShape] = []
+        shapes: [InertiaShape] = [],
+        zIndex: Int = 0,
+        position: InertiaShapePosition = .bottom
     ) {
         self.id = id
         self.shape = shape
         self._vertices = vertices
         self.animation = animation
         self.shapes = shapes
+        self.zIndex = zIndex
+        self.position = position
     }
 
     public init(from decoder: Decoder) throws {
@@ -204,6 +255,12 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         // Absent is a shape with nothing inside it rather than a malformed one:
         // every shape authored before nesting existed is written without the key.
         shapes = try container.decodeIfPresent([InertiaShape].self, forKey: .shapes) ?? []
+        // Absent is the bottom of the stack, which is where every shape authored
+        // before z-indexes existed sat: all at 0, drawn in the order they were
+        // written down.
+        zIndex = try container.decodeIfPresent(Int.self, forKey: .zIndex) ?? 0
+        // Absent is the backdrop a shape has always been.
+        position = try container.decodeIfPresent(InertiaShapePosition.self, forKey: .position) ?? .bottom
     }
 
     /// The same shape carrying a different track — what the editor writes back
@@ -214,12 +271,28 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// description, and does not quietly become the ring of corners it happens
     /// to draw as right now.
     public func with(animation: InertiaAnimationSchema?) -> InertiaShape {
-        InertiaShape(id: id, shape: shape, vertices: _vertices, animation: animation, shapes: shapes)
+        InertiaShape(
+            id: id,
+            shape: shape,
+            vertices: _vertices,
+            animation: animation,
+            shapes: shapes,
+            zIndex: zIndex,
+            position: position
+        )
     }
 
     /// The same shape with a different list of shapes inside it.
     public func with(shapes: [InertiaShape]) -> InertiaShape {
-        InertiaShape(id: id, shape: shape, vertices: _vertices, animation: animation, shapes: shapes)
+        InertiaShape(
+            id: id,
+            shape: shape,
+            vertices: _vertices,
+            animation: animation,
+            shapes: shapes,
+            zIndex: zIndex,
+            position: position
+        )
     }
 
     /// The box a child's coordinates are multiples of: this shape's own size, in
@@ -266,8 +339,12 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         // A child is measured in this shape's box and centred where this shape
         // is centred, so scaling by that box is the whole of the transform: the
         // origin the two share needs no offset.
+        //
+        // Stacked rather than taken in list order: the renderer blends down the
+        // list and keeps no depth, so the order they are handed over in *is*
+        // their z-ordering.
         let unit = childUnit
-        return own + shapes.flatMap { child in
+        return own + shapes.stacked.flatMap { child in
             child.triangles.map { vertex in
                 Vertex(
                     position: InertiaPoint(
@@ -510,6 +587,19 @@ private extension Array where Element == InertiaPoint {
 }
 
 public extension Collection where Element == InertiaShape {
+    /// These shapes back to front: the order they are drawn in, which is what
+    /// their z-indexes say — see `InertiaShape.zIndex`.
+    ///
+    /// Ties keep the order they were authored in. Swift's sort is not itself
+    /// stable, so the authored position is sorted on as well rather than
+    /// trusted to survive — which is what keeps a project with no z-indexes in
+    /// it drawing exactly as it did when the list *was* the ordering.
+    var stacked: [InertiaShape] {
+        enumerated()
+            .sorted { ($0.element.zIndex, $0.offset) < ($1.element.zIndex, $1.offset) }
+            .map(\.element)
+    }
+
     /// The smallest box holding every corner of these shapes, in the units they
     /// are authored in — multiples of the actionable's own frame, so
     /// `(0, 0, 1, 1)` is exactly the actionable and `(0, 0, 3, 3)` three times

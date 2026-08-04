@@ -130,20 +130,51 @@ struct InertiaShapesView: View {
         shape.animation != nil || editing?.isSelected(shape) == true
     }
 
+    /// The canvases this view stacks, back to front: the shapes in the order
+    /// their z-indexes put them in, cut into runs wherever one of them has to be
+    /// drawn on a canvas of its own.
+    ///
+    /// A shape drawn alone is a layer by itself; the shapes between two of those
+    /// share one canvas, the way every shape here used to. Cutting the run at
+    /// those points is what makes a z-index mean the same thing for a moving
+    /// shape as for a still one: canvases are views, views stack in the order
+    /// they are declared, so an animated shape can sit *behind* a plain one
+    /// rather than always floating over the whole backdrop.
+    private var layers: [[InertiaShape]] {
+        var layers: [[InertiaShape]] = []
+        var isSharedRunOpen = false
+
+        for shape in shapes.stacked {
+            if isDrawnAlone(shape) {
+                layers.append([shape])
+                isSharedRunOpen = false
+            } else if isSharedRunOpen {
+                layers[layers.count - 1].append(shape)
+            } else {
+                layers.append([shape])
+                isSharedRunOpen = true
+            }
+        }
+
+        return layers
+    }
+
     var body: some View {
         if size.width > 0, size.height > 0 {
-            // Top-left, because that corner is where the shapes' own box is
-            // measured and offset from.
-            ZStack(alignment: .topLeading) {
-                canvas(for: shapes.filter { !isDrawnAlone($0) }, animatedBy: .identity)
-
-                ForEach(Array(shapes.enumerated()), id: \.offset) { _, shape in
-                    if isDrawnAlone(shape) {
+            // Centred, because the centre of the actionable is where a shape's
+            // own coordinates are measured from: a described vector's outline is
+            // drawn about the origin, so a shape half the size of its view sits
+            // in the middle of it rather than hanging off a corner.
+            ZStack(alignment: .center) {
+                ForEach(Array(layers.enumerated()), id: \.offset) { _, layer in
+                    if layer.count == 1, let alone = layer.first, isDrawnAlone(alone) {
                         canvas(
-                            for: [shape],
-                            animatedBy: shape.animation.map { values($0) } ?? .identity,
-                            editedBy: shape
+                            for: layer,
+                            animatedBy: alone.animation.map { values($0) } ?? .identity,
+                            editedBy: alone
                         )
+                    } else {
+                        canvas(for: layer, animatedBy: .identity)
                     }
                 }
             }
@@ -158,7 +189,12 @@ struct InertiaShapesView: View {
     /// at any edge. The transform is stacked in the same order an actionable's
     /// own animation is applied in, and the box's offset is folded into the
     /// track's translation so the shape is moved from where it was authored
-    /// rather than from the actionable's corner.
+    /// rather than from the actionable's centre.
+    ///
+    /// That offset is the box's *middle* rather than its near corner, because
+    /// the canvas is placed by its centre: where the shapes sit relative to the
+    /// origin they were drawn about is exactly where the canvas sits relative to
+    /// the middle of the view.
     ///
     /// The drawing itself takes no hits: this is a backdrop, and would otherwise
     /// swallow taps meant for the views it overlaps. The selection chrome, which
@@ -191,8 +227,8 @@ struct InertiaShapesView: View {
             .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
             .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
             .offset(
-                x: bounds.minX * size.width + values.translate.width * containerSize.width,
-                y: bounds.minY * size.height + values.translate.height * containerSize.height
+                x: bounds.midX * size.width + values.translate.width * containerSize.width,
+                y: bounds.midY * size.height + values.translate.height * containerSize.height
             )
             .opacity(values.opacity)
         }
@@ -219,9 +255,13 @@ struct InertiaShapesView: View {
             // The shape's box in the container's space, as laid out: where the
             // actionable was laid out, plus where in it the shape sits. Measured
             // outside both transforms, which is the frame the handles turn about.
+            //
+            // Where in it is measured from the middle, because that is the
+            // origin a shape's coordinates are drawn about — the same half-view
+            // step the canvas itself is placed by.
             let layoutFrame = CGRect(
-                x: editing.outer.layoutFrame.minX + bounds.minX * size.width,
-                y: editing.outer.layoutFrame.minY + bounds.minY * size.height,
+                x: editing.outer.layoutFrame.minX + size.width / 2 + bounds.minX * size.width,
+                y: editing.outer.layoutFrame.minY + size.height / 2 + bounds.minY * size.height,
                 width: box.width,
                 height: box.height
             )

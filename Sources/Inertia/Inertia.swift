@@ -961,9 +961,13 @@ struct InertiaActionable<Content: View>: View {
         // opacity applied in `body` carry the shapes with them: the canvas is
         // the actionable's own graphics, not a backdrop it moves across.
         //
-        // Aligned to the top-left rather than centred, because that corner is
-        // where `containerCanvas` starts measuring from.
-        .background(alignment: .topLeading) { containerCanvas }
+        // Centred, because the middle of the view is the origin a shape's own
+        // coordinates are measured from — see `InertiaShapesView.body`.
+        //
+        // Two canvases, on the two sides of the content, because that is what a
+        // shape's `position` picks between — see `InertiaShapePosition`.
+        .background(alignment: .center) { containerCanvas }
+        .overlay(alignment: .center) { containerOverlayCanvas }
     }
 
     /// The shapes authored against this actionable, if it has any. Read off the
@@ -973,17 +977,17 @@ struct InertiaActionable<Content: View>: View {
         inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel)?.shapes ?? []
     }
 
-    /// The actionable's canvases: its shapes, drawn in Metal, behind its
-    /// content. Sized and placed by the box the shapes occupy — `size` is the
-    /// actionable, and the shapes are multiples of it — and each shape carrying
-    /// a track of its own drawn on a canvas of its own, moved by that track.
-    /// See `InertiaShapesView`.
+    /// The actionable's canvases for one side of its content: the shapes drawn
+    /// there, in Metal. Sized and placed by the box the shapes occupy — `size`
+    /// is the actionable, and the shapes are multiples of it — and each shape
+    /// carrying a track of its own drawn on a canvas of its own, moved by that
+    /// track. See `InertiaShapesView`.
     ///
-    /// Left out entirely when there is nothing to draw: a canvas is an
-    /// `MTKView`, and most actionables have no shapes at all.
+    /// Left out entirely when there is nothing to draw on that side: a canvas is
+    /// an `MTKView`, and most actionables have no shapes at all.
     @ViewBuilder
-    private func backgroundView(for size: CGSize) -> some View {
-        let shapes = self.shapes
+    private func canvasView(for size: CGSize, at position: InertiaShapePosition) -> some View {
+        let shapes = self.shapes.filter { $0.position == position }
         if !shapes.isEmpty {
             InertiaShapesView(
                 vm: vm,
@@ -1006,7 +1010,16 @@ struct InertiaActionable<Content: View>: View {
     /// against it made the shapes pulse in step with the spin.
     @ViewBuilder
     private var containerCanvas: some View {
-        backgroundView(for: layoutFrame.size)
+        canvasView(for: layoutFrame.size, at: .bottom)
+    }
+
+    /// The same canvas on the other side of the content, for the shapes
+    /// authored to sit over the view rather than behind it. Measured and
+    /// anchored identically: the two differ in nothing but which modifier hangs
+    /// them off the content.
+    @ViewBuilder
+    private var containerOverlayCanvas: some View {
+        canvasView(for: layoutFrame.size, at: .top)
     }
 
     /// The track the animator plays: held out to the full loop when repeating,
@@ -1610,8 +1623,21 @@ struct InertiaEditable<Content: View>: View {
         }
         // Behind the content and inside everything that moves it — the drag
         // below as well as the animation in `body` — so the shapes stay with
-        // the node they belong to. See `InertiaActionable.wrappedContent`.
-        .background(alignment: .topLeading) { containerCanvas }
+        // the node they belong to, and over it for the shapes authored to sit
+        // there. See `InertiaActionable.wrappedContent`.
+        .background(alignment: .center) { containerCanvas }
+        .overlay(alignment: .center) { containerOverlayCanvas }
+        // What `onChange(of: initialValues)` does for the node, for the shapes:
+        // the canvases already draw where the schema says they start, so an edit
+        // still stacked on top of that would count the gesture the editor has
+        // just written back a second time.
+        //
+        // On the content rather than on either canvas, so it still fires for an
+        // actionable whose shapes are all on the other side of it.
+        .onChange(of: shapes) { _, _ in
+            shapeSettledEdits = [:]
+            shapeGestureEdits = [:]
+        }
         .onTapGesture {
             InertiaLog.debug("tapped \(content)")
             guard let inertiaDataModel else {
@@ -1676,12 +1702,12 @@ struct InertiaEditable<Content: View>: View {
         inertiaSchema(hierarchyId: hierarchyId, hierarchyIdPrefix: hierarchyIdPrefix, in: inertiaDataModel)?.initialValues
     }
 
-    /// The same canvases the shipped runtime draws behind an actionable —
-    /// including a shape's own animation moving it — so what is authored here is
-    /// what the app renders. See `InertiaActionable.backgroundView`.
+    /// The same canvases the shipped runtime draws on one side of an actionable
+    /// — including a shape's own animation moving it — so what is authored here
+    /// is what the app renders. See `InertiaActionable.canvasView(for:at:)`.
     @ViewBuilder
-    private func backgroundView(for size: CGSize) -> some View {
-        let shapes = self.shapes
+    private func canvasView(for size: CGSize, at position: InertiaShapePosition) -> some View {
+        let shapes = self.shapes.filter { $0.position == position }
         if !shapes.isEmpty {
             InertiaShapesView(
                 vm: vm,
@@ -1701,15 +1727,13 @@ struct InertiaEditable<Content: View>: View {
     /// editor shows it sitting.
     @ViewBuilder
     private var containerCanvas: some View {
-        backgroundView(for: layoutFrame.size)
-            // What `onChange(of: initialValues)` does for the node, for the
-            // shapes: the canvases already draw where the schema says they
-            // start, so an edit still stacked on top of that would count the
-            // gesture the editor has just written back a second time.
-            .onChange(of: shapes) { _, _ in
-                shapeSettledEdits = [:]
-                shapeGestureEdits = [:]
-            }
+        canvasView(for: layoutFrame.size, at: .bottom)
+    }
+
+    /// The same canvas over the content, for the shapes authored to sit there.
+    @ViewBuilder
+    private var containerOverlayCanvas: some View {
+        canvasView(for: layoutFrame.size, at: .top)
     }
 
     /// The track the animator plays: held out to the full loop when repeating,
