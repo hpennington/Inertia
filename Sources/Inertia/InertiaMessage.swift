@@ -80,6 +80,7 @@ public enum InertiaMessage {
         case playbackProgress
         case tool
         case edit
+        case nodeMeasured
     }
 
     public struct MessageWrapper: Codable {
@@ -89,6 +90,34 @@ public enum InertiaMessage {
         public init(type: MessageType, payload: Data) {
             self.type = type
             self.payload = payload
+        }
+    }
+
+    /// Runtime → editor: the box an actionable was laid out in, in that app's
+    /// own points.
+    ///
+    /// A shape is authored in multiples of the view it is drawn behind — 1 is
+    /// that view's whole width — so the drawing alone never says how big it is.
+    /// Only the app under test knows: layout is what decides it, and it decides
+    /// it again at every size the app is run at. This is that measurement, sent
+    /// as it is taken, so the editor can draw a shape at the size it is really
+    /// drawn at without a view of the app to measure it in.
+    ///
+    /// Carries the whole pair, not just the size: the id says which shapes it
+    /// measures, and the prefix is the schema they are authored on — which is
+    /// what the editor keys a shape by, since every instance of an actionable
+    /// draws the same ones.
+    public struct MessageNodeMeasured: Codable {
+        public let hierarchyIdPrefix: InertiaID
+        public let hierarchyId: InertiaID
+        public let sizeX: CGFloat
+        public let sizeY: CGFloat
+
+        public init(hierarchyIdPrefix: InertiaID, hierarchyId: InertiaID, sizeX: CGFloat, sizeY: CGFloat) {
+            self.hierarchyIdPrefix = hierarchyIdPrefix
+            self.hierarchyId = hierarchyId
+            self.sizeX = sizeX
+            self.sizeY = sizeY
         }
     }
 

@@ -109,7 +109,10 @@ public struct InertiaShapeProperties: Codable, Equatable {
 /// says how it moves, and the actionable it was authored against carries both.
 public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringConvertible {
     public static func ==(lhs: InertiaShape, rhs: InertiaShape) -> Bool {
-        return lhs.id == rhs.id && lhs.vertices == rhs.vertices && lhs.animation == rhs.animation
+        return lhs.id == rhs.id
+            && lhs.vertices == rhs.vertices
+            && lhs.animation == rhs.animation
+            && lhs.shapes == rhs.shapes
     }
 
     public var description: String {
@@ -155,6 +158,18 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     public let animation: InertiaAnimationSchema?
     public let shape: InertiaShapeProperties?
 
+    /// The shapes drawn inside this one, in the units of *its* box — 1 is this
+    /// shape's whole width, the way 1 is the view's whole width one level up.
+    ///
+    /// A child is part of its parent's drawing rather than a drawing of its own:
+    /// it is drawn on the parent's canvas, and every transform that moves the
+    /// parent moves it too. That is the whole point of nesting one inside
+    /// another — a face drawn inside a head turns when the head does.
+    ///
+    /// Empty for the shapes that have always existed, and absent from the wire
+    /// for them, so a project authored before nesting reads unchanged.
+    public let shapes: [InertiaShape]
+
     /// `_vertices` is written as `vertices`: the corners are what a shape has
     /// always been on the wire, and the leading underscore is only how the
     /// resolved list and the authored one are told apart in here.
@@ -163,13 +178,32 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         case _vertices = "vertices"
         case animation
         case shape
+        case shapes
     }
 
-    public init(id: InertiaID, shape: InertiaShapeProperties? = nil, vertices: [Vertex]?, animation: InertiaAnimationSchema? = nil) {
+    public init(
+        id: InertiaID,
+        shape: InertiaShapeProperties? = nil,
+        vertices: [Vertex]?,
+        animation: InertiaAnimationSchema? = nil,
+        shapes: [InertiaShape] = []
+    ) {
         self.id = id
         self.shape = shape
         self._vertices = vertices
         self.animation = animation
+        self.shapes = shapes
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(InertiaID.self, forKey: .id)
+        _vertices = try container.decodeIfPresent([Vertex].self, forKey: ._vertices)
+        animation = try container.decodeIfPresent(InertiaAnimationSchema.self, forKey: .animation)
+        shape = try container.decodeIfPresent(InertiaShapeProperties.self, forKey: .shape)
+        // Absent is a shape with nothing inside it rather than a malformed one:
+        // every shape authored before nesting existed is written without the key.
+        shapes = try container.decodeIfPresent([InertiaShape].self, forKey: .shapes) ?? []
     }
 
     /// The same shape carrying a different track — what the editor writes back
@@ -180,23 +214,91 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// description, and does not quietly become the ring of corners it happens
     /// to draw as right now.
     public func with(animation: InertiaAnimationSchema?) -> InertiaShape {
-        InertiaShape(id: id, shape: shape, vertices: _vertices, animation: animation)
+        InertiaShape(id: id, shape: shape, vertices: _vertices, animation: animation, shapes: shapes)
+    }
+
+    /// The same shape with a different list of shapes inside it.
+    public func with(shapes: [InertiaShape]) -> InertiaShape {
+        InertiaShape(id: id, shape: shape, vertices: _vertices, animation: animation, shapes: shapes)
+    }
+
+    /// The box a child's coordinates are multiples of: this shape's own size, in
+    /// whatever units this shape is itself measured in.
+    ///
+    /// A described vector says its size outright. One authored corner by corner
+    /// does not, so it is measured — the box its own corners occupy, which is
+    /// the same thing the description would have named.
+    var childUnit: CGSize {
+        if let shape, _vertices == nil {
+            return CGSize(width: shape.width, height: shape.height)
+        }
+
+        let positions = vertices.map(\.position)
+        guard let first = positions.first else { return .zero }
+
+        let minX = positions.reduce(first.x) { Swift.min($0, $1.x) }
+        let maxX = positions.reduce(first.x) { Swift.max($0, $1.x) }
+        let minY = positions.reduce(first.y) { Swift.min($0, $1.y) }
+        let maxY = positions.reduce(first.y) { Swift.max($0, $1.y) }
+
+        return CGSize(width: maxX - minX, height: maxY - minY)
     }
 
     /// Everything this shape draws, as the one triangle list the renderer takes:
-    /// the fill first, then the stroke over it.
+    /// the fill first, then the stroke over it, then whatever is nested inside
+    /// it — each child scaled into this shape's box and drawn over it.
     ///
     /// The order is the order they are drawn in — the renderer blends
     /// source-over down the list and keeps no depth — which is what puts the
-    /// outline on top of the area it encloses rather than under it. A shape
-    /// authored corner by corner is all fill, since a stroke is something a
-    /// *described* vector carries.
+    /// outline on top of the area it encloses rather than under it, and the
+    /// children on top of both. A shape authored corner by corner is all fill,
+    /// since a stroke is something a *described* vector carries.
     var triangles: [Vertex] {
-        guard let shape, _vertices == nil else {
-            return fan(vertices)
+        let own: [Vertex]
+        if let shape, _vertices == nil {
+            own = shape.fillTriangles + shape.strokeTriangles
+        } else {
+            own = fan(vertices)
         }
 
-        return shape.fillTriangles + shape.strokeTriangles
+        guard !shapes.isEmpty else { return own }
+
+        // A child is measured in this shape's box and centred where this shape
+        // is centred, so scaling by that box is the whole of the transform: the
+        // origin the two share needs no offset.
+        let unit = childUnit
+        return own + shapes.flatMap { child in
+            child.triangles.map { vertex in
+                Vertex(
+                    position: InertiaPoint(
+                        x: vertex.position.x * unit.width,
+                        y: vertex.position.y * unit.height
+                    ),
+                    color: vertex.color
+                )
+            }
+        }
+    }
+
+    /// Every corner this shape's drawing reaches, its children's included, in
+    /// the units this shape is measured in.
+    ///
+    /// What the canvas is fitted to — see `Collection.bounds`. A ring of corners
+    /// alone would leave a child hanging over the edge of the canvas its parent
+    /// sized, and cut it there.
+    var enclosingVertices: [Vertex] {
+        let unit = childUnit
+        return vertices + shapes.flatMap { child in
+            child.enclosingVertices.map { vertex in
+                Vertex(
+                    position: InertiaPoint(
+                        x: vertex.position.x * unit.width,
+                        y: vertex.position.y * unit.height
+                    ),
+                    color: vertex.color
+                )
+            }
+        }
     }
 
     /// Everything this shape draws, restated against `bounds` — the canvas's own
@@ -424,7 +526,7 @@ public extension Collection where Element == InertiaShape {
     /// Nil when the shapes enclose no area, which is also when there is nothing
     /// to draw.
     var bounds: CGRect? {
-        let positions = flatMap { $0.vertices.map(\.position) }
+        let positions = flatMap { $0.enclosingVertices.map(\.position) }
         guard let first = positions.first else { return nil }
 
         var minX = first.x

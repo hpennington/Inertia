@@ -933,11 +933,14 @@ struct InertiaActionable<Content: View>: View {
     /// outside the animation, which is the only place it can be read honestly.
     /// The shapes are projected from it.
     @State private var layoutFrame: CGRect = .zero
+    /// The size the editor has already been told about, so layout reporting the
+    /// same box again does not put another message on the wire.
+    @State private var reportedSize: CGSize? = nil
 
     private weak var indexManager = SharedIndexManager.shared
     let hierarchyIdPrefix: String
     let content: Content
-    
+
     init(hierarchyIdPrefix: String, content: Content) {
         self.hierarchyIdPrefix = hierarchyIdPrefix
         self.content = content
@@ -1127,6 +1130,7 @@ struct InertiaActionable<Content: View>: View {
         // animation has currently drawn it.
         .measuringLayoutFrame(in: inertiaContainerId) { frame in
             layoutFrame = frame
+            reportMeasurement(frame.size)
         }
         .environment(\.inertiaParentID, hierarchyId)
         .environment(\.isInertiaContainer, false)
@@ -1137,12 +1141,38 @@ struct InertiaActionable<Content: View>: View {
         }
         .task {
             updateHierarchyId()
+            // The id is what a measurement is filed under, and it is only known
+            // once this runs — so a box measured before then is reported here
+            // instead of being dropped.
+            reportMeasurement(layoutFrame.size)
         }
         .onDisappear {
             // Cleanup disabled for new schema - no shape objects with zIndex
         }
 
 
+    }
+
+    /// Tells the editor how big this actionable was laid out, so a shape
+    /// authored against it can be drawn to size somewhere the app itself is not
+    /// — see `InertiaMessage.MessageNodeMeasured`.
+    ///
+    /// The size rather than the whole frame: a shape is a multiple of the box,
+    /// not of where the box sits, so a view scrolled across its container
+    /// changes nothing about the drawing while reporting a new frame the whole
+    /// way. Sent only when the size actually changes, for the same reason.
+    private func reportMeasurement(_ size: CGSize) {
+        guard let hierarchyId, size.width > 0, size.height > 0, size != reportedSize else { return }
+
+        reportedSize = size
+        manager.sendMessage(
+            InertiaMessage.MessageNodeMeasured(
+                hierarchyIdPrefix: hierarchyIdPrefix,
+                hierarchyId: hierarchyId,
+                sizeX: size.width,
+                sizeY: size.height
+            )
+        )
     }
 
     func handleMessageSignal(_ signal: AnimationSignal, sequence: Int) {
@@ -1247,6 +1277,9 @@ struct InertiaEditable<Content: View>: View {
     /// both the animation and the editor's gestures. The shapes are projected
     /// from it, the guides are boxed to it, and the handles turn about it.
     @State private var layoutFrame: CGRect = .zero
+    /// The size the editor has already been told about, so layout reporting the
+    /// same box again does not put another message on the wire.
+    @State private var reportedSize: CGSize? = nil
     /// The same two edits, per shape drawn behind this node, keyed by shape id.
     ///
     /// Held here rather than in the canvas because the canvas is rebuilt from
@@ -1414,6 +1447,31 @@ struct InertiaEditable<Content: View>: View {
 
         bodyDrag = drag
         return drag
+    }
+
+    /// Tells the editor how big this node was laid out, so a shape authored
+    /// against it can be drawn to size in a window that has no copy of the app
+    /// to measure — see `InertiaMessage.MessageNodeMeasured`.
+    ///
+    /// The size rather than the whole frame: a shape is a multiple of the box,
+    /// not of where the box sits, so a node scrolled across its container
+    /// changes nothing about the drawing while reporting a new frame the whole
+    /// way. Sent only when the size actually changes, for the same reason.
+    ///
+    /// Unlike `MessageSelectedNodeProperties`, this is not about a gesture: it
+    /// is sent by every node that lays out, selected or not, dragged or not.
+    private func reportMeasurement(_ size: CGSize) {
+        guard let hierarchyId, size.width > 0, size.height > 0, size != reportedSize else { return }
+
+        reportedSize = size
+        manager.sendMessage(
+            InertiaMessage.MessageNodeMeasured(
+                hierarchyIdPrefix: hierarchyIdPrefix,
+                hierarchyId: hierarchyId,
+                sizeX: size.width,
+                sizeY: size.height
+            )
+        )
     }
 
     /// Shows what a gesture has produced so far, and reports it to the editor's
@@ -1783,12 +1841,16 @@ struct InertiaEditable<Content: View>: View {
         // keeps the canvas and the chrome stuck to the node.
         .measuringLayoutFrame(in: inertiaContainerId) { frame in
             layoutFrame = frame
+            reportMeasurement(frame.size)
         }
         .environment(\.inertiaParentID, hierarchyId)
         .environment(\.isInertiaContainer, false)
         .buttonStyle(.plain)
         .onAppear {
             updateHierarchyId()
+            // The id is what a measurement is filed under, and a box measured
+            // before this ran had none to be filed under.
+            reportMeasurement(layoutFrame.size)
 
             InertiaLog.info("Connecting to the editor (setup)...")
             manager.start()
@@ -1812,6 +1874,12 @@ struct InertiaEditable<Content: View>: View {
                 actionableIds: inertiaDataModel.actionableIdPairs
             )
             manager.sendMessage(message)
+
+            // Layout happened long before this editor was listening, and it
+            // will not happen again just because one attached. Forgetting what
+            // was already sent is what makes the measurement go out again.
+            reportedSize = nil
+            reportMeasurement(layoutFrame.size)
         })
         .onChange(of: inertiaDataModel?.tree, { oldValue, newValue in
             if let tree = newValue {

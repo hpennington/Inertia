@@ -386,6 +386,9 @@ public final class InertiaWebSocketClient {
         case .playbackProgress:
             // Runtime-to-editor only.
             InertiaLog.warning("Unexpected playbackProgress from editor")
+        case .nodeMeasured:
+            // Runtime-to-editor only.
+            InertiaLog.warning("Unexpected nodeMeasured from editor")
         }
     }
 
@@ -393,6 +396,10 @@ public final class InertiaWebSocketClient {
 
     public func sendMessage(_ message: InertiaMessage.MessageSelectedNodeProperties) {
         send(type: .selectedNodeProperties, payload: message)
+    }
+
+    public func sendMessage(_ message: InertiaMessage.MessageNodeMeasured) {
+        send(type: .nodeMeasured, payload: message)
     }
 
     public func sendMessage(_ message: InertiaMessage.MessageActionables) {
