@@ -81,7 +81,7 @@ Work down these in order:
    modal refuses that combination, but taking both colours to transparent in the properties
    panel afterwards does not.
 2. **Is it behind something opaque?** A shape defaults to **Behind** the view's content. Try
-   **In Front** — on iOS; the other two runtimes always draw behind, see [Choosing a
+   **In Front**, which all three runtimes honour — see [Choosing a
    runtime](getting-started/runtimes.md#drawn-vectors).
 3. **Is it off-screen?** Sizes and offsets are multiples of the view's shorter side, so a
    `0.05` shape on a small view is a few points across, and an offset of `2` puts it well
@@ -106,10 +106,14 @@ recording off, and use the transform column. See
 
 ## Shapes stack differently on Android or the web
 
-Expected. `zIndex` and **In Front** are honoured by the SwiftUI runtime only; Compose and
-React draw every shape behind the view's content, in the order the file lists them. The
-editor's canvas follows SwiftUI. See [Choosing a
-runtime](getting-started/runtimes.md#drawn-vectors).
+All three runtimes honour `zIndex` and **In Front**, so a stack that comes out in file
+order — every shape behind the view's content — is an app running an older runtime than
+the one that reads them. Update the Compose or React package and rebuild the app; the file
+itself needs no change, since both fields have been written into it all along. See
+[Choosing a runtime](getting-started/runtimes.md#drawn-vectors).
+
+A difference that is *not* a stale build: a nested shape's z-index orders it against its
+siblings inside its parent, never against the shapes its parent is stacked among.
 
 ## A view does not animate
 

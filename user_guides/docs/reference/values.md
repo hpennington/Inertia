@@ -143,7 +143,7 @@ A [drawn vector](../editor/drawing.md) uses this object in two places:
   own animation plays on top of it.
 
 The two measure `translate` differently. On a shape's track it is a fraction of the
-container's size, exactly as it is for a view — a shape and the view it is drawn behind move
+container's size, exactly as it is for a view — a shape and the view it is drawn on move
 by the same distance for the same number. On a placement it is in the units the shape is
 sized in: multiples of the shorter side of whatever holds it, which is the view it is drawn
 against, or the parent shape for a nested one. Everything else means what it means above.

@@ -222,9 +222,10 @@ Set `InertiaLog.isEnabled = false` to silence it.
 `AnimationSignal` and the other message types are public because the editor talks to them
 over the wire. They are part of the editor protocol rather than the app-facing API.
 
-`InertiaShape`, `InertiaShapeProperties` and `Vertex` describe the vector shapes a schema
-can carry behind an actionable. `InertiaShapeCanvas` draws them; you do not construct them
-yourself, the editor authors them.
+`InertiaShape`, `InertiaShapeProperties`, `InertiaShapePosition` and `Vertex` describe the
+vector shapes a schema can carry on either side of an actionable's content.
+`InertiaShapeCanvas` draws them, back to front in the order `stacked()` puts them in; you
+do not construct any of it yourself, the editor authors them.
 
 `getHostForWebSocket()`, `isValidIPv4()` and `getFirstDnsIP()` are host-discovery helpers
 that shell out to `ip route`. Nothing in the runtime calls them — `baseURL` is passed

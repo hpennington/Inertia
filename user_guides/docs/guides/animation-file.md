@@ -171,11 +171,15 @@ key, and every runtime rasterizes them itself.
 A colour is four `0`–`1` floats: `{ "red": …, "green": …, "blue": …, "alpha": … }`, in sRGB.
 A shape with neither `fill` nor `stroke` draws nothing at all.
 
-!!! note "`zIndex` and `position` are read only by the SwiftUI runtime"
+!!! note "`zIndex` and `position` order siblings, and only siblings"
 
-    Compose and React have neither field on their shape model. Both ignore the keys rather
-    than failing to decode, and draw every shape behind the view's content in the order the
-    file lists them. See [Choosing a runtime](../getting-started/runtimes.md#drawn-vectors).
+    A z-index orders the shapes it shares a list with — the ones on the same view, or the
+    ones inside the same parent — and `position` picks which side of the view's content
+    that whole stack is drawn on. Neither reaches across those lines: a nested shape is
+    part of its parent's drawing, so no number on it lifts it out from behind a shape its
+    parent sits behind, and nothing drawn behind a view can be raised in front of it by
+    counting higher. All three runtimes read both fields the same way — see
+    [Choosing a runtime](../getting-started/runtimes.md#drawn-vectors).
 
 ### Coordinates
 

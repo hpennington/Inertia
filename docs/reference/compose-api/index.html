@@ -1523,9 +1523,10 @@ file. See <a href="../values/">Animatable values</a>.</p>
 <p><code>Tree</code>, <code>Node</code>, <code>WebSocketClient</code>, <code>MessageSchema</code>, <code>InertiaSchemaWrapper</code>,
 <code>AnimationSignal</code> and the other message types are public because the editor talks to them
 over the wire. They are part of the editor protocol rather than the app-facing API.</p>
-<p><code>InertiaShape</code>, <code>InertiaShapeProperties</code> and <code>Vertex</code> describe the vector shapes a schema
-can carry behind an actionable. <code>InertiaShapeCanvas</code> draws them; you do not construct them
-yourself, the editor authors them.</p>
+<p><code>InertiaShape</code>, <code>InertiaShapeProperties</code>, <code>InertiaShapePosition</code> and <code>Vertex</code> describe the
+vector shapes a schema can carry on either side of an actionable's content.
+<code>InertiaShapeCanvas</code> draws them, back to front in the order <code>stacked()</code> puts them in; you
+do not construct any of it yourself, the editor authors them.</p>
 <p><code>getHostForWebSocket()</code>, <code>isValidIPv4()</code> and <code>getFirstDnsIP()</code> are host-discovery helpers
 that shell out to <code>ip route</code>. Nothing in the runtime calls them — <code>baseURL</code> is passed
 through as given.</p>

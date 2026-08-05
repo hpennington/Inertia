@@ -1632,10 +1632,14 @@ key, and every runtime rasterizes them itself.</p>
 <p>A colour is four <code>0</code>–<code>1</code> floats: <code>{ "red": …, "green": …, "blue": …, "alpha": … }</code>, in sRGB.
 A shape with neither <code>fill</code> nor <code>stroke</code> draws nothing at all.</p>
 <div class="admonition note">
-<p class="admonition-title"><code>zIndex</code> and <code>position</code> are read only by the SwiftUI runtime</p>
-<p>Compose and React have neither field on their shape model. Both ignore the keys rather
-than failing to decode, and draw every shape behind the view's content in the order the
-file lists them. See <a href="../../getting-started/runtimes/#drawn-vectors">Choosing a runtime</a>.</p>
+<p class="admonition-title"><code>zIndex</code> and <code>position</code> order siblings, and only siblings</p>
+<p>A z-index orders the shapes it shares a list with — the ones on the same view, or the
+ones inside the same parent — and <code>position</code> picks which side of the view's content
+that whole stack is drawn on. Neither reaches across those lines: a nested shape is
+part of its parent's drawing, so no number on it lifts it out from behind a shape its
+parent sits behind, and nothing drawn behind a view can be raised in front of it by
+counting higher. All three runtimes read both fields the same way — see
+<a href="../../getting-started/runtimes/#drawn-vectors">Choosing a runtime</a>.</p>
 </div>
 <h3 id="coordinates">Coordinates<a class="headerlink" href="#coordinates" title="Permanent link">&para;</a></h3>
 <p>Everything about a shape is measured in multiples of the <strong>shorter side</strong> of the view it is

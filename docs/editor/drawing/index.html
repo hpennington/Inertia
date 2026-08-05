@@ -1544,12 +1544,12 @@ as an overlay. Nothing drawn behind a view can be lifted in front of it by count
 <p><strong>Z-Index</strong> orders the shapes drawn on one side of the content, among their siblings only.
 Higher draws in front; ties keep the order they were authored in. A z-index on a child
 cannot lift it out from behind a shape its parent sits behind.</p>
-<div class="admonition warning">
-<p class="admonition-title">Stacking is iOS-only today</p>
-<p>The SwiftUI runtime honours <code>zIndex</code> and <code>position</code>. Compose and React ignore both:
-they draw every shape behind the view's content, in the order it was authored. The
-editor's canvas follows SwiftUI, so a drawing that relies on either will look right in
-the editor and stack differently on Android and the web. See <a href="../../getting-started/runtimes/#drawn-vectors">Choosing a
+<div class="admonition note">
+<p class="admonition-title">Stacking reads the same on all three runtimes</p>
+<p>SwiftUI, Compose and React all honour <code>zIndex</code> and <code>position</code>, and the editor's canvas
+stacks the same way, so a drawing that relies on either looks the same in the editor as
+it does on iOS, Android and the web. A stack that comes out in file order on one of
+them is an app built against an older runtime — see <a href="../../getting-started/runtimes/#drawn-vectors">Choosing a
 runtime</a>.</p>
 </div>
 <p><strong>Own Canvas</strong> is a rendering decision rather than an ordering one. Shapes that sit next to

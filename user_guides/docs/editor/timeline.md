@@ -29,7 +29,7 @@ playhead is, not after whatever you recorded last.
 
 A [drawn vector](drawing.md) records the same way: select the shape rather than the view,
 and its keypoints land on a track of its own, drawn as a row indented under the view it is
-drawn behind and marked with a scribble icon. The shape moves *with* that view as well as
+drawn on and marked with a scribble icon. The shape moves *with* that view as well as
 on its own track. Vectors nested inside another shape are the exception — they are drawn
 into their parent's geometry and have no track, so they are moved with an
 [offset](drawing.md#placing-a-shape-in-its-parent) instead.

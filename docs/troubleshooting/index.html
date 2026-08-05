@@ -1561,7 +1561,7 @@ answer to where the shape would go. See <a href="../editor/drawing/#inserting-a-
    modal refuses that combination, but taking both colours to transparent in the properties
    panel afterwards does not.</li>
 <li><strong>Is it behind something opaque?</strong> A shape defaults to <strong>Behind</strong> the view's content. Try
-   <strong>In Front</strong> — on iOS; the other two runtimes always draw behind, see <a href="../getting-started/runtimes/#drawn-vectors">Choosing a
+   <strong>In Front</strong>, which all three runtimes honour — see <a href="../getting-started/runtimes/#drawn-vectors">Choosing a
    runtime</a>.</li>
 <li><strong>Is it off-screen?</strong> Sizes and offsets are multiples of the view's shorter side, so a
    <code>0.05</code> shape on a small view is a few points across, and an offset of <code>2</code> puts it well
@@ -1581,10 +1581,13 @@ app is not currently showing).</p>
 recording off, and use the transform column. See
 <a href="../editor/drawing/#placing-a-shape-in-its-parent">Placing a shape in its parent</a>.</p>
 <h2 id="shapes-stack-differently-on-android-or-the-web">Shapes stack differently on Android or the web<a class="headerlink" href="#shapes-stack-differently-on-android-or-the-web" title="Permanent link">&para;</a></h2>
-<p>Expected. <code>zIndex</code> and <strong>In Front</strong> are honoured by the SwiftUI runtime only; Compose and
-React draw every shape behind the view's content, in the order the file lists them. The
-editor's canvas follows SwiftUI. See <a href="../getting-started/runtimes/#drawn-vectors">Choosing a
-runtime</a>.</p>
+<p>All three runtimes honour <code>zIndex</code> and <strong>In Front</strong>, so a stack that comes out in file
+order — every shape behind the view's content — is an app running an older runtime than
+the one that reads them. Update the Compose or React package and rebuild the app; the file
+itself needs no change, since both fields have been written into it all along. See
+<a href="../getting-started/runtimes/#drawn-vectors">Choosing a runtime</a>.</p>
+<p>A difference that is <em>not</em> a stale build: a nested shape's z-index orders it against its
+siblings inside its parent, never against the shapes its parent is stacked among.</p>
 <h2 id="a-view-does-not-animate">A view does not animate<a class="headerlink" href="#a-view-does-not-animate" title="Permanent link">&para;</a></h2>
 <p>The runtime plays a track only once its id has been triggered:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>inertia.trigger(&quot;card0&quot;)

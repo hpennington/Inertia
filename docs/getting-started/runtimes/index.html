@@ -1464,36 +1464,10 @@ keyframes are identical, the paths between them are not.</p>
 <h3 id="drawn-vectors">Drawn vectors<a class="headerlink" href="#drawn-vectors" title="Permanent link">&para;</a></h3>
 <p>All three runtimes rasterize the <a href="../../editor/drawing/">vectors you draw in the editor</a>
 themselves — Metal on SwiftUI, OpenGL ES on Compose, WebGL on React — from the shapes
-carried in the animation file. Fills, strokes, nesting, per-shape placement and per-shape
-tracks work the same everywhere.</p>
-<p>Two of the stacking controls do not:</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>SwiftUI</th>
-<th>Compose</th>
-<th>React</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>zIndex</code> — order among siblings</td>
-<td>honoured</td>
-<td>ignored, drawn in file order</td>
-<td>ignored, drawn in file order</td>
-</tr>
-<tr>
-<td><code>position</code> — behind or in front of the view's content</td>
-<td>honoured</td>
-<td>always behind</td>
-<td>always behind</td>
-</tr>
-</tbody>
-</table>
-<p>Both fields are written by the editor regardless, and both are ignored cleanly rather than
-failing to decode, so a project authored on iOS still loads on the other two. It just draws
-its shapes in the order they were authored, behind the view's content.</p>
+carried in the animation file. Fills, strokes, nesting, per-shape placement, per-shape
+tracks and both stacking controls — <code>zIndex</code> and <code>position</code> — work the same everywhere.</p>
+<p>A file with no <code>zIndex</code> or <code>position</code> in it reads the same on all three as well: no
+z-index is the bottom of the stack in file order, and no <code>position</code> is a backdrop.</p>
 <h3 id="editor-transport">Editor transport<a class="headerlink" href="#editor-transport" title="Permanent link">&para;</a></h3>
 <p>All three follow the editor's playhead: pause, resume, seek and loop-duration changes
 arrive over the socket, and all three report their playback position back so the editor's
