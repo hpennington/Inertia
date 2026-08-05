@@ -649,6 +649,167 @@ final class ShapeTests: XCTestCase {
         XCTAssertNil([InertiaShape]().bounds(of: "only"))
     }
 
+    // MARK: - The box a shape is placed in
+
+    /// A step authored into one shape's placement, carried into the drawing's
+    /// own units by what `placementSpace(of:)` says that placement is measured
+    /// in — the arithmetic the editor's canvas does to turn a drag into a
+    /// placement, in the space this package answers questions in.
+    private func step(
+        _ drawing: [InertiaShape],
+        placing id: InertiaID,
+        by move: CGSize
+    ) throws -> CGSize {
+        let space = try XCTUnwrap(drawing.placementSpace(of: id))
+        let before = try XCTUnwrap(drawing.bounds(of: id))
+
+        // The move restated in the shape's own placement — out through the turn
+        // and the scale its parents carry it through, then into their units.
+        let authored = InertiaToolEdit(translate: space.values.unapplying(move))
+        let shape = try XCTUnwrap(Self.locate(id, in: drawing))
+        let placed = shape.placement.applying(
+            authored,
+            containerSize: CGSize(width: space.unit, height: space.unit)
+        )
+
+        let after = try XCTUnwrap(Self.replacing(placed, on: id, in: drawing).bounds(of: id))
+
+        return CGSize(width: after.midX - before.midX, height: after.midY - before.midY)
+    }
+
+    private static func locate(_ id: InertiaID, in shapes: [InertiaShape]) -> InertiaShape? {
+        for shape in shapes {
+            if shape.id == id { return shape }
+            if let found = locate(id, in: shape.shapes) { return found }
+        }
+
+        return nil
+    }
+
+    private static func replacing(
+        _ transforms: InertiaAnimationValues,
+        on id: InertiaID,
+        in shapes: [InertiaShape]
+    ) -> [InertiaShape] {
+        shapes.map { shape in
+            if shape.id == id { return shape.with(transforms: transforms) }
+
+            return shape.with(shapes: replacing(transforms, on: id, in: shape.shapes))
+        }
+    }
+
+    /// A shape on the actionable's own canvas is placed in the drawing itself,
+    /// so its placement is already in the units everything around it is measured
+    /// in and points the way they do.
+    func testShapeOnTheCanvasIsPlacedInTheDrawingsOwnBox() throws {
+        let space = try XCTUnwrap([named("solo", 1)].placementSpace(of: "solo"))
+
+        XCTAssertEqual(space, .own)
+    }
+
+    /// A nested shape is placed in its parent's box, which is `childUnit` of the
+    /// drawing across — so an authored step of one carries it that far.
+    func testNestedShapeIsPlacedInItsParentsUnits() throws {
+        let drawing = [named("parent", 2, nil, shapes: [named("child", 0.5)])]
+
+        let space = try XCTUnwrap(drawing.placementSpace(of: "child"))
+
+        XCTAssertEqual(space.unit, 2, accuracy: 0.0001)
+        XCTAssertEqual(space.values, .identity)
+    }
+
+    /// Every box between the shape and the drawing, multiplied together: a
+    /// grandchild is placed in a box that is a fraction of a fraction.
+    func testDeeplyNestedShapeIsPlacedThroughEveryBox() throws {
+        let grandchild = named("grandchild", 0.5)
+        let drawing = [named("parent", 2, nil, shapes: [named("child", 0.5, nil, shapes: [grandchild])])]
+
+        let space = try XCTUnwrap(drawing.placementSpace(of: "grandchild"))
+
+        // The grandchild is placed in the child's box, and the child is 0.5 of a
+        // parent 2 across — so that box is 1 of the drawing's units, not the 2
+        // the child itself is placed in.
+        XCTAssertEqual(space.unit, 1, accuracy: 0.0001)
+    }
+
+    /// A placement is baked into the corners, so a parent's own placement is
+    /// part of the trip its children's placements take: a child inside a parent
+    /// scaled by two is drawn twice as far along for the same authored step.
+    ///
+    /// This is what the editor's canvas moves a picked vector by. Counting the
+    /// units alone sent a nested vector off at twice the speed of the pointer
+    /// under a scaled parent, and sideways under a turned one.
+    func testNestedShapeIsPlacedThroughItsParentsOwnPlacement() throws {
+        let scaled = InertiaAnimationValues(scale: 2, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1)
+        let drawing = [named("parent", 2, scaled, shapes: [named("child", 0.5)])]
+
+        let space = try XCTUnwrap(drawing.placementSpace(of: "child"))
+
+        XCTAssertEqual(space.values.scale, 2, accuracy: 0.0001)
+        XCTAssertEqual(space.unit, 2, accuracy: 0.0001)
+    }
+
+    /// A parent's turn goes with its scale, and both compound down the branch.
+    func testPlacementSpaceComposesEveryParentsTurnAndScale() throws {
+        let turned = InertiaAnimationValues(scale: 2, translate: .zero, rotate: 30, rotateCenter: 15, opacity: 1)
+        let grandchild = named("grandchild", 0.5)
+        let drawing = [named("parent", 2, turned, shapes: [named("child", 0.5, turned, shapes: [grandchild])])]
+
+        let space = try XCTUnwrap(drawing.placementSpace(of: "grandchild"))
+
+        XCTAssertEqual(space.values.scale, 4, accuracy: 0.0001)
+        XCTAssertEqual(space.values.rotate, 60, accuracy: 0.0001)
+        XCTAssertEqual(space.values.rotateCenter, 30, accuracy: 0.0001)
+    }
+
+    func testPlacementSpaceOfAShapeThatIsNotInTheDrawingIsNil() {
+        XCTAssertNil([named("only", 1)].placementSpace(of: "missing"))
+        XCTAssertNil([InertiaShape]().placementSpace(of: "only"))
+    }
+
+    /// What the whole thing is for: a step measured on the drawing, authored
+    /// into a shape's placement through the space it is placed in, moves the
+    /// shape by exactly that step — wherever it is nested, and whatever its
+    /// parents have been placed at.
+    func testAStepAuthoredThroughThePlacementSpaceLandsWhereItWasAimed() throws {
+        let move = CGSize(width: 0.5, height: -0.25)
+
+        let solo: [InertiaShape] = [named("solo", 1)]
+        let unplaced = [named("parent", 2, nil, shapes: [named("child", 0.5)])]
+        let shifted = [named("parent", 2, moved(1.5, 0), shapes: [named("child", 0.5)])]
+        let scaled = [
+            named(
+                "parent",
+                2,
+                InertiaAnimationValues(scale: 2, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1),
+                shapes: [named("child", 0.5)]
+            )
+        ]
+        let turned = [
+            named(
+                "parent",
+                2,
+                InertiaAnimationValues(scale: 1, translate: .zero, rotate: 90, rotateCenter: 0, opacity: 1),
+                shapes: [named("child", 0.5)]
+            )
+        ]
+        let deep = [named("parent", 2, nil, shapes: [named("child", 0.5, nil, shapes: [named("grandchild", 0.5)])])]
+
+        for (name, drawing, id) in [
+            ("on the canvas", solo, InertiaID("solo")),
+            ("in an unplaced parent", unplaced, "child"),
+            ("in a moved parent", shifted, "child"),
+            ("in a scaled parent", scaled, "child"),
+            ("in a turned parent", turned, "child"),
+            ("two levels down", deep, "grandchild"),
+        ] {
+            let landed = try step(drawing, placing: id, by: move)
+
+            XCTAssertEqual(landed.width, move.width, accuracy: 0.0001, "across, \(name)")
+            XCTAssertEqual(landed.height, move.height, accuracy: 0.0001, "down, \(name)")
+        }
+    }
+
     /// A placement fades the shape through the corners' own alpha, since it has
     /// to survive being flattened into a buffer shared with shapes that are not
     /// faded.

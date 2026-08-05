@@ -1562,7 +1562,7 @@ struct InertiaEditable<Content: View>: View {
     /// have to travel with the one it did.
     private func commitEdit() {
         let authored = authoredValues
-        settledEdit = totalEdit
+        settledEdit = .none
         gestureEdit = .none
         inertiaDataModel?.showGrid = false
 

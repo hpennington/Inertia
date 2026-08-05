@@ -984,33 +984,84 @@ public extension Collection where Element == InertiaShape {
         return nil
     }
 
-    /// What one unit of the box the shape called `shapeId` is *placed* in is
-    /// worth here — in the units these shapes are authored in.
+    /// The box the shape called `shapeId` is *placed* in, stated in the units
+    /// these shapes are authored in — see ``InertiaPlacementSpace``.
     ///
     /// A placement is measured in the box the shape sits in rather than in the
     /// units the drawing around it is measured in, and those are only the same
     /// thing for a shape on the canvas itself, which is placed in the
     /// actionable's own box. A nested one is placed in its parent's, and its
-    /// parent may be nested in turn — so the answer is every `childUnit` between
-    /// here and it, multiplied together, which is exactly the scaling
-    /// `InertiaShape.triangles` walks a child's corners back up through.
+    /// parent may be nested in turn — so the answer is the whole trip between
+    /// here and it: every `childUnit` multiplied together, and every one of
+    /// those parents' own placements composed. That is exactly the walk
+    /// `InertiaShape.triangles` takes a child's corners back up.
     ///
-    /// 1 for a shape on the canvas itself, and nil when nothing in here answers
-    /// to that name.
+    /// The parents' placements are part of it because a placement is baked into
+    /// the corners: a child inside a parent scaled by two is drawn twice as far
+    /// along for the same authored step, and one inside a turned parent is drawn
+    /// off at that parent's angle. Counting the units alone answers for a
+    /// drawing whose parents are all left where they were authored and for no
+    /// other.
+    ///
+    /// ``InertiaPlacementSpace/own`` for a shape on the canvas itself, and nil
+    /// when nothing in here answers to that name.
     ///
     /// What it is for: the editor's canvas turns a drag in points into a
     /// placement, and a nested shape's placement is in a smaller unit than the
-    /// drawing it is part of — see `ShapeCanvasView`.
-    func placementUnit(of shapeId: InertiaID) -> CGFloat? {
+    /// drawing it is part of, pointing whichever way its parents do — see
+    /// `ShapeCanvasView`.
+    func placementSpace(of shapeId: InertiaID) -> InertiaPlacementSpace? {
         for shape in self {
-            if shape.id == shapeId { return 1 }
+            if shape.id == shapeId { return .own }
 
-            guard let nested = shape.shapes.placementUnit(of: shapeId) else { continue }
+            guard let nested = shape.shapes.placementSpace(of: shapeId) else { continue }
 
-            return shape.childUnit * nested
+            let placement = shape.placement
+
+            return InertiaPlacementSpace(
+                unit: shape.childUnit * nested.unit,
+                values: InertiaAnimationValues(
+                    scale: placement.scale * nested.values.scale,
+                    translate: .zero,
+                    rotate: placement.rotate + nested.values.rotate,
+                    rotateCenter: placement.rotateCenter + nested.values.rotateCenter,
+                    opacity: 1
+                )
+            )
         }
 
         return nil
+    }
+}
+
+/// The trip a shape's placement takes to reach the units the drawing around it
+/// is measured in — see `Collection.placementSpace(of:)`.
+///
+/// Two halves, because a placement authored from a gesture needs both: how far
+/// one authored unit goes on the drawing, and which way it points once the
+/// shape's parents have had their say.
+public struct InertiaPlacementSpace: Equatable {
+    /// What one unit of the box the shape is placed in is worth in the units
+    /// the drawing around it is authored in — every `childUnit` between the two,
+    /// multiplied together.
+    public let unit: CGFloat
+
+    /// The turn and the scale the shape's parents carry that box through, as
+    /// the one transform their placements come to.
+    ///
+    /// Only the rotation and the scale are filled in. What this is applied to is
+    /// a *step* across the box rather than a point in it, and a step is unmoved
+    /// by a translation — where the parents put the shape is a question
+    /// `bounds(of:)` already answers.
+    public let values: InertiaAnimationValues
+
+    /// A shape placed in the drawing itself, which is what a shape on the
+    /// actionable's own canvas is: its own units, the way up they were authored.
+    public static let own = InertiaPlacementSpace(unit: 1, values: .identity)
+
+    public init(unit: CGFloat, values: InertiaAnimationValues) {
+        self.unit = unit
+        self.values = values
     }
 }
 
