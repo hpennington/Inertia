@@ -703,10 +703,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#picking-a-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Picking a shape
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#shape-properties" class="md-nav__link">
     <span class="md-ellipsis">
       
         Shape properties
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-a-shape-appears" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When a shape appears
       
     </span>
   </a>
@@ -1196,10 +1218,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#picking-a-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Picking a shape
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#shape-properties" class="md-nav__link">
     <span class="md-ellipsis">
       
         Shape properties
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-a-shape-appears" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When a shape appears
       
     </span>
   </a>
@@ -1389,6 +1433,10 @@ rectangle, square, circle, oval, triangle.</p>
 </tr>
 </tbody>
 </table>
+<p>Every shape is inserted as backdrop — drawn from the moment the view it backs is on screen,
+whether or not anything has been triggered. A shape that should appear <em>with</em> the animation
+instead is that said in the properties panel afterwards; see <a href="#when-a-shape-appears">When a shape
+appears</a>.</p>
 <p><strong>Insert</strong> stays disabled for a shape that would be invisible: one with neither a fill nor
 a stroke, or one measuring nothing in a direction.</p>
 <p>Where the shape lands depends on what was selected:</p>
@@ -1401,7 +1449,7 @@ carrying a drawing. That is what the shape is stored on, which is why the shape 
 the same file as the keyframes.</p>
 <h2 id="drawing-mode">Drawing mode<a class="headerlink" href="#drawing-mode" title="Permanent link">&para;</a></h2>
 <p>The toggle at the <strong>bottom of the tool palette</strong> (the scribble icon) swaps the viewport
-between your live app and the <strong>shape canvas</strong>. Three things change with it:</p>
+between your live app and the <strong>shape canvas</strong>. What changes with it:</p>
 <table>
 <thead>
 <tr>
@@ -1418,7 +1466,7 @@ between your live app and the <strong>shape canvas</strong>. Three things change
 </tr>
 <tr>
 <td>Hierarchy</td>
-<td>Multi-select, no visibility controls</td>
+<td>Multi-select, focus toggle, no visibility controls</td>
 <td>One row at a time, with a show/hide button per row</td>
 </tr>
 <tr>
@@ -1427,12 +1475,22 @@ between your live app and the <strong>shape canvas</strong>. Three things change
 <td>The <a href="#shape-properties">shape properties</a> of the picked shape</td>
 </tr>
 <tr>
-<td>Transform column, recording off</td>
+<td>Timeline</td>
+<td>As you left it</td>
+<td><a href="../timeline/#hiding-the-animations">Animations hidden</a> on the way in, restored on the way out</td>
+</tr>
+<tr>
+<td>Clock</td>
+<td>The runtime's own</td>
+<td>The editor's</td>
+</tr>
+<tr>
+<td>Drag or transform column, recording off</td>
 <td>Moves where a track starts from</td>
 <td>Places the picked shape in its parent</td>
 </tr>
 <tr>
-<td>Transform column, recording on</td>
+<td>Drag or transform column, recording on</td>
 <td>Writes a keyframe at the playhead</td>
 <td>Writes a keyframe at the playhead</td>
 </tr>
@@ -1442,13 +1500,40 @@ between your live app and the <strong>shape canvas</strong>. Three things change
 device screen, so a shape drawn small reads as small rather than blown up to fill the
 panel. Each drawing is centred, because the middle of a view is what its shapes are
 measured from — two views carrying drawings therefore overlap, which is what the hierarchy's
-eye buttons are for.</p>
-<p><strong>It plays.</strong> Everything on the canvas is drawn at the editor's playhead: press
-<kbd>Space</kbd> or scrub, and the canvas shows the frame the app under test is showing,
-with none of the app's own views over it.</p>
+eye buttons are for. The drawing holding the picked shape comes to the front, so nothing
+drawn over it covers its border, its handles, or the presses meant for them.</p>
+<p><strong>It is edited.</strong> The picked shape grows the same handles the app under test grows for the
+active tool, on the same geometry, and a drag on them is a drag on the shape — moved,
+turned, scaled and faded here as well as over there. What the drag lands on is the toolset's
+to say, which is the fork the table above draws.</p>
+<p><strong>It plays</strong>, off the editor's own clock rather than the app's. The runtime is parked while
+the canvas is up: it is behind the canvas and nobody is watching it, and a run left going
+there would walk away from the frame the canvas is drawing. Playback carries across the swap
+in both directions, and closing the canvas hands the app the playhead you can see before
+telling it to play on.</p>
+<p>Opening the canvas also <a href="../timeline/#hiding-the-animations">hides the animations</a>, so every
+drawing sits where it was drawn while you place it. Turn the timeline's toggle back off to
+watch a run on the canvas.</p>
 <p>What is <em>on</em> the canvas is not what is selected. The whole of the app's drawing is shown
 whatever you pick; selection only says which shape the properties panel describes, which
-one the tools move, and which one gets the green border.</p>
+one the tools reach, and which one gets the green border and the handles.</p>
+<h2 id="picking-a-shape">Picking a shape<a class="headerlink" href="#picking-a-shape" title="Permanent link">&para;</a></h2>
+<p>Three ways in, all writing the same selection — pick a shape one way and its row lights up
+the other:</p>
+<ul>
+<li><strong>Its row in the hierarchy</strong>, over the app or over the canvas.</li>
+<li><strong>Clicking it in the app viewport</strong>, with focus on. A shape is backdrop in a shipped
+  build and takes no touches there at all; this is editor mode only.</li>
+<li><strong>Clicking it on the shape canvas.</strong></li>
+</ul>
+<p>A click has to land on the <em>artwork</em>, not on the box around it. A press in the corner beside
+a circle, or in the margin beside a triangle's slope, falls through to whatever is behind
+instead of being swallowed by a backdrop you cannot see there — and an unfilled shape is its
+outline and nothing more, so a press through the middle of a ring misses it too. Nested
+shapes are picked this way as well, even though they have no box of their own: the shape a
+press lands on is worked out by testing the point against the drawing, innermost and
+front-most first.</p>
+<p>Clicking a picked shape again puts it back down.</p>
 <div class="admonition note">
 <p class="admonition-title">An empty canvas</p>
 <p>Three different messages, because the fix differs: <strong>Waiting for the app to connect</strong>,
@@ -1501,6 +1586,10 @@ the canvas both follow the picker.</p>
 <td>Own Canvas</td>
 <td>Whether the shape is a rendering layer of its own. Dim for a nested shape.</td>
 </tr>
+<tr>
+<td>Show Before</td>
+<td>Whether the shape is drawn while the animation waits to play, or only once it is playing. Dim for a nested shape. See <a href="#when-a-shape-appears">When a shape appears</a>.</td>
+</tr>
 </tbody>
 </table>
 <p>The stroke is drawn <strong>inside</strong> the outline, so adding one never moves the shape or grows
@@ -1509,10 +1598,29 @@ draws as a solid shape.</p>
 <p>Editing properties is not recording. A description is what the shape <em>is</em> before anything
 plays, so it lands wherever the playhead is parked and whether or not recording is armed,
 and it leaves the shape's own track alone.</p>
+<h2 id="when-a-shape-appears">When a shape appears<a class="headerlink" href="#when-a-shape-appears" title="Permanent link">&para;</a></h2>
+<p>A shape is backdrop by default: drawn from the moment the view it backs is on screen,
+whether or not anything has been triggered. That is what a halo behind a card wants, and
+exactly what a shape that is <em>part</em> of the animation — the puff a button gives off when it
+is pressed — does not. Left as backdrop, that puff sits there in full view for however long
+the app waits to trigger the track.</p>
+<p>Turning <strong>Show Before</strong> off says so outright: nothing is drawn until the run is on screen,
+and the shape appears with it. It replaces the workaround of authoring an opacity of zero
+into the first keyframe of a track the shape did not otherwise need.</p>
+<ul>
+<li>The shape being worked on stays drawn in the editor whatever this says, since a shape that
+  vanished until the timeline was rolling could not be authored at all. The green border is
+  the sign that it is being shown for the editor's sake.</li>
+<li>A nested shape has no say. It is drawn into its parent's canvas, so it comes and goes with
+  the parent — which is why the panel dims the toggle there, alongside Position and Own
+  Canvas.</li>
+<li>All three runtimes read it, and a file written before it existed reads back as backdrop.</li>
+</ul>
 <h2 id="placing-a-shape-in-its-parent">Placing a shape in its parent<a class="headerlink" href="#placing-a-shape-in-its-parent" title="Permanent link">&para;</a></h2>
 <p>A shape's corners are drawn about the origin of whatever holds it, so every inserted vector
-starts dead centre. To move it, use the <strong>transform column</strong> to the right of the viewport
-with drawing mode <strong>on</strong> and recording <strong>off</strong> — the column is titled <em>Offset</em> there.</p>
+starts dead centre. To move it, drag it with drawing mode <strong>on</strong> and recording <strong>off</strong> —
+either by its handles on the canvas, or with the <strong>transform column</strong> to the right of the
+viewport, which is titled <em>Offset</em> there.</p>
 <p>It takes the same five properties a keyframe does — translate, rotate, rotate center, scale
 and opacity — and the translation is in the same units as the size: multiples of the shorter
 side of whatever holds the shape. An offset of <code>0.5</code> across moves it by half the view's
@@ -1562,25 +1670,36 @@ has to stay a layer of its own so something can be stacked between it and its ne
 than a backdrop: the corners say what is drawn, the track says how it moves, and the view it
 was authored against carries both.</p>
 <ol>
-<li><strong>Select the shape</strong> in the hierarchy — over the app or over the canvas, either works.</li>
+<li><strong><a href="#picking-a-shape">Pick the shape</a></strong> — a hierarchy row, a click in the viewport, or a
+   click on the canvas.</li>
 <li><strong>Position the playhead.</strong></li>
-<li><strong>Arm recording.</strong></li>
-<li><strong>Drag the shape</strong> in the app viewport, or move the transform column's sliders.</li>
+<li><strong>Arm recording.</strong> On the canvas, also turn <a href="../timeline/#hiding-the-animations">Hide
+   Animations</a> back off, or the take will be recorded
+   against drawings the canvas is holding still.</li>
+<li><strong>Drag the shape</strong> — in the app viewport or on the shape canvas — or move the transform
+   column's sliders.</li>
 </ol>
 <p>A shape that was never animated is given a track here, starting from where it was drawn.
 Its keypoints appear on the timeline as a row indented under the view it is drawn behind,
 marked with a scribble icon — a shape moves <em>with</em> that view as well as on its own track,
 and the indent is what says so. The same rows appear in the animations outline, grouped
 under the animation that carries them.</p>
-<p>Nested shapes are the exception: they have nothing a track could move, so the transform
-column stays on placement for them however recording is set.</p>
+<p>Nested shapes are the exception: they have nothing a track could move, so the tools and the
+transform column stay on placement for them however recording is set.</p>
 <h2 id="hiding-and-deleting">Hiding and deleting<a class="headerlink" href="#hiding-and-deleting" title="Permanent link">&para;</a></h2>
 <p><strong>Hide</strong> — the eye button on every hierarchy row while drawing mode is on. Hiding is a way
 of getting at what is drawn underneath while you work: it is the editor's own state, is
 never written to the project, and the app under test goes on drawing everything.</p>
-<p><strong>Delete</strong> — right-click a shape row in either hierarchy and choose <strong>Delete <em>shape</em></strong>. It
-is taken at its word with no confirmation, the same as deleting a keypoint, and it takes
-everything nested inside the shape with it.</p>
+<p><strong>Delete the shape</strong> — right-click a shape row in either hierarchy and choose <strong>Delete
+<em>shape</em></strong>. It is taken at its word with no confirmation, the same as deleting a keypoint,
+and it takes everything nested inside the shape with it.</p>
+<p><strong>Delete its track</strong> — right-click the drawing's row in the animations outline and choose
+<strong>Delete Shape Animation</strong>. Only the track goes; the shape stays on the canvas, sitting
+where its placement puts it, ready to record another. No confirmation here either.</p>
+<p>Deleting the <strong>animation</strong> a drawing belongs to takes the drawing with it. A shape is stored
+on the schema of the view it is drawn behind rather than beside the animations, so it has
+nowhere left to be — the same bargain a nested shape makes with its parent. That one does
+ask first.</p>
 <h2 id="what-gets-written">What gets written<a class="headerlink" href="#what-gets-written" title="Permanent link">&para;</a></h2>
 <p>Shapes live on the animation schema of the view they are drawn against, under a <code>shapes</code>
 key, and are saved with everything else — autosave every 10 seconds, or when you close the

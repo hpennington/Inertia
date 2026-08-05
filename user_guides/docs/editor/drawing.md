@@ -55,6 +55,11 @@ rectangle, square, circle, oval, triangle.
 | Position | Behind | Which side of the view's own content the shape is drawn on: **Behind** or **In Front**. |
 | Own Canvas | Off | Whether the shape gets a rendering layer to itself. See [Stacking](#stacking). |
 
+Every shape is inserted as backdrop — drawn from the moment the view it backs is on screen,
+whether or not anything has been triggered. A shape that should appear *with* the animation
+instead is that said in the properties panel afterwards; see [When a shape
+appears](#when-a-shape-appears).
+
 **Insert** stays disabled for a shape that would be invisible: one with neither a fill nor
 a stroke, or one measuring nothing in a direction.
 
@@ -70,29 +75,63 @@ the same file as the keyframes.
 ## Drawing mode
 
 The toggle at the **bottom of the tool palette** (the scribble icon) swaps the viewport
-between your live app and the **shape canvas**. Three things change with it:
+between your live app and the **shape canvas**. What changes with it:
 
 | | Over the app | Over the canvas |
 | --- | --- | --- |
 | Viewport | Your app, live | Every drawing the app is currently showing, on its own |
-| Hierarchy | Multi-select, no visibility controls | One row at a time, with a show/hide button per row |
+| Hierarchy | Multi-select, focus toggle, no visibility controls | One row at a time, with a show/hide button per row |
 | Right panel | The animations outline | The [shape properties](#shape-properties) of the picked shape |
-| Transform column, recording off | Moves where a track starts from | Places the picked shape in its parent |
-| Transform column, recording on | Writes a keyframe at the playhead | Writes a keyframe at the playhead |
+| Timeline | As you left it | [Animations hidden](timeline.md#hiding-the-animations) on the way in, restored on the way out |
+| Clock | The runtime's own | The editor's |
+| Drag or transform column, recording off | Moves where a track starts from | Places the picked shape in its parent |
+| Drag or transform column, recording on | Writes a keyframe at the playhead | Writes a keyframe at the playhead |
 
 The canvas is the same Metal renderer the runtime draws with, on a stage the size of the
 device screen, so a shape drawn small reads as small rather than blown up to fill the
 panel. Each drawing is centred, because the middle of a view is what its shapes are
 measured from — two views carrying drawings therefore overlap, which is what the hierarchy's
-eye buttons are for.
+eye buttons are for. The drawing holding the picked shape comes to the front, so nothing
+drawn over it covers its border, its handles, or the presses meant for them.
 
-**It plays.** Everything on the canvas is drawn at the editor's playhead: press
-<kbd>Space</kbd> or scrub, and the canvas shows the frame the app under test is showing,
-with none of the app's own views over it.
+**It is edited.** The picked shape grows the same handles the app under test grows for the
+active tool, on the same geometry, and a drag on them is a drag on the shape — moved,
+turned, scaled and faded here as well as over there. What the drag lands on is the toolset's
+to say, which is the fork the table above draws.
+
+**It plays**, off the editor's own clock rather than the app's. The runtime is parked while
+the canvas is up: it is behind the canvas and nobody is watching it, and a run left going
+there would walk away from the frame the canvas is drawing. Playback carries across the swap
+in both directions, and closing the canvas hands the app the playhead you can see before
+telling it to play on.
+
+Opening the canvas also [hides the animations](timeline.md#hiding-the-animations), so every
+drawing sits where it was drawn while you place it. Turn the timeline's toggle back off to
+watch a run on the canvas.
 
 What is *on* the canvas is not what is selected. The whole of the app's drawing is shown
 whatever you pick; selection only says which shape the properties panel describes, which
-one the tools move, and which one gets the green border.
+one the tools reach, and which one gets the green border and the handles.
+
+## Picking a shape
+
+Three ways in, all writing the same selection — pick a shape one way and its row lights up
+the other:
+
+- **Its row in the hierarchy**, over the app or over the canvas.
+- **Clicking it in the app viewport**, with focus on. A shape is backdrop in a shipped
+  build and takes no touches there at all; this is editor mode only.
+- **Clicking it on the shape canvas.**
+
+A click has to land on the *artwork*, not on the box around it. A press in the corner beside
+a circle, or in the margin beside a triangle's slope, falls through to whatever is behind
+instead of being swallowed by a backdrop you cannot see there — and an unfilled shape is its
+outline and nothing more, so a press through the middle of a ring misses it too. Nested
+shapes are picked this way as well, even though they have no box of their own: the shape a
+press lands on is worked out by testing the point against the drawing, innermost and
+front-most first.
+
+Clicking a picked shape again puts it back down.
 
 !!! note "An empty canvas"
 
@@ -118,6 +157,7 @@ the canvas both follow the picker.
 | Z-Index | Order among its siblings. Higher draws in front. |
 | Position | Behind or in front of the view's content. Dim for a nested shape. |
 | Own Canvas | Whether the shape is a rendering layer of its own. Dim for a nested shape. |
+| Show Before | Whether the shape is drawn while the animation waits to play, or only once it is playing. Dim for a nested shape. See [When a shape appears](#when-a-shape-appears). |
 
 The stroke is drawn **inside** the outline, so adding one never moves the shape or grows
 the box it occupies. A stroke thicker than half the shape's smaller side is held there and
@@ -127,11 +167,32 @@ Editing properties is not recording. A description is what the shape *is* before
 plays, so it lands wherever the playhead is parked and whether or not recording is armed,
 and it leaves the shape's own track alone.
 
+## When a shape appears
+
+A shape is backdrop by default: drawn from the moment the view it backs is on screen,
+whether or not anything has been triggered. That is what a halo behind a card wants, and
+exactly what a shape that is *part* of the animation — the puff a button gives off when it
+is pressed — does not. Left as backdrop, that puff sits there in full view for however long
+the app waits to trigger the track.
+
+Turning **Show Before** off says so outright: nothing is drawn until the run is on screen,
+and the shape appears with it. It replaces the workaround of authoring an opacity of zero
+into the first keyframe of a track the shape did not otherwise need.
+
+- The shape being worked on stays drawn in the editor whatever this says, since a shape that
+  vanished until the timeline was rolling could not be authored at all. The green border is
+  the sign that it is being shown for the editor's sake.
+- A nested shape has no say. It is drawn into its parent's canvas, so it comes and goes with
+  the parent — which is why the panel dims the toggle there, alongside Position and Own
+  Canvas.
+- All three runtimes read it, and a file written before it existed reads back as backdrop.
+
 ## Placing a shape in its parent
 
 A shape's corners are drawn about the origin of whatever holds it, so every inserted vector
-starts dead centre. To move it, use the **transform column** to the right of the viewport
-with drawing mode **on** and recording **off** — the column is titled *Offset* there.
+starts dead centre. To move it, drag it with drawing mode **on** and recording **off** —
+either by its handles on the canvas, or with the **transform column** to the right of the
+viewport, which is titled *Offset* there.
 
 It takes the same five properties a keyframe does — translate, rotate, rotate center, scale
 and opacity — and the translation is in the same units as the size: multiples of the shorter
@@ -192,10 +253,14 @@ A top-level shape can carry a track of its own, which is what makes it a drawing
 than a backdrop: the corners say what is drawn, the track says how it moves, and the view it
 was authored against carries both.
 
-1. **Select the shape** in the hierarchy — over the app or over the canvas, either works.
+1. **[Pick the shape](#picking-a-shape)** — a hierarchy row, a click in the viewport, or a
+   click on the canvas.
 2. **Position the playhead.**
-3. **Arm recording.**
-4. **Drag the shape** in the app viewport, or move the transform column's sliders.
+3. **Arm recording.** On the canvas, also turn [Hide
+   Animations](timeline.md#hiding-the-animations) back off, or the take will be recorded
+   against drawings the canvas is holding still.
+4. **Drag the shape** — in the app viewport or on the shape canvas — or move the transform
+   column's sliders.
 
 A shape that was never animated is given a track here, starting from where it was drawn.
 Its keypoints appear on the timeline as a row indented under the view it is drawn behind,
@@ -203,8 +268,8 @@ marked with a scribble icon — a shape moves *with* that view as well as on its
 and the indent is what says so. The same rows appear in the animations outline, grouped
 under the animation that carries them.
 
-Nested shapes are the exception: they have nothing a track could move, so the transform
-column stays on placement for them however recording is set.
+Nested shapes are the exception: they have nothing a track could move, so the tools and the
+transform column stay on placement for them however recording is set.
 
 ## Hiding and deleting
 
@@ -212,9 +277,18 @@ column stays on placement for them however recording is set.
 of getting at what is drawn underneath while you work: it is the editor's own state, is
 never written to the project, and the app under test goes on drawing everything.
 
-**Delete** — right-click a shape row in either hierarchy and choose **Delete _shape_**. It
-is taken at its word with no confirmation, the same as deleting a keypoint, and it takes
-everything nested inside the shape with it.
+**Delete the shape** — right-click a shape row in either hierarchy and choose **Delete
+_shape_**. It is taken at its word with no confirmation, the same as deleting a keypoint,
+and it takes everything nested inside the shape with it.
+
+**Delete its track** — right-click the drawing's row in the animations outline and choose
+**Delete Shape Animation**. Only the track goes; the shape stays on the canvas, sitting
+where its placement puts it, ready to record another. No confirmation here either.
+
+Deleting the **animation** a drawing belongs to takes the drawing with it. A shape is stored
+on the schema of the view it is drawn behind rather than beside the animations, so it has
+nowhere left to be — the same bargain a nested shape makes with its parent. That one does
+ask first.
 
 ## What gets written
 

@@ -89,6 +89,11 @@ Work down these in order:
 4. **Is the view on screen?** A shape is measured against the view it was authored on. If
    that view is not laid out in the app right now, there is nothing to measure it against and
    nothing is drawn.
+5. **Is Show Before off?** A shape with it off is not drawn until the animation is playing,
+   so in an app that has not triggered the track there is nothing on screen. In the editor
+   the *selected* shape stays drawn whatever it says, which is why this shows up in your app
+   and not in the viewport — see [When a shape
+   appears](editor/drawing.md#when-a-shape-appears).
 
 ## The shape canvas is empty
 
@@ -100,9 +105,32 @@ app is not currently showing).
 ## A nested shape will not move
 
 A shape drawn inside another has no rendering layer of its own, so it cannot carry a track
-— recording a drag on it does nothing. Move it with an offset instead: drawing mode on,
-recording off, and use the transform column. See
+— recording a drag on it does nothing, and the tools go dim for it while recording is
+armed. Move it with an offset instead: drawing mode on, recording off, then drag its
+handles on the canvas or use the transform column. See
 [Placing a shape in its parent](editor/drawing.md#placing-a-shape-in-its-parent).
+
+## Clicking a shape in the viewport does not select it
+
+Two things to check:
+
+1. **Is focus on?** The scope button in the hierarchy panel's header is what puts the app
+   under test into editing mode. Without it, clicks go through to the app itself. There is
+   no focus button in drawing mode — the shape canvas takes clicks either way.
+2. **Did the click land on the artwork?** The hit region is the shape rather than the box
+   around it, so the corner beside a circle, the margin beside a triangle's slope, and the
+   hole through an unfilled ring all fall through to whatever is behind.
+
+The shape's row in the hierarchy always works, and picking it there lights up the same
+selection. See [Picking a shape](editor/drawing.md#picking-a-shape).
+
+## The timeline is greyed out
+
+**Hide Animations** is on — the toggle at the right-hand end of the transport row. It
+switches off the play button, the record button, the loop duration field and the rows
+underneath, and it is turned on for you when you open the shape canvas. Turn it off to get
+the timeline back. Nothing has been lost: the tracks are untouched. See [Hiding the
+animations](editor/timeline.md#hiding-the-animations).
 
 ## Shapes stack differently on Android or the web
 
@@ -177,6 +205,12 @@ If nothing at all moves and the hierarchy panel is populated, check the containe
 any runtime: the editor sends its schemas to the container id `animation`, and the runtime
 drops schemas addressed to any other container.
 
+None of this applies over the **shape canvas**. There the editor draws the schemas itself
+and times them off its own clock, so play runs whether or not your app ever triggered
+anything — and while the canvas is up the app is deliberately parked. If the canvas is
+still, check that the animations are not [hidden](editor/timeline.md#hiding-the-animations),
+which opening the canvas does for you.
+
 ## A view jumps between poses instead of moving
 
 A keyframe `duration` that is zero, negative or non-finite. Interpolation divides by the
@@ -230,15 +264,20 @@ Either keep the editor at 3 seconds, or — on SwiftUI, the runtime that exposes
 ## Scrubbing the playhead does nothing
 
 Scrubbing is disabled during playback — pause first with <kbd>Space</kbd> or the transport
-button. While playing, the playhead is reporting the runtime's clock rather than driving
-it.
+button. While playing, the playhead is reporting a clock's position rather than driving it:
+the runtime's while your app is in the viewport, the editor's own while the shape canvas
+is.
+
+It is also disabled, along with the rest of the timeline, while the animations are
+[hidden](editor/timeline.md#hiding-the-animations).
 
 ## <kbd>Space</kbd> does not play or pause
 
 The shortcut is suppressed while a text field has focus, so a space you type in the loop
 duration field, the web address bar, or a search box inserts a space instead of toggling
 playback. Click into the viewport and try again. It is also suppressed while the install
-sheet is open.
+sheet is open, and while the animations are hidden — the shortcut is the timeline's play
+button by another name, and that button is switched off there.
 
 ## Edits vanished after a crash
 

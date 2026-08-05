@@ -686,6 +686,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#hiding-the-animations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hiding the animations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#deleting-a-keyframe" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1163,6 +1174,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#hiding-the-animations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hiding the animations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#deleting-a-keyframe" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1230,13 +1252,19 @@ for each of its keyframes.</p>
 <td>How many seconds one loop lasts.</td>
 </tr>
 <tr>
+<td><strong>Hide Animations</strong></td>
+<td>Sets the animations aside and switches the rest of the timeline off. See <a href="#hiding-the-animations">Hiding the animations</a>.</td>
+</tr>
+<tr>
 <td>Playhead</td>
 <td>Drag to scrub. The app under test holds the frame the playhead points at.</td>
 </tr>
 </tbody>
 </table>
 <p><kbd>Space</kbd> works anywhere in the editor except while you are typing in a text
-field, so you can play back without moving the mouse out of the viewport.</p>
+field, so you can play back without moving the mouse out of the viewport. It is
+suppressed while the animations are hidden, for the same reason the play button is
+switched off there.</p>
 <h2 id="recording-a-keyframe">Recording a keyframe<a class="headerlink" href="#recording-a-keyframe" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Select</strong> the view in the simulator viewport.</li>
@@ -1254,8 +1282,14 @@ on its own track. Vectors nested inside another shape are the exception — they
 into their parent's geometry and have no track, so they are moved with an
 <a href="../drawing/#placing-a-shape-in-its-parent">offset</a> instead.</p>
 <p>Recording on top of an existing keypoint replaces it rather than stacking a second
-keyframe at the same time. Two keypoints closer together than a millisecond or so are
-treated as the same keypoint, because a zero-length keyframe cannot be interpolated.</p>
+keyframe at the same time — and it keeps the keypoint's id, so the timeline row and any
+modal opened on it stay pointing at the same thing. Two keypoints closer together than a
+millisecond or so are treated as the same keypoint, because a zero-length keyframe cannot
+be interpolated.</p>
+<p>The <a href="../overview/#transform-column">transform column</a> records too, and it waits for the
+release: off the record a slider authors every value it passes through, so the node
+follows the thumb, but with recording armed only the value you let go on is written. The
+ones on the way there would be a keypoint each at the same time on the timeline.</p>
 <div class="admonition warning">
 <p class="admonition-title">Nothing records without recording armed</p>
 <p>With recording off, dragging a selected view moves it in the viewport but writes
@@ -1267,8 +1301,11 @@ but it is the most common reason a drag seems not to have taken.</p>
 its track reaches at that time, so the simulator shows the frame the timeline is pointing
 at. It is the fastest way to check a pose.</p>
 <p>Scrubbing is disabled while the animation is playing. During playback the playhead is
-reporting the runtime's own clock position back to you, and dragging it would fight that
-clock.</p>
+reporting a clock's position back to you, and dragging it would fight that clock. Which
+clock depends on what is in the viewport: the runtime's while your app is there, since
+that is the thing actually animating, and the editor's own while the <a href="../drawing/#drawing-mode">shape
+canvas</a> stands in for it. Playback carries across the swap
+either way.</p>
 <h2 id="loop-duration">Loop duration<a class="headerlink" href="#loop-duration" title="Permanent link">&para;</a></h2>
 <p>The loop length is a property of the timeline, not of any one animation. Every track is
 padded out to the loop: a view that stops moving after half a second holds its final pose
@@ -1281,6 +1318,29 @@ restarting together.</p>
 </ul>
 <p>Changing it is pushed to the running app immediately, so playback in the simulator always
 covers the span the timeline draws.</p>
+<h2 id="hiding-the-animations">Hiding the animations<a class="headerlink" href="#hiding-the-animations" title="Permanent link">&para;</a></h2>
+<p><strong>Hide Animations</strong>, at the right-hand end of the transport row, sets the tracks aside.
+It is for working on the drawings themselves rather than on how they move: with it on,
+every vector on the <a href="../drawing/#drawing-mode">shape canvas</a> is drawn where it was drawn,
+untransformed, instead of wherever its track has carried it at the playhead.</p>
+<p>Turning it on stops playback and switches off everything below it — the play button, the
+record button, the loop duration field, and the rows themselves. The rows are dimmed
+rather than taken away: they are what the toggle is about, and a timeline that emptied
+itself would read as a project whose keyframes had gone. The toggle itself stays live,
+since it is the way back.</p>
+<p>Nothing is thrown away by it. The tracks are untouched, and turning it off puts every
+drawing back where the playhead had it.</p>
+<ul>
+<li>The initial values go with the rest. A track that starts a shape half a screen along is
+  still what is carrying it there, so leaving that one part on would keep the drawing away
+  from centre with no way to see where it actually sits.</li>
+<li>Only the transforms change. Which drawings are on screen, what is picked, and the sizes
+  they are drawn at are the same either way.</li>
+</ul>
+<p>Opening the shape canvas turns it on for you, because that is what the canvas is for: the
+tools there place a shape inside its parent, and a track playing over the top would be
+moving the very thing the drag is placing. Ask for a run on the canvas by turning the
+toggle back off; closing the canvas puts the setting back to whatever it was before.</p>
 <h2 id="deleting-a-keyframe">Deleting a keyframe<a class="headerlink" href="#deleting-a-keyframe" title="Permanent link">&para;</a></h2>
 <p>Right-click a keypoint on its row and choose <strong>Delete Keyframe</strong>.</p>
 <p>The remaining keyframes stay at the times they were recorded at. This is worth stating

@@ -1092,6 +1092,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#clicking-a-shape-in-the-viewport-does-not-select-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clicking a shape in the viewport does not select it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-timeline-is-greyed-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The timeline is greyed out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#shapes-stack-differently-on-android-or-the-web" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1335,6 +1357,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#clicking-a-shape-in-the-viewport-does-not-select-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clicking a shape in the viewport does not select it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-timeline-is-greyed-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The timeline is greyed out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#shapes-stack-differently-on-android-or-the-web" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1569,6 +1613,11 @@ answer to where the shape would go. See <a href="../editor/drawing/#inserting-a-
 <li><strong>Is the view on screen?</strong> A shape is measured against the view it was authored on. If
    that view is not laid out in the app right now, there is nothing to measure it against and
    nothing is drawn.</li>
+<li><strong>Is Show Before off?</strong> A shape with it off is not drawn until the animation is playing,
+   so in an app that has not triggered the track there is nothing on screen. In the editor
+   the <em>selected</em> shape stays drawn whatever it says, which is why this shows up in your app
+   and not in the viewport — see <a href="../editor/drawing/#when-a-shape-appears">When a shape
+   appears</a>.</li>
 </ol>
 <h2 id="the-shape-canvas-is-empty">The shape canvas is empty<a class="headerlink" href="#the-shape-canvas-is-empty" title="Permanent link">&para;</a></h2>
 <p>The message says which of three things happened: <strong>Waiting for the app to connect</strong> (no
@@ -1577,9 +1626,28 @@ or <strong>Nothing is drawn on the views on screen</strong> (the project's drawi
 app is not currently showing).</p>
 <h2 id="a-nested-shape-will-not-move">A nested shape will not move<a class="headerlink" href="#a-nested-shape-will-not-move" title="Permanent link">&para;</a></h2>
 <p>A shape drawn inside another has no rendering layer of its own, so it cannot carry a track
-— recording a drag on it does nothing. Move it with an offset instead: drawing mode on,
-recording off, and use the transform column. See
+— recording a drag on it does nothing, and the tools go dim for it while recording is
+armed. Move it with an offset instead: drawing mode on, recording off, then drag its
+handles on the canvas or use the transform column. See
 <a href="../editor/drawing/#placing-a-shape-in-its-parent">Placing a shape in its parent</a>.</p>
+<h2 id="clicking-a-shape-in-the-viewport-does-not-select-it">Clicking a shape in the viewport does not select it<a class="headerlink" href="#clicking-a-shape-in-the-viewport-does-not-select-it" title="Permanent link">&para;</a></h2>
+<p>Two things to check:</p>
+<ol>
+<li><strong>Is focus on?</strong> The scope button in the hierarchy panel's header is what puts the app
+   under test into editing mode. Without it, clicks go through to the app itself. There is
+   no focus button in drawing mode — the shape canvas takes clicks either way.</li>
+<li><strong>Did the click land on the artwork?</strong> The hit region is the shape rather than the box
+   around it, so the corner beside a circle, the margin beside a triangle's slope, and the
+   hole through an unfilled ring all fall through to whatever is behind.</li>
+</ol>
+<p>The shape's row in the hierarchy always works, and picking it there lights up the same
+selection. See <a href="../editor/drawing/#picking-a-shape">Picking a shape</a>.</p>
+<h2 id="the-timeline-is-greyed-out">The timeline is greyed out<a class="headerlink" href="#the-timeline-is-greyed-out" title="Permanent link">&para;</a></h2>
+<p><strong>Hide Animations</strong> is on — the toggle at the right-hand end of the transport row. It
+switches off the play button, the record button, the loop duration field and the rows
+underneath, and it is turned on for you when you open the shape canvas. Turn it off to get
+the timeline back. Nothing has been lost: the tracks are untouched. See <a href="../editor/timeline/#hiding-the-animations">Hiding the
+animations</a>.</p>
 <h2 id="shapes-stack-differently-on-android-or-the-web">Shapes stack differently on Android or the web<a class="headerlink" href="#shapes-stack-differently-on-android-or-the-web" title="Permanent link">&para;</a></h2>
 <p>All three runtimes honour <code>zIndex</code> and <strong>In Front</strong>, so a stack that comes out in file
 order — every shape behind the view's content — is an app running an older runtime than
@@ -1638,6 +1706,11 @@ panel.</p>
 <p>If nothing at all moves and the hierarchy panel is populated, check the container's <code>id</code> on
 any runtime: the editor sends its schemas to the container id <code>animation</code>, and the runtime
 drops schemas addressed to any other container.</p>
+<p>None of this applies over the <strong>shape canvas</strong>. There the editor draws the schemas itself
+and times them off its own clock, so play runs whether or not your app ever triggered
+anything — and while the canvas is up the app is deliberately parked. If the canvas is
+still, check that the animations are not <a href="../editor/timeline/#hiding-the-animations">hidden</a>,
+which opening the canvas does for you.</p>
 <h2 id="a-view-jumps-between-poses-instead-of-moving">A view jumps between poses instead of moving<a class="headerlink" href="#a-view-jumps-between-poses-instead-of-moving" title="Permanent link">&para;</a></h2>
 <p>A keyframe <code>duration</code> that is zero, negative or non-finite. Interpolation divides by the
 duration, so every runtime rewrites any such duration to 1ms before playing the track — the
@@ -1676,13 +1749,17 @@ timeline whose longest track ends at 4 seconds loops over 4 seconds in the app.<
 <code>inertia.loopDuration</code> in your app to the length you authored against.</p>
 <h2 id="scrubbing-the-playhead-does-nothing">Scrubbing the playhead does nothing<a class="headerlink" href="#scrubbing-the-playhead-does-nothing" title="Permanent link">&para;</a></h2>
 <p>Scrubbing is disabled during playback — pause first with <kbd>Space</kbd> or the transport
-button. While playing, the playhead is reporting the runtime's clock rather than driving
-it.</p>
+button. While playing, the playhead is reporting a clock's position rather than driving it:
+the runtime's while your app is in the viewport, the editor's own while the shape canvas
+is.</p>
+<p>It is also disabled, along with the rest of the timeline, while the animations are
+<a href="../editor/timeline/#hiding-the-animations">hidden</a>.</p>
 <h2 id="space-does-not-play-or-pause"><kbd>Space</kbd> does not play or pause<a class="headerlink" href="#space-does-not-play-or-pause" title="Permanent link">&para;</a></h2>
 <p>The shortcut is suppressed while a text field has focus, so a space you type in the loop
 duration field, the web address bar, or a search box inserts a space instead of toggling
 playback. Click into the viewport and try again. It is also suppressed while the install
-sheet is open.</p>
+sheet is open, and while the animations are hidden — the shortcut is the timeline's play
+button by another name, and that button is switched off there.</p>
 <h2 id="edits-vanished-after-a-crash">Edits vanished after a crash<a class="headerlink" href="#edits-vanished-after-a-crash" title="Permanent link">&para;</a></h2>
 <p>The editor autosaves every 10 seconds and on close, so a crash can cost the last few
 seconds of work. It deliberately will not save an empty animation store over a project

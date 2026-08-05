@@ -23,6 +23,11 @@ The tree of every tagged view in your app, as reported by the running app. Selec
 here selects it in the viewport; selecting in the viewport selects it here. Nodes only
 appear once the app has connected — an empty tree means no connection.
 
+The scope button in the panel's header is **focus**. It puts the app under test into
+editing mode, which is what makes its views answer to a click and a drag rather than
+passing both through to the app itself. Selecting a view or a drawn shape by clicking it
+in the viewport needs it on; picking rows here works either way.
+
 Vectors drawn against a view are listed underneath it, with anything nested inside them
 listed under that — see [Drawing vectors](drawing.md).
 
@@ -46,9 +51,13 @@ While you drag a selected view, guides are drawn over the viewport: the containe
 lines, plus dashed lines tracking the view's edges and center. They make it possible to
 line something up against the container rather than by eye. All three runtimes draw them.
 
+A shape drawn against a view is picked by clicking it too, in editor mode, and the click
+has to land on the artwork — the corner beside a circle, or the margin beside a triangle's
+slope, goes through to whatever is behind it. See [Drawing vectors](drawing.md).
+
 The scribble toggle at the bottom of the tool palette replaces the app with the **shape
-canvas** — the vectors you have drawn, by themselves, playing at the same playhead. See
-[Drawing vectors](drawing.md#drawing-mode).
+canvas** — the vectors you have drawn, by themselves, drawn and dragged with the app
+nowhere in the picture. See [Drawing vectors](drawing.md#drawing-mode).
 
 ### Tool palette
 
@@ -57,6 +66,11 @@ The narrow column between the hierarchy and the viewport. The top half is the fi
 deciding what a drag on the selected node changes. They are modal: off the record a gesture
 moves where the animation *starts* from, and with recording armed the same gesture writes a
 keyframe at the playhead. The palette turns red to say which of the two it is in.
+
+The active tool hangs its handles on whatever is selected, over the app and over the shape
+canvas alike — the same knobs on the same geometry either way. What a drag lands on is what
+differs: over the canvas the transform toolset places the picked shape in its parent rather
+than moving a view there is no app to move. See [Drawing vectors](drawing.md#drawing-mode).
 
 The lower half is the **vector palette**, which draws shapes into the selected view, and the
 scribble toggle at the very bottom swaps the viewport into drawing mode. Both are covered in
@@ -70,12 +84,18 @@ another view or scaled to nothing, it is not — and these edit the same values 
 has got to. An edit lands exactly where a drag would land it, so the column follows the
 palette's two modes rather than having any of its own.
 
+*When* a slider authors follows from that. Off the record it authors as it moves, so the
+node follows the thumb; recording, it waits for the release, because every value on the way
+there would otherwise be a keypoint at the same time on the timeline.
+
 ### Animations panel
 
 The animations available in the project, and which of them are attached to the selected
 node. A view with no attached animation has nothing to record into; attaching one gives
 it a track on the timeline. Drawings that carry a track of their own are listed under the
-animation that holds them.
+animation that holds them, and a drawing's row carries the one menu item that is about its
+track rather than about the shape: **Delete Shape Animation**, which takes the track off
+and leaves the drawing where it is.
 
 While drawing mode is on, this panel describes the selected shape instead — see [Shape
 properties](drawing.md#shape-properties).
@@ -83,7 +103,10 @@ properties](drawing.md#shape-properties).
 ### Timeline
 
 The playhead, the transport controls, and one row of keypoints per animated view. This
-is where authoring happens — see [Timeline and keyframes](timeline.md).
+is where authoring happens — see [Timeline and keyframes](timeline.md). **Hide
+Animations**, at the right-hand end of the transport row, sets the tracks aside and
+switches the rest of the timeline off — see [Hiding the
+animations](timeline.md#hiding-the-animations).
 
 ## Framework picker
 

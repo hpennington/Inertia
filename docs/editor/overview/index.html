@@ -1322,6 +1322,10 @@ reports, and records what you drag as keyframes on a timeline.</p>
 <p>The tree of every tagged view in your app, as reported by the running app. Selecting a node
 here selects it in the viewport; selecting in the viewport selects it here. Nodes only
 appear once the app has connected — an empty tree means no connection.</p>
+<p>The scope button in the panel's header is <strong>focus</strong>. It puts the app under test into
+editing mode, which is what makes its views answer to a click and a drag rather than
+passing both through to the app itself. Selecting a view or a drawn shape by clicking it
+in the viewport needs it on; picking rows here works either way.</p>
 <p>Vectors drawn against a view are listed underneath it, with anything nested inside them
 listed under that — see <a href="../drawing/">Drawing vectors</a>.</p>
 <h3 id="viewport">Viewport<a class="headerlink" href="#viewport" title="Permanent link">&para;</a></h3>
@@ -1360,15 +1364,22 @@ and React runtimes. Compose does not send it, so it stays blank on the Android t
 <p>While you drag a selected view, guides are drawn over the viewport: the container's center
 lines, plus dashed lines tracking the view's edges and center. They make it possible to
 line something up against the container rather than by eye. All three runtimes draw them.</p>
+<p>A shape drawn against a view is picked by clicking it too, in editor mode, and the click
+has to land on the artwork — the corner beside a circle, or the margin beside a triangle's
+slope, goes through to whatever is behind it. See <a href="../drawing/">Drawing vectors</a>.</p>
 <p>The scribble toggle at the bottom of the tool palette replaces the app with the <strong>shape
-canvas</strong> — the vectors you have drawn, by themselves, playing at the same playhead. See
-<a href="../drawing/#drawing-mode">Drawing vectors</a>.</p>
+canvas</strong> — the vectors you have drawn, by themselves, drawn and dragged with the app
+nowhere in the picture. See <a href="../drawing/#drawing-mode">Drawing vectors</a>.</p>
 <h3 id="tool-palette">Tool palette<a class="headerlink" href="#tool-palette" title="Permanent link">&para;</a></h3>
 <p>The narrow column between the hierarchy and the viewport. The top half is the five
 <strong>tools</strong> — Move, Rotate, Rotation Center, Opacity, Scale — one of which is always active,
 deciding what a drag on the selected node changes. They are modal: off the record a gesture
 moves where the animation <em>starts</em> from, and with recording armed the same gesture writes a
 keyframe at the playhead. The palette turns red to say which of the two it is in.</p>
+<p>The active tool hangs its handles on whatever is selected, over the app and over the shape
+canvas alike — the same knobs on the same geometry either way. What a drag lands on is what
+differs: over the canvas the transform toolset places the picked shape in its parent rather
+than moving a view there is no app to move. See <a href="../drawing/#drawing-mode">Drawing vectors</a>.</p>
 <p>The lower half is the <strong>vector palette</strong>, which draws shapes into the selected view, and the
 scribble toggle at the very bottom swaps the viewport into drawing mode. Both are covered in
 <a href="../drawing/">Drawing vectors</a>.</p>
@@ -1378,16 +1389,24 @@ a slider and a field. A drag needs the node to be somewhere reachable — off-sc
 another view or scaled to nothing, it is not — and these edit the same values wherever it
 has got to. An edit lands exactly where a drag would land it, so the column follows the
 palette's two modes rather than having any of its own.</p>
+<p><em>When</em> a slider authors follows from that. Off the record it authors as it moves, so the
+node follows the thumb; recording, it waits for the release, because every value on the way
+there would otherwise be a keypoint at the same time on the timeline.</p>
 <h3 id="animations-panel">Animations panel<a class="headerlink" href="#animations-panel" title="Permanent link">&para;</a></h3>
 <p>The animations available in the project, and which of them are attached to the selected
 node. A view with no attached animation has nothing to record into; attaching one gives
 it a track on the timeline. Drawings that carry a track of their own are listed under the
-animation that holds them.</p>
+animation that holds them, and a drawing's row carries the one menu item that is about its
+track rather than about the shape: <strong>Delete Shape Animation</strong>, which takes the track off
+and leaves the drawing where it is.</p>
 <p>While drawing mode is on, this panel describes the selected shape instead — see <a href="../drawing/#shape-properties">Shape
 properties</a>.</p>
 <h3 id="timeline">Timeline<a class="headerlink" href="#timeline" title="Permanent link">&para;</a></h3>
 <p>The playhead, the transport controls, and one row of keypoints per animated view. This
-is where authoring happens — see <a href="../timeline/">Timeline and keyframes</a>.</p>
+is where authoring happens — see <a href="../timeline/">Timeline and keyframes</a>. <strong>Hide
+Animations</strong>, at the right-hand end of the transport row, sets the tracks aside and
+switches the rest of the timeline off — see <a href="../timeline/#hiding-the-animations">Hiding the
+animations</a>.</p>
 <h2 id="framework-picker">Framework picker<a class="headerlink" href="#framework-picker" title="Permanent link">&para;</a></h2>
 <p>A segmented control above the animations panel chooses the target: <strong>Web</strong>, <strong>iOS</strong> or
 <strong>Android</strong>. Switching it swaps the viewport and points the editor at that runtime's

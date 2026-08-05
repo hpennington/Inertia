@@ -153,6 +153,7 @@ key, and every runtime rasterizes them itself.
 | `zIndex` | int | `0` | Order among its siblings — higher draws in front. Ties keep file order. |
 | `position` | `"bottom"` \| `"top"` | `"bottom"` | Behind the view's content, or over it. |
 | `ownCanvas` | bool | `false` | Whether the shape gets a rendering layer to itself. |
+| `showsBeforeAnimation` | bool | `true` | Whether the shape is drawn while the animation waits to play, or only once it is playing. See [When a shape is drawn](#when-a-shape-is-drawn). |
 | `transforms` | object | identity pose | Where the shape sits in whatever holds it — the same five values a keyframe carries, with `translate` in the units the shape is sized in. |
 | `animation` | object | none | A track of the shape's own, in exactly the format of the animation object above. |
 | `shapes` | array | `[]` | Shapes drawn inside this one, sized in multiples of *its* shorter side. |
@@ -202,13 +203,25 @@ into the geometry the renderer is handed, the same at every point on the timelin
 `animation` plays on top of it. It is also the only thing that moves a nested shape, which
 has no layer of its own and so ignores an `animation` of its own if one is written by hand.
 
+### When a shape is drawn
+
+`showsBeforeAnimation` says whether a shape is backdrop or part of the run. `true` — which
+is what an absent key means — is backdrop: the shape is drawn from the moment the view it
+belongs to is on screen, whether or not anything has been triggered. `false` keeps it off
+screen until the run is, and it appears with the animation.
+
+It is read on the shapes an animation holds directly. A nested shape is drawn into its
+parent's vertex buffer, so it appears and disappears with whatever it is drawn inside of
+and its own value is never consulted. All three runtimes honour the field.
+
 ### Backwards compatibility
 
 Every field above except `id` is optional on the wire, and each absent one means what shapes
 did before it existed: no z-index is the bottom of the stack in file order, no `position` is
-a backdrop, no `ownCanvas` is a shared layer, no `transforms` is drawn exactly where the
-corners say, no `shapes` is nothing nested inside. A file written before any of this reads
-back unchanged.
+a backdrop, no `ownCanvas` is a shared layer, no `showsBeforeAnimation` is a shape drawn
+whether or not anything is playing, no `transforms` is drawn exactly where the corners say,
+no `shapes` is nothing nested inside. A file written before any of this reads back
+unchanged.
 
 ## Loop length
 

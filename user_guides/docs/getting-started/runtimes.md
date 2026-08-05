@@ -81,10 +81,12 @@ keyframes are identical, the paths between them are not.
 All three runtimes rasterize the [vectors you draw in the editor](../editor/drawing.md)
 themselves — Metal on SwiftUI, OpenGL ES on Compose, WebGL on React — from the shapes
 carried in the animation file. Fills, strokes, nesting, per-shape placement, per-shape
-tracks and both stacking controls — `zIndex` and `position` — work the same everywhere.
+tracks, `showsBeforeAnimation`, and both stacking controls — `zIndex` and `position` — work
+the same everywhere.
 
-A file with no `zIndex` or `position` in it reads the same on all three as well: no
-z-index is the bottom of the stack in file order, and no `position` is a backdrop.
+A file missing any of those fields reads the same on all three as well: no z-index is the
+bottom of the stack in file order, no `position` is a backdrop, and no
+`showsBeforeAnimation` is a shape drawn whether or not anything is playing.
 
 ### Editor transport
 

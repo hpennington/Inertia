@@ -11,10 +11,13 @@ for each of its keyframes.
 | :material-play: / :material-pause: | Plays or pauses the loop. <kbd>Space</kbd> does the same thing. |
 | :material-record-circle: | Arms keyframe recording. Red means armed. |
 | Loop duration | How many seconds one loop lasts. |
+| **Hide Animations** | Sets the animations aside and switches the rest of the timeline off. See [Hiding the animations](#hiding-the-animations). |
 | Playhead | Drag to scrub. The app under test holds the frame the playhead points at. |
 
 <kbd>Space</kbd> works anywhere in the editor except while you are typing in a text
-field, so you can play back without moving the mouse out of the viewport.
+field, so you can play back without moving the mouse out of the viewport. It is
+suppressed while the animations are hidden, for the same reason the play button is
+switched off there.
 
 ## Recording a keyframe
 
@@ -35,8 +38,15 @@ into their parent's geometry and have no track, so they are moved with an
 [offset](drawing.md#placing-a-shape-in-its-parent) instead.
 
 Recording on top of an existing keypoint replaces it rather than stacking a second
-keyframe at the same time. Two keypoints closer together than a millisecond or so are
-treated as the same keypoint, because a zero-length keyframe cannot be interpolated.
+keyframe at the same time — and it keeps the keypoint's id, so the timeline row and any
+modal opened on it stay pointing at the same thing. Two keypoints closer together than a
+millisecond or so are treated as the same keypoint, because a zero-length keyframe cannot
+be interpolated.
+
+The [transform column](overview.md#transform-column) records too, and it waits for the
+release: off the record a slider authors every value it passes through, so the node
+follows the thumb, but with recording armed only the value you let go on is written. The
+ones on the way there would be a keypoint each at the same time on the timeline.
 
 !!! warning "Nothing records without recording armed"
 
@@ -51,8 +61,11 @@ its track reaches at that time, so the simulator shows the frame the timeline is
 at. It is the fastest way to check a pose.
 
 Scrubbing is disabled while the animation is playing. During playback the playhead is
-reporting the runtime's own clock position back to you, and dragging it would fight that
-clock.
+reporting a clock's position back to you, and dragging it would fight that clock. Which
+clock depends on what is in the viewport: the runtime's while your app is there, since
+that is the thing actually animating, and the editor's own while the [shape
+canvas](drawing.md#drawing-mode) stands in for it. Playback carries across the swap
+either way.
 
 ## Loop duration
 
@@ -67,6 +80,33 @@ restarting together.
 
 Changing it is pushed to the running app immediately, so playback in the simulator always
 covers the span the timeline draws.
+
+## Hiding the animations
+
+**Hide Animations**, at the right-hand end of the transport row, sets the tracks aside.
+It is for working on the drawings themselves rather than on how they move: with it on,
+every vector on the [shape canvas](drawing.md#drawing-mode) is drawn where it was drawn,
+untransformed, instead of wherever its track has carried it at the playhead.
+
+Turning it on stops playback and switches off everything below it — the play button, the
+record button, the loop duration field, and the rows themselves. The rows are dimmed
+rather than taken away: they are what the toggle is about, and a timeline that emptied
+itself would read as a project whose keyframes had gone. The toggle itself stays live,
+since it is the way back.
+
+Nothing is thrown away by it. The tracks are untouched, and turning it off puts every
+drawing back where the playhead had it.
+
+- The initial values go with the rest. A track that starts a shape half a screen along is
+  still what is carrying it there, so leaving that one part on would keep the drawing away
+  from centre with no way to see where it actually sits.
+- Only the transforms change. Which drawings are on screen, what is picked, and the sizes
+  they are drawn at are the same either way.
+
+Opening the shape canvas turns it on for you, because that is what the canvas is for: the
+tools there place a shape inside its parent, and a track playing over the top would be
+moving the very thing the drag is placing. Ask for a run on the canvas by turning the
+toggle back off; closing the canvas puts the setting back to whatever it was before.
 
 ## Deleting a keyframe
 

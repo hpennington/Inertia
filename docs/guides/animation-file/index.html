@@ -852,6 +852,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#when-a-shape-is-drawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When a shape is drawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#backwards-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1281,6 +1292,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#when-a-shape-is-drawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When a shape is drawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#backwards-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1561,6 +1583,12 @@ key, and every runtime rasterizes them itself.</p>
 <td>Whether the shape gets a rendering layer to itself.</td>
 </tr>
 <tr>
+<td><code>showsBeforeAnimation</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Whether the shape is drawn while the animation waits to play, or only once it is playing. See <a href="#when-a-shape-is-drawn">When a shape is drawn</a>.</td>
+</tr>
+<tr>
 <td><code>transforms</code></td>
 <td>object</td>
 <td>identity pose</td>
@@ -1656,12 +1684,21 @@ without dragging its neighbours along.</p>
 into the geometry the renderer is handed, the same at every point on the timeline — and an
 <code>animation</code> plays on top of it. It is also the only thing that moves a nested shape, which
 has no layer of its own and so ignores an <code>animation</code> of its own if one is written by hand.</p>
+<h3 id="when-a-shape-is-drawn">When a shape is drawn<a class="headerlink" href="#when-a-shape-is-drawn" title="Permanent link">&para;</a></h3>
+<p><code>showsBeforeAnimation</code> says whether a shape is backdrop or part of the run. <code>true</code> — which
+is what an absent key means — is backdrop: the shape is drawn from the moment the view it
+belongs to is on screen, whether or not anything has been triggered. <code>false</code> keeps it off
+screen until the run is, and it appears with the animation.</p>
+<p>It is read on the shapes an animation holds directly. A nested shape is drawn into its
+parent's vertex buffer, so it appears and disappears with whatever it is drawn inside of
+and its own value is never consulted. All three runtimes honour the field.</p>
 <h3 id="backwards-compatibility">Backwards compatibility<a class="headerlink" href="#backwards-compatibility" title="Permanent link">&para;</a></h3>
 <p>Every field above except <code>id</code> is optional on the wire, and each absent one means what shapes
 did before it existed: no z-index is the bottom of the stack in file order, no <code>position</code> is
-a backdrop, no <code>ownCanvas</code> is a shared layer, no <code>transforms</code> is drawn exactly where the
-corners say, no <code>shapes</code> is nothing nested inside. A file written before any of this reads
-back unchanged.</p>
+a backdrop, no <code>ownCanvas</code> is a shared layer, no <code>showsBeforeAnimation</code> is a shape drawn
+whether or not anything is playing, no <code>transforms</code> is drawn exactly where the corners say,
+no <code>shapes</code> is nothing nested inside. A file written before any of this reads back
+unchanged.</p>
 <h2 id="loop-length">Loop length<a class="headerlink" href="#loop-length" title="Permanent link">&para;</a></h2>
 <p>The file does not record how long the loop is. At runtime the loop is</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>max(loopDuration, longest track in the file)
