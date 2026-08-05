@@ -139,6 +139,10 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             && lhs.transforms == rhs.transforms
             && lhs.animation == rhs.animation
             && lhs.shapes == rhs.shapes
+            // Two shapes drawn at different times are not the same shape: this
+            // one decides whether the shape is on screen at all, and a schema
+            // arriving with it flipped has to redraw the canvas it belongs to.
+            && lhs.showsBeforeAnimation == rhs.showsBeforeAnimation
     }
 
     public var description: String {
@@ -192,6 +196,26 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// a nested shape is drawn into its parent's vertex buffer, so it has no
     /// canvas of its own to be given.
     public let ownCanvas: Bool
+
+    /// Whether this shape is drawn while the animation it belongs to is waiting
+    /// to play, or only once it is playing.
+    ///
+    /// A shape has always been backdrop: drawn from the moment the view it backs
+    /// is on screen, whether or not anything has been triggered. That is what a
+    /// halo behind a card wants, and exactly what a shape that is *part* of the
+    /// animation — the puff a button gives off when it is pressed — does not: it
+    /// sat there in full view for however long the app waited to trigger the
+    /// track, and the only way to keep it off screen until then was to author an
+    /// opacity of zero into the first keyframe of a track of its own.
+    ///
+    /// False is that said outright: nothing is drawn until the run is on screen,
+    /// and the shape appears with it. True is the backdrop every shape authored
+    /// before this was, which is what an absent key reads as.
+    ///
+    /// Read on the shapes an actionable holds directly. A nested shape is part
+    /// of its parent's drawing — drawn into the parent's vertex buffer — so it
+    /// appears and disappears with whatever it is drawn inside of.
+    public let showsBeforeAnimation: Bool
 
     /// Which side of the actionable's content this shape is drawn on — see
     /// `InertiaShapePosition`.
@@ -279,6 +303,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         case zIndex
         case position
         case ownCanvas
+        case showsBeforeAnimation
         case transforms
         case _vertices = "vertices"
         case animation
@@ -295,6 +320,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         zIndex: Int = 0,
         position: InertiaShapePosition = .bottom,
         ownCanvas: Bool = false,
+        showsBeforeAnimation: Bool = true,
         transforms: InertiaAnimationValues? = nil
     ) {
         self.id = id
@@ -305,6 +331,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         self.zIndex = zIndex
         self.position = position
         self.ownCanvas = ownCanvas
+        self.showsBeforeAnimation = showsBeforeAnimation
         self.transforms = transforms
     }
 
@@ -326,6 +353,9 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
         // Absent is a shape that shares, which is what every shape authored
         // before this asked for one did.
         ownCanvas = try container.decodeIfPresent(Bool.self, forKey: .ownCanvas) ?? false
+        // Absent is the backdrop a shape has always been: drawn whether or not
+        // anything is playing.
+        showsBeforeAnimation = try container.decodeIfPresent(Bool.self, forKey: .showsBeforeAnimation) ?? true
         // Absent is a shape drawn exactly where its corners say — the identity
         // placement every shape authored before this had.
         transforms = try container.decodeIfPresent(InertiaAnimationValues.self, forKey: .transforms)
@@ -348,6 +378,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             zIndex: zIndex,
             position: position,
             ownCanvas: ownCanvas,
+            showsBeforeAnimation: showsBeforeAnimation,
             transforms: transforms
         )
     }
@@ -363,6 +394,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             zIndex: zIndex,
             position: position,
             ownCanvas: ownCanvas,
+            showsBeforeAnimation: showsBeforeAnimation,
             transforms: transforms
         )
     }
@@ -380,6 +412,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
             zIndex: zIndex,
             position: position,
             ownCanvas: ownCanvas,
+            showsBeforeAnimation: showsBeforeAnimation,
             transforms: transforms
         )
     }

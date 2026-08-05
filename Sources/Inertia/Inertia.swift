@@ -1011,7 +1011,7 @@ struct InertiaActionable<Content: View>: View {
     /// an `MTKView`, and most actionables have no shapes at all.
     @ViewBuilder
     private func canvasView(for size: CGSize, at position: InertiaShapePosition) -> some View {
-        let shapes = self.shapes.filter { $0.position == position }
+        let shapes = self.shapes.filter { $0.position == position && isShowing($0) }
         if !shapes.isEmpty {
             InertiaShapesView(
                 vm: vm,
@@ -1137,6 +1137,21 @@ struct InertiaActionable<Content: View>: View {
 
         let time = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
         return timeline(for: animation).value(time: time).sanitized
+    }
+
+    /// Whether a shape is drawn at all right now — see
+    /// `InertiaShape.showsBeforeAnimation`.
+    ///
+    /// "Playing" is the same run being on screen that `shapeDisplayValues` reads
+    /// the track for, and for the same reason: a shape that appears with the
+    /// animation has to appear on the frame the animation starts drawing from,
+    /// not one frame either side of it.
+    func isShowing(_ shape: InertiaShape) -> Bool {
+        guard !shape.showsBeforeAnimation else { return true }
+        guard let inertiaDataModel else { return false }
+
+        let isPlaying = inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil
+        return isShowingTrack || (shape.animation?.invokeType == .auto && isPlaying)
     }
 
     var body: some View {
@@ -1725,7 +1740,7 @@ struct InertiaEditable<Content: View>: View {
     /// is what the app renders. See `InertiaActionable.canvasView(for:at:)`.
     @ViewBuilder
     private func canvasView(for size: CGSize, at position: InertiaShapePosition) -> some View {
-        let shapes = self.shapes.filter { $0.position == position }
+        let shapes = self.shapes.filter { $0.position == position && isShowing($0) }
         if !shapes.isEmpty {
             InertiaShapesView(
                 vm: vm,
@@ -1809,6 +1824,25 @@ struct InertiaEditable<Content: View>: View {
         guard isShowing else { return animation.initialValues.sanitized }
 
         return timeline(for: animation).value(time: inertiaDataModel.playheadTime).sanitized
+    }
+
+    /// Whether a shape is drawn at all right now — see
+    /// `InertiaActionable.isShowing(_:)`, which this mirrors.
+    ///
+    /// With one exception the shipped runtime has no use for: the shape being
+    /// worked on stays drawn whatever it says. Selection happens in the editor's
+    /// hierarchy, but everything done to a shape after that is done to the thing
+    /// on screen — dragged by its own box, sized by its handles — and a shape
+    /// that vanished until the timeline was rolling could not be authored at
+    /// all. The green border is already the sign that this one is being shown
+    /// for the editor's sake.
+    func isShowing(_ shape: InertiaShape) -> Bool {
+        guard !shape.showsBeforeAnimation else { return true }
+        guard let inertiaDataModel else { return false }
+        guard !(inertiaDataModel.isActionable && isSelected(shape: shape)) else { return true }
+
+        let isPlaying = inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil
+        return isShowingTrack || (shape.animation?.invokeType == .auto && isPlaying)
     }
 
     @MainActor
