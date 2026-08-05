@@ -119,6 +119,17 @@ struct InertiaShapesView: View {
     /// mode. See `InertiaShapeEditing`.
     var editing: InertiaShapeEditing? = nil
 
+    /// What a move on a shape was opened on.
+    private struct ShapeDrag {
+        /// The axis the arrow the press landed on pins this move to, or `nil` for
+        /// a press on the shape's own box, which is free in both.
+        let axis: InertiaTranslateAxis?
+    }
+
+    /// The move in progress, or nil between them. One slot rather than one per
+    /// shape: a drag is a pointer, and there is only ever the one.
+    @State private var shapeDrag: ShapeDrag? = nil
+
     /// The length a shape's coordinates are multiples of, across and down
     /// alike: the shorter side of the actionable's box.
     ///
@@ -288,7 +299,7 @@ struct InertiaShapesView: View {
                 .strokeBorder(Color.green, lineWidth: 2)
                 .allowsHitTesting(false)
 
-            InertiaToolHandles(
+            let handles = InertiaToolHandles(
                 tool: editing.tool,
                 values: values,
                 layoutFrame: layoutFrame,
@@ -300,30 +311,100 @@ struct InertiaShapesView: View {
             )
 
             if editing.tool == .translate {
-                // A free move, dragged by the shape itself. The drag is reported
-                // in the container's space and the offset it feeds lands inside
-                // the actionable's transform, so it is carried back through that
-                // before being applied — see `InertiaAnimationValues.unapplying`.
-                Color.clear
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(coordinateSpace: .named(editing.containerSpace ?? ""))
-                            .onChanged { value in
-                                editing.onChange(
-                                    shape,
-                                    InertiaToolEdit(translate: editing.outer.values.unapplying(value.translation))
-                                )
-                            }
-                            .onEnded { value in
-                                editing.onChange(
-                                    shape,
-                                    InertiaToolEdit(translate: editing.outer.values.unapplying(value.translation))
-                                )
-                                editing.onEnded(shape)
-                            }
-                    )
+                // The move tool's chrome carries no gesture of its own — see
+                // `InertiaTranslateAxes` — so the drag that runs it has to be
+                // above the arrows rather than beside them: a press on an arrow
+                // hangs outside the shape's box, finds no gesture there, and is
+                // offered to this one. The shape's own box is under them, which
+                // is the free move.
+                //
+                // The arrows over the clear body rather than beneath it, so a
+                // press near an edge grabs the arrow it landed on rather than
+                // the box behind it.
+                ZStack(alignment: .topLeading) {
+                    Color.clear.contentShape(Rectangle())
+                    handles
+                }
+                .gesture(translateGesture(for: shape, editing: editing, layoutFrame: layoutFrame, values: values))
+            } else {
+                handles
             }
         }
+    }
+
+    /// A move on a selected shape, free or pinned to one of the move tool's two
+    /// axis arrows.
+    ///
+    /// The drag is reported in the container's space, which is where the arrows
+    /// are placed and so the only space a press can be tested against. What it
+    /// authors is an offset stacked *inside* the actionable's transform, so the
+    /// screen-space drag is pinned to its axis first and only then carried back
+    /// through that transform — see `InertiaAnimationValues.unapplying`. Pinning
+    /// after would pin it to an axis of the actionable's rather than the
+    /// screen's.
+    private func translateGesture(
+        for shape: InertiaShape,
+        editing: InertiaShapeEditing,
+        layoutFrame: CGRect,
+        values: InertiaAnimationValues
+    ) -> some Gesture {
+        func translate(_ drag: ShapeDrag, by translation: CGSize) -> InertiaToolEdit {
+            InertiaToolEdit(
+                translate: editing.outer.values.unapplying(drag.axis?.constrain(translation) ?? translation)
+            )
+        }
+
+        return DragGesture(coordinateSpace: .named(editing.containerSpace ?? ""))
+            .onChanged { value in
+                let drag = shapeDrag ?? beginDrag(at: value.startLocation, editing: editing, layoutFrame: layoutFrame, values: values)
+                editing.onChange(shape, translate(drag, by: value.translation))
+            }
+            .onEnded { value in
+                let drag = shapeDrag ?? beginDrag(at: value.startLocation, editing: editing, layoutFrame: layoutFrame, values: values)
+                editing.onChange(shape, translate(drag, by: value.translation))
+                shapeDrag = nil
+                editing.onEnded(shape)
+            }
+    }
+
+    /// Opens a move, keyed off the axis arrow the press landed on — if any — as
+    /// the arrows are drawn right now, before this gesture has moved anything.
+    ///
+    /// Taken once rather than tested per event, because this gesture is what
+    /// carries the arrow away from the press that grabbed it. Assigned during
+    /// `onChanged`, which is what makes the first event of a gesture the one that
+    /// opens it. Mirrors `InertiaEditable.beginBodyDrag(at:)`.
+    private func beginDrag(
+        at location: CGPoint,
+        editing: InertiaShapeEditing,
+        layoutFrame: CGRect,
+        values: InertiaAnimationValues
+    ) -> ShapeDrag {
+        // Where the shape's box is drawn in the container, and how big: carried
+        // out through both the transforms it sits inside, its own and then the
+        // actionable's, the way `InertiaToolHandles` carries a gesture's anchor
+        // out. That drawn box is what the arrows are placed around.
+        let center = editing.outer.values.drawnContainerPoint(
+            values.drawnPoint(
+                CGPoint(x: layoutFrame.width / 2, y: layoutFrame.height / 2),
+                in: layoutFrame,
+                containerSize: containerSize
+            ),
+            in: editing.outer.layoutFrame,
+            containerSize: containerSize
+        )
+        let scale = values.scale * editing.outer.values.scale
+
+        let drag = ShapeDrag(
+            axis: InertiaTranslateAxes.axis(
+                at: location,
+                drawnCenter: center,
+                drawnSize: CGSize(width: layoutFrame.width * scale, height: layoutFrame.height * scale)
+            )
+        )
+
+        shapeDrag = drag
+        return drag
     }
 }
 

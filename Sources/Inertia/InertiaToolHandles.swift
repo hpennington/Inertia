@@ -468,11 +468,17 @@ struct InertiaToolHandles: View {
     ///
     /// Counter-rotated as a group, so they keep pointing along the screen's axes
     /// rather than the node's — which is what they pin a drag to. Undoing the sum
-    /// of the two rotations the node carries, about this group's own center,
-    /// leaves that center exactly where the node's transform put it — a rotation
-    /// fixes its own anchor — and cancels the turn the arrows would otherwise
-    /// inherit, since a uniform scale commutes with a rotation and the scale is
-    /// all that is left.
+    /// of the rotations carried above these handles, about this group's own
+    /// center, leaves that center exactly where the transforms put it — a
+    /// rotation fixes its own anchor — and cancels the turn the arrows would
+    /// otherwise inherit, since a uniform scale commutes with a rotation and the
+    /// scale is all that is left.
+    ///
+    /// Both transforms, for the same reason `chromeScale` divides by both: a
+    /// shape's handles sit inside the actionable's animation as well as the
+    /// shape's own, and an arrow that inherited the actionable's turn would point
+    /// somewhere `InertiaTranslateAxes` — which measures a press against the
+    /// screen's axes — is not looking.
     ///
     /// Hittable and gestureless. A press has to land on *something* for the
     /// node's own drag to be offered it, and an arrow hangs outside the node's
@@ -486,7 +492,14 @@ struct InertiaToolHandles: View {
             }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
-        .rotationEffect(Angle(degrees: -(values.rotate + values.rotateCenter)))
+        .rotationEffect(Angle(degrees: -drawnRotation))
+    }
+
+    /// Every degree of turn the chrome is drawn inside of: the node's own two
+    /// rotations, and the outer transform's two for a shape.
+    private var drawnRotation: CGFloat {
+        values.rotate + values.rotateCenter
+            + (outer?.values.rotate ?? 0) + (outer?.values.rotateCenter ?? 0)
     }
 
     @ViewBuilder
