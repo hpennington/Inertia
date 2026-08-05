@@ -1996,6 +1996,17 @@ struct InertiaEditable<Content: View>: View {
         }
     }
 
+    /// Free of playback state, the same as `InertiaActionable.getAnimation` —
+    /// what an actionable *has* is not what it is doing, and whether the run is
+    /// on screen is `isShowingTrack`'s to say.
+    ///
+    /// This used to hold out for a triggered animation, which threw away the one
+    /// thing an untriggered node still has to show: the values its animation
+    /// starts from. An edit is written into exactly those values and handed
+    /// straight back, so a node dragged before anything had played snapped back
+    /// to where it was laid out the moment the new schema landed and its gesture
+    /// was folded in — and stayed there until the first play triggered it, at
+    /// which point every edit made until then appeared at once.
     var getAnimation: InertiaAnimationSchema? {
         guard let inertiaDataModel else {
             InertiaLog.debug("inertiaDataModel is nil")
@@ -2004,10 +2015,6 @@ struct InertiaEditable<Content: View>: View {
 
         guard let hierarchyId else {
             InertiaLog.debug("hierarchyId is nil")
-            return nil
-        }
-
-        guard inertiaDataModel.states[hierarchyIdPrefix]?.trigger == true else {
             return nil
         }
 

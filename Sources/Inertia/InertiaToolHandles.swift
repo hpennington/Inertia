@@ -9,6 +9,14 @@
 //  tool drives exactly one property of `InertiaAnimationValues` and reports the
 //  whole transform back — see `InertiaMessage.MessageEdit`.
 //
+//  Public because the editor draws them too. Its shape canvas is the app's
+//  drawings on a stage of their own, with no app under test on it to take a
+//  gesture, so the same chrome is hung on the same geometry over there and the
+//  edit is written straight into the project — see `ShapeCanvasView`. One set of
+//  handles rather than a second set that merely looks like these: a knob is a
+//  size, a reach and a hit area as much as an appearance, and two copies of
+//  those drift.
+//
 
 import SwiftUI
 
@@ -19,24 +27,38 @@ import SwiftUI
 /// *is* at, and the editor folds a gesture into it and pushes it back, at which
 /// point this returns to `.none`. Holding it separately is what lets the two be
 /// told apart, so the same move is never counted twice.
-struct InertiaToolEdit: Equatable {
+public struct InertiaToolEdit: Equatable {
     /// Points in the container's coordinate space, which is what the drag is
     /// measured in. Normalized against the container only on the way out.
-    var translate: CGSize = .zero
+    public var translate: CGSize = .zero
     /// Degrees, about the node's top-left corner.
-    var rotate: CGFloat = .zero
+    public var rotate: CGFloat = .zero
     /// Degrees, about the node's center.
-    var rotateCenter: CGFloat = .zero
+    public var rotateCenter: CGFloat = .zero
     /// Added to the schema's scale rather than multiplying it, so scale
     /// accumulates across gestures exactly like every other property here.
-    var scale: CGFloat = .zero
-    var opacity: CGFloat = .zero
+    public var scale: CGFloat = .zero
+    public var opacity: CGFloat = .zero
 
-    static let none = InertiaToolEdit()
+    public init(
+        translate: CGSize = .zero,
+        rotate: CGFloat = .zero,
+        rotateCenter: CGFloat = .zero,
+        scale: CGFloat = .zero,
+        opacity: CGFloat = .zero
+    ) {
+        self.translate = translate
+        self.rotate = rotate
+        self.rotateCenter = rotateCenter
+        self.scale = scale
+        self.opacity = opacity
+    }
 
-    var isNone: Bool { self == .none }
+    public static let none = InertiaToolEdit()
 
-    static func + (lhs: InertiaToolEdit, rhs: InertiaToolEdit) -> InertiaToolEdit {
+    public var isNone: Bool { self == .none }
+
+    public static func + (lhs: InertiaToolEdit, rhs: InertiaToolEdit) -> InertiaToolEdit {
         InertiaToolEdit(
             translate: CGSize(
                 width: lhs.translate.width + rhs.translate.width,
@@ -55,12 +77,12 @@ struct InertiaToolEdit: Equatable {
 /// The node's own body stays free in both directions; an arrow pins one
 /// component of the drag to zero, for the moves that have to keep a row or a
 /// column. Screen axes, not the node's own — see `InertiaTranslateAxes`.
-enum InertiaTranslateAxis: Hashable, CaseIterable {
+public enum InertiaTranslateAxis: Hashable, CaseIterable, Sendable {
     case horizontal
     case vertical
 
     /// The drag with the component this axis does not author dropped.
-    func constrain(_ translation: CGSize) -> CGSize {
+    public func constrain(_ translation: CGSize) -> CGSize {
         switch self {
         case .horizontal:
             return CGSize(width: translation.width, height: 0)
@@ -84,19 +106,19 @@ enum InertiaTranslateAxis: Hashable, CaseIterable {
 /// been turned, since what an arrow constrains is horizontal and vertical on
 /// screen. The chrome is counter-rotated to match — see
 /// `InertiaToolHandles.translateAxisHandles`.
-enum InertiaTranslateAxes {
+public enum InertiaTranslateAxes {
     /// From the drawn edge of the node's box out to the arrow's tail.
-    static let gap: CGFloat = 22
-    static let length: CGFloat = 14
-    static let halfWidth: CGFloat = 7
+    public static let gap: CGFloat = 22
+    public static let length: CGFloat = 14
+    public static let halfWidth: CGFloat = 7
     /// How far from an arrow's middle a press still takes it. Generous next to
     /// the arrow itself, which is small, and matched by the hit area the chrome
     /// holds out.
-    static let touchRadius: CGFloat = 24
+    public static let touchRadius: CGFloat = 24
 
     /// The middle of one arrow, which is both what it is drawn about and what a
     /// press is measured against.
-    static func center(_ axis: InertiaTranslateAxis, drawnCenter: CGPoint, drawnSize: CGSize) -> CGPoint {
+    public static func center(_ axis: InertiaTranslateAxis, drawnCenter: CGPoint, drawnSize: CGSize) -> CGPoint {
         let reach = gap + length / 2
 
         switch axis {
@@ -109,7 +131,7 @@ enum InertiaTranslateAxes {
 
     /// The axis a press picked, or `nil` for anywhere else — the body of the
     /// node included, which is a free move.
-    static func axis(at point: CGPoint, drawnCenter: CGPoint, drawnSize: CGSize) -> InertiaTranslateAxis? {
+    public static func axis(at point: CGPoint, drawnCenter: CGPoint, drawnSize: CGSize) -> InertiaTranslateAxis? {
         InertiaTranslateAxis.allCases.first { axis in
             let middle = center(axis, drawnCenter: drawnCenter, drawnSize: drawnSize)
             return hypot(point.x - middle.x, point.y - middle.y) <= touchRadius
@@ -117,7 +139,7 @@ enum InertiaTranslateAxes {
     }
 }
 
-extension InertiaAnimationValues {
+public extension InertiaAnimationValues {
     /// This transform with an in-progress edit folded into it — what the node is
     /// drawn at while a handle is being dragged, and what the editor is told
     /// once it is let go.
@@ -250,11 +272,16 @@ private struct InertiaAxisArrow: Shape {
 /// See ``InertiaToolHandles/outer``. The pair is what the actionable's animation
 /// is to a shape drawn behind it: the values it is displayed with, and the box
 /// those values turn and scale about.
-struct InertiaOuterTransform: Equatable {
-    let values: InertiaAnimationValues
-    let layoutFrame: CGRect
+public struct InertiaOuterTransform: Equatable {
+    public let values: InertiaAnimationValues
+    public let layoutFrame: CGRect
 
-    static let none = InertiaOuterTransform(values: .identity, layoutFrame: .zero)
+    public init(values: InertiaAnimationValues, layoutFrame: CGRect) {
+        self.values = values
+        self.layoutFrame = layoutFrame
+    }
+
+    public static let none = InertiaOuterTransform(values: .identity, layoutFrame: .zero)
 }
 
 /// The handles a selected actionable shows for the active tool.
@@ -263,14 +290,29 @@ struct InertiaOuterTransform: Equatable {
 /// chrome stays glued to the node as it turns and scales. The knobs themselves
 /// are counter-scaled so they stay the same size on screen whatever the node has
 /// been scaled to.
-struct InertiaToolHandles: View {
+public struct InertiaToolHandles: View {
     /// A node scaled to nothing has no box left to grab, and a negative scale
     /// mirrors it. This is the smallest scale a handle will author.
-    static let minimumScale: CGFloat = 0.01
+    public static let minimumScale: CGFloat = 0.01
 
     let tool: InertiaTool
     /// The transform the node is drawn with right now, gesture included.
     let values: InertiaAnimationValues
+    /// The transform a gesture is measured from and reports, when that is not
+    /// the one the node is drawn with.
+    ///
+    /// Nil in the app under test, where they are the same thing: a node is drawn
+    /// at the transform its schema puts it at, and a gesture edits that
+    /// transform. The editor's canvas has the one case where the two part — a
+    /// shape *placed* in its parent is drawn by baking the placement into its
+    /// corners, so what the canvas is drawn with says nothing about where the
+    /// shape has been placed, and a scale measured off it would be a ratio of
+    /// the wrong number.
+    ///
+    /// Only what a gesture counts from, and what the readout names. Every
+    /// measurement of the chrome itself stays on `values`, because that is what
+    /// the node is actually the size and angle of on screen.
+    var authored: InertiaAnimationValues? = nil
     /// The node's box as laid out, in the container's coordinate space.
     let layoutFrame: CGRect
     let containerSize: CGSize
@@ -292,6 +334,28 @@ struct InertiaToolHandles: View {
     /// tell the editor.
     let onEnded: () -> Void
 
+    public init(
+        tool: InertiaTool,
+        values: InertiaAnimationValues,
+        authored: InertiaAnimationValues? = nil,
+        layoutFrame: CGRect,
+        containerSize: CGSize,
+        containerSpace: String?,
+        outer: InertiaOuterTransform? = nil,
+        onChange: @escaping (InertiaToolEdit) -> Void,
+        onEnded: @escaping () -> Void
+    ) {
+        self.tool = tool
+        self.values = values
+        self.authored = authored
+        self.layoutFrame = layoutFrame
+        self.containerSize = containerSize
+        self.containerSpace = containerSpace
+        self.outer = outer
+        self.onChange = onChange
+        self.onEnded = onEnded
+    }
+
     /// Where the gesture started, taken once so the math stays measured against
     /// the transform the node had before the drag rather than the one it is
     /// being given.
@@ -303,9 +367,18 @@ struct InertiaToolHandles: View {
         /// The pointer's opening vector from `anchor`, which an angle or a
         /// distance ratio is taken relative to.
         let reference: CGVector
-        /// The node's transform when the gesture began.
+        /// The transform the gesture is measured from, as it stood when the
+        /// gesture began — see ``InertiaToolHandles/authored``.
         let values: InertiaAnimationValues
+        /// The scale the node was *drawn* at then, which is what the chrome's
+        /// own measurements are in. The same number as `values.scale` in the app
+        /// under test, and not for a shape being placed on the editor's canvas.
+        let drawnScale: CGFloat
     }
+
+    /// The transform a gesture is measured from — the one the node is drawn with
+    /// unless it has been told otherwise.
+    private var editedValues: InertiaAnimationValues { authored ?? values }
 
     private var size: CGSize { layoutFrame.size }
 
@@ -335,7 +408,7 @@ struct InertiaToolHandles: View {
             && containerSpace != nil
     }
 
-    var body: some View {
+    public var body: some View {
         if isValid {
             ZStack(alignment: .topLeading) {
                 switch tool {
@@ -562,7 +635,9 @@ struct InertiaToolHandles: View {
         let origin = opacityBarOrigin
         let width = opacityBarWidth
         let height = 7 * chromeScale
-        let filled = width * min(1, max(0, values.opacity))
+        // The opacity being *edited* rather than the one the node is drawn at:
+        // the track a knob runs along is the value it authors.
+        let filled = width * min(1, max(0, editedValues.opacity))
 
         Capsule()
             .fill(Color.green.opacity(0.25))
@@ -586,7 +661,7 @@ struct InertiaToolHandles: View {
                 // while the chrome is laid out in the node's own space and
                 // counter-scaled, so the two only agree once the node's scale is
                 // put back in.
-                let drawnWidth = max(self.size.width * start.values.scale, 60)
+                let drawnWidth = max(self.size.width * start.drawnScale, 60)
                 let travelled = (location.x - (start.anchor.x + start.reference.dx)) / drawnWidth
                 edit.opacity = min(1, max(0, start.values.opacity + travelled)) - start.values.opacity
                 return edit
@@ -621,7 +696,11 @@ struct InertiaToolHandles: View {
         }
     }
 
+    /// What the tool is authoring, which away from the app under test is not
+    /// always what the node is drawn at — see ``authored``.
     private var readoutText: String? {
+        let values = editedValues
+
         switch tool {
         case .translate:
             return nil
@@ -678,7 +757,8 @@ struct InertiaToolHandles: View {
         let start = GestureStart(
             anchor: drawnAnchor,
             reference: vector(from: drawnAnchor, to: location),
-            values: values
+            values: editedValues,
+            drawnScale: values.scale
         )
         // Assigning during `onChanged` is what makes the first event of a
         // gesture the one that opens it; SwiftUI gives no separate hook.

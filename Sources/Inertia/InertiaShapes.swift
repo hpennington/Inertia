@@ -853,6 +853,35 @@ public extension Collection where Element == InertiaShape {
 
         return nil
     }
+
+    /// What one unit of the box the shape called `shapeId` is *placed* in is
+    /// worth here — in the units these shapes are authored in.
+    ///
+    /// A placement is measured in the box the shape sits in rather than in the
+    /// units the drawing around it is measured in, and those are only the same
+    /// thing for a shape on the canvas itself, which is placed in the
+    /// actionable's own box. A nested one is placed in its parent's, and its
+    /// parent may be nested in turn — so the answer is every `childUnit` between
+    /// here and it, multiplied together, which is exactly the scaling
+    /// `InertiaShape.triangles` walks a child's corners back up through.
+    ///
+    /// 1 for a shape on the canvas itself, and nil when nothing in here answers
+    /// to that name.
+    ///
+    /// What it is for: the editor's canvas turns a drag in points into a
+    /// placement, and a nested shape's placement is in a smaller unit than the
+    /// drawing it is part of — see `ShapeCanvasView`.
+    func placementUnit(of shapeId: InertiaID) -> CGFloat? {
+        for shape in self {
+            if shape.id == shapeId { return 1 }
+
+            guard let nested = shape.shapes.placementUnit(of: shapeId) else { continue }
+
+            return shape.childUnit * nested
+        }
+
+        return nil
+    }
 }
 
 /// The smallest rect holding every one of `positions`, or nil when they enclose
