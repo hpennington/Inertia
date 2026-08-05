@@ -8,7 +8,7 @@
 import MetalKit
 import SwiftUI
 
-public struct InertiaColor: Codable, Equatable {
+public struct InertiaColor: Codable, Equatable, Sendable {
     public let red: Float
     public let green: Float
     public let blue: Float
@@ -22,7 +22,7 @@ public struct InertiaColor: Codable, Equatable {
     }
 }
 
-public struct InertiaPoint: Codable, Equatable {
+public struct InertiaPoint: Codable, Equatable, Sendable {
     public let x: Double
     public let y: Double
 
@@ -37,7 +37,7 @@ public struct InertiaPoint: Codable, Equatable {
 /// its top-left, (1, 1) its bottom-right — so a shape authored once holds its
 /// place through every size that frame is laid out at. Values outside 0...1 are
 /// off the edge of it, and clip.
-public struct Vertex: Codable, Equatable {
+public struct Vertex: Codable, Equatable, Sendable {
     public let position: InertiaPoint
     public let color: InertiaColor
 

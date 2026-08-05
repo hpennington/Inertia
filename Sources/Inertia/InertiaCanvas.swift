@@ -99,6 +99,9 @@ struct InertiaShapeEditing {
     let edit: (InertiaShape) -> InertiaToolEdit
     let onChange: (InertiaShape, InertiaToolEdit) -> Void
     let onEnded: (InertiaShape) -> Void
+    /// Picks the shape a press landed on up, or puts it down again — the same
+    /// toggle a tap on an actionable runs, on the same selection.
+    let onTap: (InertiaShape) -> Void
 }
 
 struct InertiaShapesView: View {
@@ -248,6 +251,12 @@ struct InertiaShapesView: View {
             )
             .allowsHitTesting(false)
             .frame(width: box.width, height: box.height)
+            // Under the chrome, so a knob or the move tool's own body sitting
+            // over a shape is what a press there grabs. Inside the transforms
+            // below for the same reason the chrome is: SwiftUI carries a press
+            // back out through them, so what arrives here is already in the
+            // space the artwork was drawn in.
+            .overlay { pickArea(for: shapes, bounds: bounds) }
             // Inside every transform below, so the chrome stays glued to the
             // shape as it turns and scales — exactly where an actionable's sits
             // relative to its own.
@@ -263,12 +272,59 @@ struct InertiaShapesView: View {
         }
     }
 
+    /// What listens for a press on one canvas, so a shape can be picked by
+    /// touching it rather than only by finding its row in the editor's
+    /// hierarchy.
+    ///
+    /// Nothing at all outside the editor: a shape is backdrop in a shipped
+    /// build, and a backdrop that took touches would swallow the taps meant for
+    /// the views it sits behind.
+    ///
+    /// The hit region is the artwork rather than the canvas's box — see
+    /// `InertiaShapesHitArea` — which is what lets a press land on a shape at
+    /// all. A canvas is fitted to the box its shapes occupy together, and that
+    /// box is mostly *not* shape: a press in the corner beside a circle, or in
+    /// the margin beside a triangle's slope, has to go on through to the view
+    /// underneath exactly as it did before any of this existed.
+    ///
+    /// One layer for the whole canvas rather than one per shape, because the
+    /// shapes sharing it share a vertex buffer and have no boxes of their own to
+    /// hang a gesture off. Which of them was pressed is answered by testing the
+    /// point, which is also the only way to answer it for a *nested* shape —
+    /// drawn into its parent's buffer, and a row of its own in the hierarchy all
+    /// the same.
+    @ViewBuilder
+    private func pickArea(for shapes: [InertiaShape], bounds: CGRect) -> some View {
+        if let editing {
+            Color.clear
+                .contentShape(
+                    InertiaShapesHitArea(
+                        triangles: shapes.flatMap { $0.triangles(normalizedTo: bounds) }
+                    )
+                )
+                .onTapGesture { location in
+                    // Back into the units the shapes are authored in: the canvas
+                    // is `unit` points to the shape's 1, and its own top-left
+                    // corner is wherever the box they occupy together begins.
+                    guard unit > 0 else { return }
+
+                    let point = InertiaPoint(
+                        x: bounds.minX + location.x / unit,
+                        y: bounds.minY + location.y / unit
+                    )
+
+                    guard let shape = shapes.hitTest(point) else { return }
+                    editing.onTap(shape)
+                }
+        }
+    }
+
     /// The border and handles a selected shape grows: the same green box an
     /// actionable shows, and the same chrome for whichever tool is active.
     ///
-    /// Only a shape the editor has already picked grows any of this, and picking
-    /// happens in the hierarchy panel rather than out here — a shape is drawn
-    /// behind the app's own views, and it stays behind them.
+    /// A shape is picked either by pressing it — see `pickArea(for:bounds:)` —
+    /// or by finding its row in the editor's hierarchy panel; both write the
+    /// same selection, and only a shape already in it grows any of this.
     ///
     /// The move tool has no chrome of its own beyond its two axis arrows, so the
     /// shape's own box is what a free move is dragged by — the way an
@@ -326,6 +382,13 @@ struct InertiaShapesView: View {
                     handles
                 }
                 .gesture(translateGesture(for: shape, editing: editing, layoutFrame: layoutFrame, values: values))
+                // The body this move is dragged by covers the shape, and it is
+                // above the layer a press would otherwise be picked off — so
+                // without this there is no way to put a picked shape back down
+                // while the move tool is up. No contest with the drag: a
+                // `DragGesture` does not open until the press has travelled its
+                // minimum distance, and a tap by definition has not.
+                .onTapGesture { editing.onTap(shape) }
             } else {
                 handles
             }
@@ -405,6 +468,53 @@ struct InertiaShapesView: View {
 
         shapeDrag = drag
         return drag
+    }
+}
+
+/// One canvas's artwork as a path, which is what a press on it is tested
+/// against.
+///
+/// The same triangles the renderer draws, read three corners at a time and in
+/// the same 0...1 space, so the region that answers a press is exactly the
+/// region that was painted — holes in it and all. A shape drawn as its outline
+/// alone encloses nothing in the middle, and a press through there falls to
+/// whatever is behind rather than to the ring around it.
+///
+/// Wound as the shapes were authored and filled by the non-zero rule, so
+/// triangles overlapping — a stroke lying over the fill it encloses — add up
+/// rather than cancelling out.
+///
+/// Public because the editor draws the same canvases on a stage of its own and
+/// picks shapes off them the same way — see `ShapeCanvasView`.
+public struct InertiaShapesHitArea: Shape {
+    /// Every shape on the canvas already flattened into the one triangle list
+    /// it draws, in the canvas's own normalized space.
+    public let triangles: [Vertex]
+
+    public init(triangles: [Vertex]) {
+        self.triangles = triangles
+    }
+
+    public func path(in rect: CGRect) -> Path {
+        var path = Path()
+
+        // A trailing corner or two is dropped rather than closed into a triangle
+        // of its own, which is what the renderer does with it as well.
+        for index in stride(from: 0, to: triangles.count - triangles.count % 3, by: 3) {
+            let corner = { (offset: Int) in
+                CGPoint(
+                    x: rect.minX + triangles[index + offset].position.x * rect.width,
+                    y: rect.minY + triangles[index + offset].position.y * rect.height
+                )
+            }
+
+            path.move(to: corner(0))
+            path.addLine(to: corner(1))
+            path.addLine(to: corner(2))
+            path.closeSubpath()
+        }
+
+        return path
     }
 }
 

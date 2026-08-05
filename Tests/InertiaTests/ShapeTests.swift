@@ -676,4 +676,147 @@ final class ShapeTests: XCTestCase {
     func testEveryVectorInThePaletteIsADescribableShape() {
         XCTAssertEqual(InertiaVector.allCases.map(\.shapeType.rawValue), InertiaVector.allCases.map(\.rawValue))
     }
+
+    // MARK: - The shape a press lands on
+
+    private func point(_ x: Double, _ y: Double) -> InertiaPoint {
+        InertiaPoint(x: x, y: y)
+    }
+
+    /// A described vector of the given type under a name of its own, filled
+    /// unless it was asked for as an outline.
+    private func drawn(
+        _ id: InertiaID,
+        _ type: InertiaShapeType,
+        _ size: CGFloat,
+        stroke: CGFloat = 0,
+        transforms: InertiaAnimationValues? = nil,
+        zIndex: Int = 0,
+        shapes: [InertiaShape] = []
+    ) -> InertiaShape {
+        InertiaShape(
+            id: id,
+            shape: InertiaShapeProperties(
+                id: "\(id)-properties",
+                type: type,
+                width: size,
+                height: size,
+                fill: stroke > 0 ? nil : red,
+                stroke: stroke > 0 ? red : nil,
+                strokeWidth: stroke
+            ),
+            vertices: nil,
+            shapes: shapes,
+            zIndex: zIndex,
+            transforms: transforms
+        )
+    }
+
+    /// The middle of a shape is the shape. The whole of picking one by touching
+    /// it rests on this.
+    func testPressOnAShapeFindsIt() {
+        XCTAssertEqual([drawn("square", .square, 1)].hitTest(point(0, 0))?.id, "square")
+    }
+
+    /// What a bounding box would have got wrong, and the reason the artwork is
+    /// tested rather than the box around it: the corner of a circle's box is not
+    /// the circle, so a press there has to go on through to whatever is behind.
+    func testPressInTheCornerOfARoundShapesBoxMissesIt() {
+        let circle = [drawn("circle", .circle, 1)]
+
+        // Just inside the box, which spans ±0.5 in both directions, and well
+        // outside the radius of 0.5 that the circle actually fills.
+        XCTAssertNil(circle.hitTest(point(0.49, 0.49)))
+        XCTAssertEqual(circle.hitTest(point(0.4, 0))?.id, "circle")
+    }
+
+    /// A shape drawn as its outline alone encloses nothing in the middle, so a
+    /// press through the hole falls to what is behind it rather than sticking to
+    /// the ring around it.
+    func testPressThroughAnUnfilledShapeMissesIt() {
+        let ring = [drawn("ring", .square, 1, stroke: 0.1)]
+
+        XCTAssertNil(ring.hitTest(point(0, 0)))
+        // On the band itself, which runs the 0.1 inside the edge at 0.5.
+        XCTAssertEqual(ring.hitTest(point(0.45, 0))?.id, "ring")
+    }
+
+    /// Nothing under the finger at all.
+    func testPressOutsideEveryShapeFindsNothing() {
+        XCTAssertNil([drawn("square", .square, 1)].hitTest(point(4, 4)))
+        XCTAssertNil([InertiaShape]().hitTest(point(0, 0)))
+    }
+
+    /// Two shapes over one another hand the press to the one on top, which is
+    /// the one the z-indexes draw last — not the one written first.
+    func testPressOnOverlappingShapesPicksTheOneDrawnOnTop() {
+        let drawing = [
+            drawn("under", .square, 1, zIndex: 5),
+            drawn("over", .square, 1, zIndex: 9)
+        ]
+
+        XCTAssertEqual(drawing.hitTest(point(0, 0))?.id, "over")
+        XCTAssertEqual(drawing.reversed().hitTest(point(0, 0))?.id, "over")
+    }
+
+    /// A press is tested against where a shape is *drawn*, not where its corners
+    /// were authored: a placement moves the shape, and it has to move what
+    /// answers for it.
+    func testPressFollowsAPlacedShape() {
+        let shifted = [drawn("square", .square, 1, transforms: moved(2, 0))]
+
+        XCTAssertNil(shifted.hitTest(point(0, 0)))
+        XCTAssertEqual(shifted.hitTest(point(2, 0))?.id, "square")
+    }
+
+    /// Turning is undone as well as moving, and in the right order — the shape
+    /// is turned where it was drawn and only then moved there, so unwinding the
+    /// move first is what puts the press back on the artwork.
+    func testPressFollowsATurnedAndMovedShape() {
+        let turned = InertiaAnimationValues(
+            scale: 1,
+            translate: CGSize(width: 2, height: 0),
+            rotate: 45,
+            rotateCenter: 0,
+            opacity: 1
+        )
+
+        // A rectangle twice as wide as it is tall, turned a half-turn short of
+        // upright: its long axis now runs diagonally from where it was moved to.
+        let shape = InertiaShape(
+            id: "bar",
+            shape: InertiaShapeProperties(id: "bar-properties", type: .rectangle, width: 4, height: 0.5, fill: red),
+            vertices: nil,
+            transforms: turned
+        )
+
+        let corner = 2 * cos(Double.pi / 4)
+
+        XCTAssertEqual([shape].hitTest(point(2 + corner * 0.9, corner * 0.9))?.id, "bar")
+        // The same distance out along the axis the bar is no longer on.
+        XCTAssertNil([shape].hitTest(point(2 + corner * 0.9, -corner * 0.9)))
+    }
+
+    /// A nested shape is drawn into its parent's vertex buffer and has no canvas
+    /// of its own, but it is a row of its own in the editor's hierarchy — so a
+    /// press on it has to name the child rather than the parent it was drawn
+    /// inside of.
+    func testPressOnANestedShapeFindsTheChild() {
+        let child = drawn("child", .square, 0.25, transforms: moved(0.3, 0))
+        let parent = [drawn("parent", .square, 2, shapes: [child])]
+
+        // The child is a quarter of the parent's box wide — 0.5 across — and
+        // sits 0.6 out from the middle of a parent two wide.
+        XCTAssertEqual(parent.hitTest(point(0.6, 0))?.id, "child")
+        // Parent where the child is not.
+        XCTAssertEqual(parent.hitTest(point(-0.6, 0))?.id, "parent")
+    }
+
+    /// A press misses a shape scaled away to nothing, which is also a shape with
+    /// no area left to draw.
+    func testPressMissesAShapeScaledToNothing() {
+        let gone = InertiaAnimationValues(scale: 0, translate: .zero, rotate: 0, rotateCenter: 0, opacity: 1)
+
+        XCTAssertNil([drawn("square", .square, 1, transforms: gone)].hitTest(point(0, 0)))
+    }
 }

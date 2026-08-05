@@ -461,12 +461,7 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
     /// baking the placement into the corners is the only place a nested shape
     /// can be moved at all.
     public var triangles: [Vertex] {
-        let own: [Vertex]
-        if let shape, _vertices == nil {
-            own = shape.fillTriangles + shape.strokeTriangles
-        } else {
-            own = fan(vertices)
-        }
+        let own = ownTriangles
 
         guard !shapes.isEmpty else { return placed(own) }
 
@@ -490,6 +485,83 @@ public final class InertiaShape: Codable, Equatable, Identifiable, CustomStringC
                 )
             }
         })
+    }
+
+    /// What this shape draws itself, before anything nested inside it and before
+    /// `transforms` places any of it.
+    ///
+    /// The area the outline encloses and then the outline over it, which is the
+    /// order they are drawn in. A shape authored corner by corner is all fill,
+    /// since a stroke is something a *described* vector carries.
+    ///
+    /// Held out of `triangles` because it is also what a press is tested
+    /// against: a hit walks down the same tree the drawing is built up, and at
+    /// each shape it has to be able to ask what *that* shape covers rather than
+    /// what its whole branch does — see `hitTest(_:)`.
+    var ownTriangles: [Vertex] {
+        if let shape, _vertices == nil {
+            return shape.fillTriangles + shape.strokeTriangles
+        }
+
+        return fan(vertices)
+    }
+
+    /// The shape a press at `point` lands on — this one, or the innermost shape
+    /// nested inside it — or nil for a press that misses everything here.
+    ///
+    /// `point` is in the units this shape is measured in, which is the space its
+    /// own `triangles` answer in: the parent's box, before this shape's
+    /// placement has moved anything.
+    ///
+    /// What is tested is the drawing rather than the box around it. A press in
+    /// the corner of a circle's bounding box, or in the margin beside a
+    /// triangle's slope, misses — so it falls through to whatever is behind
+    /// instead of being swallowed by a backdrop the user cannot see there. An
+    /// unfilled shape is its outline and nothing more, so a press through the
+    /// middle of a ring misses it too.
+    ///
+    /// Children first and back to front reversed, because that is the order they
+    /// are drawn in and a press belongs to whatever is on top of the stack at
+    /// that point — the same reading `triangles` lays down and this one inverts.
+    func hitTest(_ point: InertiaPoint) -> InertiaShape? {
+        guard let local = unplaced(point) else { return nil }
+
+        let unit = childUnit
+        if unit > 0 {
+            for child in shapes.stacked.reversed() {
+                if let hit = child.hitTest(InertiaPoint(x: local.x / unit, y: local.y / unit)) {
+                    return hit
+                }
+            }
+        }
+
+        return hits(local, ownTriangles) ? self : nil
+    }
+
+    /// `point` carried back out of `transforms` — the inverse of the trip
+    /// `placed(_:)` takes a corner on, so a press given in the parent's box
+    /// lands in the space this shape's own corners were authored in.
+    ///
+    /// Nil for a shape scaled to nothing: it draws no area at all, so there is
+    /// nothing for a press to land on and no scale to divide back out.
+    private func unplaced(_ point: InertiaPoint) -> InertiaPoint? {
+        let placement = placement
+        guard placement != .identity else { return point }
+        guard placement.scale != 0 else { return nil }
+
+        // Turned back rather than forward, and the move undone before the turn,
+        // because `placed` moves last.
+        let radians = -(placement.rotate + placement.rotateCenter) * .pi / 180
+        let cosine = cos(radians)
+        let sine = sin(radians)
+
+        let x = point.x - placement.translate.width
+        let y = point.y - placement.translate.height
+
+        return InertiaPoint(
+            x: (x * cosine - y * sine) / placement.scale,
+            y: (x * sine + y * cosine) / placement.scale
+        )
     }
 
     /// `vertices` moved to where `transforms` places this shape in its parent.
@@ -624,6 +696,45 @@ func fan(_ vertices: [Vertex]) -> [Vertex] {
     return (1..<(vertices.count - 1)).flatMap {
         [vertices[0], vertices[$0], vertices[$0 + 1]]
     }
+}
+
+/// Whether `point` falls on any of `triangles`, the list read three corners at a
+/// time — the way the renderer draws it, so what answers yes is exactly what was
+/// painted.
+///
+/// A trailing corner or two, which the renderer would not draw either, is left
+/// out rather than treated as a triangle of its own.
+func hits(_ point: InertiaPoint, _ triangles: [Vertex]) -> Bool {
+    stride(from: 0, to: triangles.count - triangles.count % 3, by: 3).contains { index in
+        contains(
+            point,
+            triangles[index].position,
+            triangles[index + 1].position,
+            triangles[index + 2].position
+        )
+    }
+}
+
+/// Whether `point` is inside the triangle `a`, `b`, `c`.
+///
+/// Which side of each edge the point falls on, by the sign of the cross product
+/// with that edge. Inside is the same side of all three; a zero is the point
+/// sitting on an edge, which counts as inside, so two triangles sharing an edge
+/// leave no seam for a press to fall through.
+///
+/// Winding is not assumed: the rings a shape resolves to are wound whichever way
+/// they were authored, and a fan of a clockwise ring is every bit as much a
+/// triangle as a fan of a counter-clockwise one.
+private func contains(_ point: InertiaPoint, _ a: InertiaPoint, _ b: InertiaPoint, _ c: InertiaPoint) -> Bool {
+    func side(_ point: InertiaPoint, _ start: InertiaPoint, _ end: InertiaPoint) -> Double {
+        (point.x - end.x) * (start.y - end.y) - (start.x - end.x) * (point.y - end.y)
+    }
+
+    let ab = side(point, a, b)
+    let bc = side(point, b, c)
+    let ca = side(point, c, a)
+
+    return !((ab < 0 || bc < 0 || ca < 0) && (ab > 0 || bc > 0 || ca > 0))
 }
 
 public extension InertiaShapeProperties {
@@ -828,6 +939,25 @@ public extension Collection where Element == InertiaShape {
     /// to draw.
     var bounds: CGRect? {
         boundingBox(around: flatMap { $0.enclosingVertices.map(\.position) })
+    }
+
+    /// The shape a press at `point` lands on, wherever it is nested, or nil for
+    /// a press that misses every one of them.
+    ///
+    /// `point` is in the units these shapes are authored in — multiples of the
+    /// actionable's shorter side, measured from its middle, which is the same
+    /// space `bounds` answers in.
+    ///
+    /// Front to back, so a press on two overlapping shapes picks the one drawn
+    /// on top: the list is stacked and then read backwards, which is the drawing
+    /// order reversed. What each shape is tested against is its drawing rather
+    /// than its box — see `InertiaShape.hitTest(_:)`.
+    func hitTest(_ point: InertiaPoint) -> InertiaShape? {
+        for shape in stacked.reversed() {
+            if let hit = shape.hitTest(point) { return hit }
+        }
+
+        return nil
     }
 
     /// The box one shape in here occupies, wherever it is nested, in the units

@@ -1603,7 +1603,37 @@ struct InertiaEditable<Content: View>: View {
             onChange: { shape, edit in
                 shapeGestureEdits[shape.id] = edit
             },
-            onEnded: { shape in commitShapeEdit(shape) }
+            onEnded: { shape in commitShapeEdit(shape) },
+            onTap: { shape in toggleSelection(of: shape) }
+        )
+    }
+
+    /// Picks a shape up, or puts it down again: the toggle a press on the
+    /// artwork runs, which is the same one a tap on an actionable's body runs
+    /// and writes to the same selection.
+    ///
+    /// A shape travels as an `ActionableIdPair` like anything else — its own id
+    /// under the schema that carries it, which is how the editor's hierarchy
+    /// names it too, so picking a shape out here lights up the same row.
+    ///
+    /// The whole selection goes back on the wire rather than the one shape that
+    /// changed, because that is what a `MessageActionables` says: not what was
+    /// picked, but what *is* picked.
+    private func toggleSelection(of shape: InertiaShape) {
+        guard let inertiaDataModel, inertiaDataModel.isActionable else { return }
+
+        let pair = ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: shape.id)
+        if inertiaDataModel.actionableIdPairs.contains(pair) {
+            inertiaDataModel.actionableIdPairs.remove(pair)
+        } else {
+            inertiaDataModel.actionableIdPairs.insert(pair)
+        }
+
+        manager.sendMessage(
+            InertiaMessage.MessageActionables(
+                tree: inertiaDataModel.tree,
+                actionableIds: inertiaDataModel.actionableIdPairs
+            )
         )
     }
 
