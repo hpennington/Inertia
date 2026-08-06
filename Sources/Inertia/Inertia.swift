@@ -1373,6 +1373,39 @@ final class SharedIndexManager {
 }
 
 private extension View {
+    /// Keeps this node answering to the pointer even when an actionable above it
+    /// has disabled everything under itself.
+    ///
+    /// An actionable disables its content while the editor is picking things —
+    /// see `InertiaEditable.wrappedContent` — and `disabled` is inherited: an
+    /// actionable *inside* another one is part of that content, so its own tap,
+    /// its drag and its tool handles all went dead. The press then fell through
+    /// to the nearest ancestor still listening, which is the outer actionable —
+    /// so a nested node could only ever select and move the thing it sits in.
+    ///
+    /// `disabled(false)` cannot undo it: nested calls combine, and the most
+    /// disabling one wins. Writing the environment value outright is the one
+    /// thing that does, and it reaches exactly as far as the next `disabled`
+    /// below it — which is this node's own, over its own content. So the node's
+    /// chrome comes back while the app's controls inside it stay inert.
+    ///
+    /// Only while the editor is picking, because that is the only time anything
+    /// was disabled on its account. Left on, this would also override a
+    /// `disabled` the *app* put around a node for its own reasons.
+    ///
+    /// This is what the React runtime gets from `pointer-events`, where a nested
+    /// node's `auto` beats the `none` its parent put on its content — see
+    /// `InertiaGuts` in `inertia-react`.
+    func interactiveWhileEditing(_ isEditing: Bool) -> some View {
+        // `transformEnvironment` rather than a branch around `environment`: a
+        // node whose modifiers change shape when the editor attaches is a
+        // different view to SwiftUI, which throws away the state underneath it —
+        // the id it was indexed under included.
+        transformEnvironment(\.isEnabled) { isEnabled in
+            if isEditing { isEnabled = true }
+        }
+    }
+
     /// Reports this view's layout frame in the named coordinate space, ignoring
     /// any `.offset` applied inside it. The wrapping container is what makes that
     /// true: an offset is layout-neutral, so the parent's frame stays where the
@@ -1814,6 +1847,12 @@ struct InertiaEditable<Content: View>: View {
     var wrappedContent: some View {
         ZStack(alignment: .center) {
             content
+                // The app's own controls go inert while the editor is picking
+                // things, so a press on a node selects it instead of pressing
+                // the button that happens to be under it. Everything nested
+                // inside this node — including another actionable — goes inert
+                // with it, which is what `interactiveWhileEditing` undoes for
+                // the one below.
                 .disabled(inertiaDataModel?.isActionable ?? false)
         }
         // Behind the content and inside everything that moves it — the drag
@@ -2066,6 +2105,11 @@ struct InertiaEditable<Content: View>: View {
             layoutFrame = frame
             reportMeasurement(frame.size)
         }
+        // Outside everything this node listens with — its tap, its drag and its
+        // tool handles — and outside the `disabled` it puts on its own content,
+        // so an actionable nested in another one is picked and moved on its own
+        // account rather than passing the press up to the one it sits in.
+        .interactiveWhileEditing(inertiaDataModel?.isActionable ?? false)
         .environment(\.inertiaParentID, hierarchyId)
         .environment(\.isInertiaContainer, false)
         .buttonStyle(.plain)
