@@ -42,9 +42,7 @@ final class StandalonePlaybackTests: XCTestCase {
     private func makeModel() -> InertiaDataModel {
         InertiaDataModel(
             containerId: "animation",
-            inertiaSchemas: demoSchemas(),
-            tree: Tree(id: "animation"),
-            actionableIdPairs: []
+            inertiaSchemas: demoSchemas()
         )
     }
 
@@ -141,9 +139,7 @@ final class StandalonePlaybackTests: XCTestCase {
     func testResumeBeforeSchemasStartsTriggerAnimationsOnArrival() {
         let model = InertiaDataModel(
             containerId: "animation",
-            inertiaSchemas: [:],
-            tree: Tree(id: "animation"),
-            actionableIdPairs: []
+            inertiaSchemas: [:]
         )
 
         // `resume` overtakes the schemas: nothing is held yet, so it starts
@@ -167,9 +163,7 @@ final class StandalonePlaybackTests: XCTestCase {
     func testResumeBeforeSchemasUnparksThePlayhead() {
         let model = InertiaDataModel(
             containerId: "animation",
-            inertiaSchemas: [:],
-            tree: Tree(id: "animation"),
-            actionableIdPairs: []
+            inertiaSchemas: [:]
         )
 
         model.seek(to: 1.0)
@@ -189,9 +183,7 @@ final class StandalonePlaybackTests: XCTestCase {
     func testPauseClearsTheLatch() {
         let model = InertiaDataModel(
             containerId: "animation",
-            inertiaSchemas: [:],
-            tree: Tree(id: "animation"),
-            actionableIdPairs: []
+            inertiaSchemas: [:]
         )
 
         model.resumePlayback()

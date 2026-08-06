@@ -881,6 +881,12 @@ public struct InertiaContainer<Content: View>: View {
                 .frame(maxWidth: .infinity)
         }
         .ignoresSafeArea()
+        // Guides are drawn, never touched — the same as `dragAlignmentGuides`,
+        // which has said so all along. These two lines appear the moment a move
+        // starts, directly over the node being moved, and a hittable view
+        // arriving mid-gesture is one the rest of that gesture can land on
+        // instead.
+        .allowsHitTesting(false)
     }
     
     /// Dashed guides that track the selected node's edges and center within the container.
@@ -1525,63 +1531,45 @@ struct InertiaEditable<Content: View>: View {
         isEditable && activeTool == .translate
     }
 
-    /// What a move gesture in progress was opened on.
-    private struct BodyDrag {
-        /// The axis the arrow the press landed on pins this move to, or `nil` for
-        /// a press on the node itself, which is free in both.
-        let axis: InertiaTranslateAxis?
-    }
-
-    /// Taken once, when the gesture opens, rather than tested per event: the test
-    /// is against where the node is *drawn*, and this gesture is what is moving
-    /// it — the press stays where it was while the arrow it landed on travels
-    /// away from it.
-    @State private var bodyDrag: BodyDrag? = nil
-
-    /// Measured in the container's space rather than the node's own.
+    /// The arrow that has the press, while one does.
     ///
-    /// The transforms that move the node are applied outside this gesture, so a
-    /// translation taken locally is measured against a coordinate space the
-    /// gesture is itself dragging out from under the pointer — the node ends up
-    /// chasing the cursor a fraction of a move at a time, and the guides tracking
-    /// it stutter. The container is the one frame nothing here moves.
+    /// Set on touch-down by the arrow's own drag, which opens immediately —
+    /// before this one's 10 points of travel have been covered — so the free
+    /// move can stand down rather than move the node a second time.
+    @State private var axisDrag: InertiaTranslateAxis? = nil
+
+    /// A free move: the node follows the pointer in both axes.
+    ///
+    /// Measured globally rather than in the node's own space, which the gesture
+    /// is itself dragging out from under the pointer — a translation taken there
+    /// counts only the part of the move the node has not caught up with yet, and
+    /// the node trails the cursor. Globally rather than in the container's
+    /// *named* space because a name only resolves while nothing between here and
+    /// the container hosts its children separately; a `TabView` does, and the
+    /// fallback is silent. Neither frame moves, so for a translation the two are
+    /// the same measurement — one of them just always works.
+    ///
+    /// Pinning to one axis is not decided here. It used to be — the press was
+    /// measured against where the arrows were drawn, which needed the press
+    /// location, the node's drawn center and its layout frame to agree on a
+    /// coordinate space. A drag reports the same translation in any space, so
+    /// once that agreement broke this went on working perfectly while both axis
+    /// pins quietly died. The arrows now say which of them was pressed instead —
+    /// see `InertiaToolHandles.onAxisTranslate`, which needs no space at all.
     var dragGesture: some Gesture {
-        DragGesture(coordinateSpace: .named(inertiaContainerId ?? ""))
+        DragGesture(coordinateSpace: .global)
             .onChanged { value in
-                if isBodyDraggable {
-                    let drag = bodyDrag ?? beginBodyDrag(at: value.startLocation)
-                    apply(InertiaToolEdit(translate: drag.axis?.constrain(value.translation) ?? value.translation))
-                }
+                // An arrow already has this press and is pinning it — see
+                // `axisDrag`. Both of them authoring the same drag moved the
+                // node twice as far as the pointer went.
+                guard axisDrag == nil, isBodyDraggable else { return }
+                apply(InertiaToolEdit(translate: value.translation))
             }
             .onEnded { value in
-                if isBodyDraggable {
-                    let drag = bodyDrag ?? beginBodyDrag(at: value.startLocation)
-                    apply(InertiaToolEdit(translate: drag.axis?.constrain(value.translation) ?? value.translation))
-                    commitEdit()
-                }
-                bodyDrag = nil
+                guard axisDrag == nil, isBodyDraggable else { return }
+                apply(InertiaToolEdit(translate: value.translation))
+                commitEdit()
             }
-    }
-
-    /// Opens a move gesture, keyed off the axis arrow the press landed on — if
-    /// any — as the arrows are drawn right now, before this gesture has moved
-    /// anything.
-    ///
-    /// Assigned during `onChanged`, which is what makes the first event of a
-    /// gesture the one that opens it; SwiftUI gives no separate hook. Mirrors
-    /// `InertiaToolHandles.begin(anchor:at:)`.
-    private func beginBodyDrag(at location: CGPoint) -> BodyDrag {
-        let scale = displayedValues.scale
-        let drag = BodyDrag(
-            axis: InertiaTranslateAxes.axis(
-                at: location,
-                drawnCenter: currentCenter,
-                drawnSize: CGSize(width: layoutFrame.width * scale, height: layoutFrame.height * scale)
-            )
-        )
-
-        bodyDrag = drag
-        return drag
     }
 
     /// Tells the editor how big this node was laid out, so a shape authored
@@ -1808,7 +1796,17 @@ struct InertiaEditable<Content: View>: View {
                 containerSize: inertiaContainerSize,
                 containerSpace: inertiaContainerId,
                 onChange: { apply($0) },
-                onEnded: { commitEdit() }
+                onEnded: { axisDrag = nil; commitEdit() },
+                // The arrows report which of them was pressed rather than being
+                // measured against a press location — see
+                // `InertiaToolHandles.onAxisTranslate`. A node sits wherever the
+                // app under test put it, which may be inside a `TabView` or any
+                // other host that breaks the container's named coordinate space;
+                // an arrow that names itself does not care.
+                onAxisTranslate: { axis, translation in
+                    axisDrag = axis
+                    apply(InertiaToolEdit(translate: axis.constrain(translation)))
+                }
             )
         }
     }
@@ -1835,26 +1833,7 @@ struct InertiaEditable<Content: View>: View {
             shapeSettledEdits = [:]
             shapeGestureEdits = [:]
         }
-        .onTapGesture {
-            InertiaLog.debug("tapped \(content)")
-            guard let inertiaDataModel else {
-                return
-            }
-            
-            guard inertiaDataModel.isActionable else {
-                return
-            }
-            
-            guard let hierarchyId, let containerId = inertiaContainerId else {
-                return
-            }
-
-            let pair = ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: hierarchyId)
-            inertiaDataModel.toggleActionableIdPair(pair, in: containerId)
-
-            InertiaLog.info("Tapped: Starting to send data...")
-            sendActionables()
-        }
+        .onTapGesture { toggleSelection() }
         .overlay {
             if showSelectedBorder && inertiaDataModel?.isActionable ?? false {
                 // `strokeBorder` rather than `stroke`: a stroke centers the line
@@ -1875,6 +1854,20 @@ struct InertiaEditable<Content: View>: View {
         // would swallow the drags meant for this node's own tool handles. The
         // tap that selects lives on the subviews, so `.subviews` keeps it live.
         .gesture(dragGesture, including: isBodyDraggable ? .all : .subviews)
+    }
+
+    /// Picks this node up, or puts it down again — the same toggle a press on a
+    /// shape runs, on the same selection.
+    private func toggleSelection() {
+        InertiaLog.debug("tapped \(content)")
+        guard let inertiaDataModel, inertiaDataModel.isActionable else { return }
+        guard let hierarchyId, let containerId = inertiaContainerId else { return }
+
+        let pair = ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: hierarchyId)
+        inertiaDataModel.toggleActionableIdPair(pair, in: containerId)
+
+        InertiaLog.info("Tapped: Starting to send data...")
+        sendActionables()
     }
     
     /// The shapes authored against this actionable, if it has any. Read off the

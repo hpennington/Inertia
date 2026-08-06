@@ -242,6 +242,44 @@ public extension InertiaAnimationValues {
     }
 }
 
+/// Puts a drag on one axis arrow, for a caller that asked to be told which arrow
+/// was pressed — see ``InertiaToolHandles/onAxisTranslate``. Leaves the arrow
+/// exactly as it was for one that did not.
+///
+/// `minimumDistance: 0`, so it opens on touch-down rather than after the press
+/// has travelled. That is what lets the node's own body drag — which does not
+/// open until 10 points of travel — know that this one has the press, instead of
+/// the two of them both moving the node.
+///
+/// High priority, because the arrow hangs inside a node that has a drag of its
+/// own: without it, which of them runs is up to SwiftUI, and the arrow is the
+/// more specific of the two.
+///
+/// Measured globally, because this arrow is drawn *inside* every transform that
+/// moves the node — so its own space is one this gesture drags out from under
+/// the pointer, and a translation taken in it counts only the part of the move
+/// the node has not caught up with yet. The node then trails the cursor instead
+/// of staying under it. The global frame is the one nothing here moves, and
+/// unlike a named one it always resolves, whatever the app under test has put
+/// between this and the container.
+private struct AxisDragModifier: ViewModifier {
+    let axis: InertiaTranslateAxis
+    let onAxisTranslate: ((InertiaTranslateAxis, CGSize) -> Void)?
+    let onEnded: () -> Void
+
+    func body(content: Content) -> some View {
+        if let onAxisTranslate {
+            content.highPriorityGesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                    .onChanged { onAxisTranslate(axis, $0.translation) }
+                    .onEnded { _ in onEnded() }
+            )
+        } else {
+            content
+        }
+    }
+}
+
 /// A filled arrowhead pointing along one screen axis: right for the horizontal
 /// one, up for the vertical one.
 ///
@@ -333,6 +371,22 @@ public struct InertiaToolHandles: View {
     /// The gesture is over — fold what it produced into the node's position and
     /// tell the editor.
     let onEnded: () -> Void
+    /// A drag on one of the move tool's axis arrows, named by the arrow it
+    /// landed on and carrying the raw screen translation.
+    ///
+    /// Given by a caller that would rather be told which arrow was pressed than
+    /// work it out. Which axis a press picked is otherwise decided by measuring
+    /// the press against `InertiaTranslateAxes` — and that needs the press
+    /// location, the node's drawn center and its layout frame all to be in one
+    /// coordinate space. A drag's *translation* is the same in every space, so a
+    /// caller whose named space does not resolve keeps a working free move and
+    /// loses both axis pins, with nothing to say so. Landing on the arrow is
+    /// proof enough of which arrow it was; no space has to agree with any other.
+    ///
+    /// Nil leaves the arrows gestureless, which is what a caller running its own
+    /// hit test wants — see `InertiaShapesView` and `ShapeCanvasView`, whose
+    /// drags are measured in a space they establish themselves.
+    var onAxisTranslate: ((InertiaTranslateAxis, CGSize) -> Void)? = nil
 
     public init(
         tool: InertiaTool,
@@ -343,7 +397,8 @@ public struct InertiaToolHandles: View {
         containerSpace: String?,
         outer: InertiaOuterTransform? = nil,
         onChange: @escaping (InertiaToolEdit) -> Void,
-        onEnded: @escaping () -> Void
+        onEnded: @escaping () -> Void,
+        onAxisTranslate: ((InertiaTranslateAxis, CGSize) -> Void)? = nil
     ) {
         self.tool = tool
         self.values = values
@@ -354,6 +409,7 @@ public struct InertiaToolHandles: View {
         self.outer = outer
         self.onChange = onChange
         self.onEnded = onEnded
+        self.onAxisTranslate = onAxisTranslate
     }
 
     /// Where the gesture started, taken once so the math stays measured against
@@ -604,6 +660,7 @@ public struct InertiaToolHandles: View {
                 x: axis == .horizontal ? tail.x : tail.x - axisHalfWidth,
                 y: axis == .horizontal ? tail.y - axisHalfWidth : tail.y - axisLength
             )
+            .modifier(AxisDragModifier(axis: axis, onAxisTranslate: onAxisTranslate, onEnded: onEnded))
     }
 
     /// One knob per corner. Any of them scales the node about its center, by how

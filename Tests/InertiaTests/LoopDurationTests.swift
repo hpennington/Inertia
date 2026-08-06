@@ -51,9 +51,7 @@ final class LoopDurationTests: XCTestCase {
     func testDataModelSeedsItsLoopFromTheSchemasItIsBuiltWith() {
         let model = InertiaDataModel(
             containerId: "animation",
-            inertiaSchemas: ["card0": schema(loopDuration: 7)],
-            tree: Tree(id: "animation"),
-            actionableIdPairs: []
+            inertiaSchemas: ["card0": schema(loopDuration: 7)]
         )
 
         XCTAssertEqual(model.loopDuration, 7)
@@ -69,9 +67,7 @@ final class LoopDurationTests: XCTestCase {
             inertiaSchemas: [
                 "card0": schema(id: "card0", loopDuration: 4),
                 "card1": schema(id: "card1", loopDuration: 9)
-            ],
-            tree: Tree(id: "animation"),
-            actionableIdPairs: []
+            ]
         )
 
         XCTAssertEqual(model.loopDuration, 9)
