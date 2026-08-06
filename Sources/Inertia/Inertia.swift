@@ -1604,6 +1604,7 @@ struct InertiaEditable<Content: View>: View {
                 shapeGestureEdits[shape.id] = edit
             },
             onEnded: { shape in commitShapeEdit(shape) },
+            onPlaced: { shape, values in commitShapePlacement(shape, values: values) },
             onTap: { shape in toggleSelection(of: shape) }
         )
     }
@@ -1656,6 +1657,38 @@ struct InertiaEditable<Content: View>: View {
             InertiaMessage.MessageEdit(
                 tool: activeTool,
                 values: authored,
+                actionableIds: [
+                    ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: shape.id)
+                ]
+            )
+        )
+    }
+
+    /// Ends a gesture on a nested vector: folds it in so the next one starts
+    /// from where this one left it, and hands the editor where the shape now
+    /// sits in its parent.
+    ///
+    /// A placement rather than a take. A nested shape is drawn into its parent's
+    /// vertex buffer — it has no canvas of its own to move and no track the
+    /// runtime would ever read off it — so where it sits is the only thing a
+    /// gesture on it can author, whether or not the editor is recording. That is
+    /// the same thing the editor's own canvas writes with its transform toolset;
+    /// see `EditorViewModel.applyShapeTransforms(_:)`.
+    ///
+    /// The values are worked out by the canvas that drew the handles, which is
+    /// the one place that knows what a point of screen is worth to the box this
+    /// shape is placed in — see `InertiaShapesView.placementUnit(of:)`. What goes
+    /// on the wire is the same `MessageEdit` a top-level shape sends, naming the
+    /// shape's own id: which of the two it is gets read off the shape at the
+    /// other end, see `KeyframeHandler.recordShape`.
+    private func commitShapePlacement(_ shape: InertiaShape, values: InertiaAnimationValues) {
+        shapeSettledEdits[shape.id] = (shapeSettledEdits[shape.id] ?? .none) + (shapeGestureEdits[shape.id] ?? .none)
+        shapeGestureEdits[shape.id] = nil
+
+        manager.sendMessage(
+            InertiaMessage.MessageEdit(
+                tool: activeTool,
+                values: values,
                 actionableIds: [
                     ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: shape.id)
                 ]

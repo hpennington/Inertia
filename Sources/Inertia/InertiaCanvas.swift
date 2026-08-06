@@ -99,6 +99,15 @@ struct InertiaShapeEditing {
     let edit: (InertiaShape) -> InertiaToolEdit
     let onChange: (InertiaShape, InertiaToolEdit) -> Void
     let onEnded: (InertiaShape) -> Void
+    /// The gesture on a *nested* vector is over — the whole placement it
+    /// produced, rather than the take `onEnded` hands over.
+    ///
+    /// A shape drawn inside another has no canvas of its own to move and no
+    /// track to record onto, so where it sits in its parent is the only thing a
+    /// gesture on it can author — see `InertiaShape.transforms`. The values are
+    /// absolute and in the units of the box it is placed in, which is the same
+    /// thing `InertiaShape.transforms` holds and the editor's own canvas writes.
+    let onPlaced: (InertiaShape, InertiaAnimationValues) -> Void
     /// Picks the shape a press landed on up, or puts it down again — the same
     /// toggle a tap on an actionable runs, on the same selection.
     let onTap: (InertiaShape) -> Void
@@ -162,6 +171,80 @@ struct InertiaShapesView: View {
         shape.animation != nil || shape.ownCanvas || editing?.isSelected(shape) == true
     }
 
+    /// Whether a gesture on this shape *places* it in its parent rather than
+    /// authoring a track for it.
+    ///
+    /// True for a nested vector and only for one. A shape on the actionable's
+    /// own canvas is drawn on a canvas of its own and moved by a track, so a
+    /// gesture on it is a take like any other; one drawn inside another shape is
+    /// part of its parent's vertex buffer, with no canvas to transform and no
+    /// track the runtime would ever read off it — see `InertiaShape.transforms`.
+    /// Placing it is the only way it moves at all.
+    private func isPlacing(_ shape: InertiaShape) -> Bool {
+        !shapes.contains { $0.id == shape.id }
+    }
+
+    /// The selected vectors a gesture places rather than animates — the nested
+    /// ones, as the schema holds them.
+    private var placingShapes: [InertiaShape] {
+        guard let editing else { return [] }
+
+        return shapes.selected(editing.isSelected).filter(isPlacing)
+    }
+
+    /// The shapes as they are drawn right now: what the actionable holds, with a
+    /// placement gesture in progress folded into the vector it is moving.
+    ///
+    /// A placement is baked into the corners the renderer is handed, so this is
+    /// the only place a nested vector can be shown following the pointer. A
+    /// top-level shape needs none of it — its gesture is folded into the
+    /// transform its canvas is drawn with, see `canvas(for:animatedBy:editedBy:)`
+    /// — and a nested one has no canvas of its own to fold anything into.
+    ///
+    /// Everything downstream is measured off this: the triangles, the box each
+    /// canvas is fitted to, where a press lands, and the box the chrome is drawn
+    /// around. So the border and the handles travel with the artwork rather than
+    /// staying where the drag opened.
+    private var drawnShapes: [InertiaShape] {
+        guard let editing else { return shapes }
+
+        return placingShapes.reduce(shapes) { drawn, shape in
+            let edit = editing.edit(shape)
+            guard !edit.isNone else { return drawn }
+
+            return drawn.placing(placement(of: shape, edited: edit), on: shape.id) ?? drawn
+        }
+    }
+
+    /// Where a vector being dragged has been placed so far: where the schema
+    /// puts it, moved by everything the gesture has done to it.
+    ///
+    /// `shape` is the shape as the *schema* holds it — the placement a gesture
+    /// is measured from — rather than as it is currently drawn, which already
+    /// carries the same edit and would count it twice.
+    private func placement(of shape: InertiaShape, edited edit: InertiaToolEdit) -> InertiaAnimationValues {
+        shape.placement.applying(edit, containerSize: placementUnit(of: shape.id))
+    }
+
+    /// What one unit of the box a vector is placed in is worth on screen, as the
+    /// square `InertiaAnimationValues.applying(_:containerSize:)` divides a drag
+    /// by.
+    ///
+    /// A placement is a fraction of the box the shape sits in, and that box is
+    /// the parent's rather than the actionable's — a smaller unit, and a smaller
+    /// one again the deeper the shape is nested. `unit` is what the drawing
+    /// itself is measured in; the trip from there down to the shape is what
+    /// `InertiaPlacementSpace` counts.
+    ///
+    /// One number for both axes, because a shape is measured against one side of
+    /// whatever holds it either way — see `unit`.
+    private func placementUnit(of shapeId: InertiaID) -> CGSize {
+        let space = shapes.placementSpace(of: shapeId) ?? .own
+        let points = unit * space.unit
+
+        return CGSize(width: points, height: points)
+    }
+
     /// The canvases this view stacks, back to front: the shapes in the order
     /// their z-indexes put them in, cut into runs wherever one of them has to be
     /// drawn on a canvas of its own.
@@ -176,7 +259,7 @@ struct InertiaShapesView: View {
         var layers: [[InertiaShape]] = []
         var isSharedRunOpen = false
 
-        for shape in shapes.stacked {
+        for shape in drawnShapes.stacked {
             if isDrawnAlone(shape) {
                 layers.append([shape])
                 isSharedRunOpen = false
@@ -260,7 +343,12 @@ struct InertiaShapesView: View {
             // Inside every transform below, so the chrome stays glued to the
             // shape as it turns and scales — exactly where an actionable's sits
             // relative to its own.
-            .overlay { selectionChrome(for: shape, bounds: bounds, box: box, values: values) }
+            //
+            // Asked of the whole layer rather than of the shape whose track this
+            // canvas is drawn with: what is picked may be nested inside one of
+            // these, and a shape drawn into its parent's buffer has no canvas of
+            // its own for its chrome to hang off. See `selectionChrome(in:…)`.
+            .overlay { selectionChrome(in: shapes, bounds: bounds, values: values) }
             .scaleEffect(values.scale)
             .rotationEffect(Angle(degrees: values.rotate), anchor: .topLeading)
             .rotationEffect(Angle(degrees: values.rotateCenter), anchor: .center)
@@ -319,24 +407,59 @@ struct InertiaShapesView: View {
         }
     }
 
-    /// The border and handles a selected shape grows: the same green box an
-    /// actionable shows, and the same chrome for whichever tool is active.
+    /// The border and handles the selected shapes on this canvas grow: the same
+    /// green box an actionable shows, and the same chrome for whichever tool is
+    /// active.
     ///
     /// A shape is picked either by pressing it — see `pickArea(for:bounds:)` —
     /// or by finding its row in the editor's hierarchy panel; both write the
     /// same selection, and only a shape already in it grows any of this.
     ///
+    /// Asked of the whole layer, and answered for whatever in it is picked —
+    /// nested vectors included. A canvas used to draw chrome only for the one
+    /// shape it was fitted to, which is the only shape that has a canvas at all:
+    /// a nested one is drawn into its parent's vertex buffer, so it got neither a
+    /// border nor a handle in the app under test however it was picked, while the
+    /// editor's own canvas drew both. See `ShapeCanvasView.selectionChrome`.
+    @ViewBuilder
+    private func selectionChrome(
+        in layer: [InertiaShape],
+        bounds: CGRect,
+        values: InertiaAnimationValues
+    ) -> some View {
+        if let editing {
+            ForEach(layer.selected(editing.isSelected)) { shape in
+                chrome(for: shape, in: layer, bounds: bounds, values: values, editing: editing)
+            }
+        }
+    }
+
+    /// One selected shape's border and handles, fitted to that shape rather than
+    /// to the canvas it is drawn on.
+    ///
+    /// The two are the same box for a shape drawn alone, and are not for a nested
+    /// one: the canvas is fitted to the whole drawing its parent makes, and this
+    /// belongs to one vector inside it. Offset from the middle of the canvas,
+    /// because the canvas is what this is drawn inside of and the two boxes are
+    /// measured in the same units.
+    ///
     /// The move tool has no chrome of its own beyond its two axis arrows, so the
     /// shape's own box is what a free move is dragged by — the way an
     /// actionable's body is. Every other tool edits through a knob.
     @ViewBuilder
-    private func selectionChrome(
-        for shape: InertiaShape?,
+    private func chrome(
+        for shape: InertiaShape,
+        in layer: [InertiaShape],
         bounds: CGRect,
-        box: CGSize,
-        values: InertiaAnimationValues
+        values: InertiaAnimationValues,
+        editing: InertiaShapeEditing
     ) -> some View {
-        if let shape, let editing, editing.isSelected(shape) {
+        if let box = layer.bounds(of: shape.id) {
+            let boxSize = CGSize(width: box.width * unit, height: box.height * unit)
+            let offset = CGSize(
+                width: (box.midX - bounds.midX) * unit,
+                height: (box.midY - bounds.midY) * unit
+            )
             // The shape's box in the container's space, as laid out: where the
             // actionable was laid out, plus where in it the shape sits. Measured
             // outside both transforms, which is the frame the handles turn about.
@@ -345,25 +468,37 @@ struct InertiaShapesView: View {
             // origin a shape's coordinates are drawn about — the same half-view
             // step the canvas itself is placed by.
             let layoutFrame = CGRect(
-                x: editing.outer.layoutFrame.minX + size.width / 2 + bounds.minX * unit,
-                y: editing.outer.layoutFrame.minY + size.height / 2 + bounds.minY * unit,
-                width: box.width,
-                height: box.height
+                x: editing.outer.layoutFrame.minX + size.width / 2 + box.minX * unit,
+                y: editing.outer.layoutFrame.minY + size.height / 2 + box.minY * unit,
+                width: boxSize.width,
+                height: boxSize.height
             )
+            let isPlacing = isPlacing(shape)
 
             Rectangle()
                 .strokeBorder(Color.green, lineWidth: 2)
+                .frame(width: boxSize.width, height: boxSize.height)
+                .offset(x: offset.width, y: offset.height)
                 .allowsHitTesting(false)
 
             let handles = InertiaToolHandles(
                 tool: editing.tool,
                 values: values,
+                // A placement is baked into the corners the renderer is handed,
+                // so the canvas is drawn at its track's transform and says
+                // nothing about where a nested vector has been placed. The
+                // handles are told both: the drawing to measure themselves
+                // against, and the placement to count from. `shape` is the shape
+                // as it is *drawn* — the gesture so far already folded in — so
+                // this is the same live number the editor's canvas reads out of
+                // the project mid-drag.
+                authored: isPlacing ? shape.placement : nil,
                 layoutFrame: layoutFrame,
                 containerSize: containerSize,
                 containerSpace: editing.containerSpace,
                 outer: editing.outer,
                 onChange: { editing.onChange(shape, $0) },
-                onEnded: { editing.onEnded(shape) }
+                onEnded: { end(shape, isPlacing: isPlacing, editing: editing) }
             )
 
             if editing.tool == .translate {
@@ -381,7 +516,17 @@ struct InertiaShapesView: View {
                     Color.clear.contentShape(Rectangle())
                     handles
                 }
-                .gesture(translateGesture(for: shape, editing: editing, layoutFrame: layoutFrame, values: values))
+                .frame(width: boxSize.width, height: boxSize.height, alignment: .topLeading)
+                .offset(x: offset.width, y: offset.height)
+                .gesture(
+                    translateGesture(
+                        for: shape,
+                        editing: editing,
+                        layoutFrame: layoutFrame,
+                        values: values,
+                        isPlacing: isPlacing
+                    )
+                )
                 // The body this move is dragged by covers the shape, and it is
                 // above the layer a press would otherwise be picked off — so
                 // without this there is no way to put a picked shape back down
@@ -390,9 +535,29 @@ struct InertiaShapesView: View {
                 // minimum distance, and a tap by definition has not.
                 .onTapGesture { editing.onTap(shape) }
             } else {
-                handles
+                handles.offset(x: offset.width, y: offset.height)
             }
         }
+    }
+
+    /// Ends a gesture on a shape, on whichever of the two things it authors.
+    ///
+    /// A nested vector is placed in its parent, and the whole placement goes
+    /// over — read here rather than captured with the handle, because the last
+    /// change of a gesture lands immediately before this and the shape drawn when
+    /// the handle was built does not carry it yet. Everything else hands its take
+    /// to whatever holds the track.
+    private func end(_ shape: InertiaShape, isPlacing: Bool, editing: InertiaShapeEditing) {
+        guard isPlacing else {
+            editing.onEnded(shape)
+            return
+        }
+
+        // Measured from the shape as the schema holds it, which is what the
+        // gesture has been counting from all along.
+        guard let authored = shapes.shape(shape.id) else { return }
+
+        editing.onPlaced(shape, placement(of: authored, edited: editing.edit(shape)))
     }
 
     /// A move on a selected shape, free or pinned to one of the move tool's two
@@ -405,15 +570,30 @@ struct InertiaShapesView: View {
     /// through that transform — see `InertiaAnimationValues.unapplying`. Pinning
     /// after would pin it to an axis of the actionable's rather than the
     /// screen's.
+    ///
+    /// A placement is carried back further still. It is baked into the corners,
+    /// and those are drawn inside every transform between them and the container
+    /// — so a drag on one is undone from the outside in: the actionable's
+    /// animation, the track carrying the canvas the shape is drawn on, and then
+    /// the placements of whatever it is nested in. Mirrors
+    /// `ShapeCanvasView.translateGesture`.
     private func translateGesture(
         for shape: InertiaShape,
         editing: InertiaShapeEditing,
         layoutFrame: CGRect,
-        values: InertiaAnimationValues
+        values: InertiaAnimationValues,
+        isPlacing: Bool
     ) -> some Gesture {
+        let placement = isPlacing ? (shapes.placementSpace(of: shape.id) ?? .own) : .own
+
         func translate(_ drag: ShapeDrag, by translation: CGSize) -> InertiaToolEdit {
-            InertiaToolEdit(
-                translate: editing.outer.values.unapplying(drag.axis?.constrain(translation) ?? translation)
+            let pinned = drag.axis?.constrain(translation) ?? translation
+            let outer = editing.outer.values.unapplying(pinned)
+
+            return InertiaToolEdit(
+                translate: isPlacing
+                    ? placement.values.unapplying(values.unapplying(outer))
+                    : outer
             )
         }
 
@@ -426,7 +606,7 @@ struct InertiaShapesView: View {
                 let drag = shapeDrag ?? beginDrag(at: value.startLocation, editing: editing, layoutFrame: layoutFrame, values: values)
                 editing.onChange(shape, translate(drag, by: value.translation))
                 shapeDrag = nil
-                editing.onEnded(shape)
+                end(shape, isPlacing: isPlacing, editing: editing)
             }
     }
 

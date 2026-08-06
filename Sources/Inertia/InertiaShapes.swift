@@ -984,6 +984,62 @@ public extension Collection where Element == InertiaShape {
         return nil
     }
 
+    /// The shape called `shapeId`, wherever it is nested, or nil when nothing in
+    /// here answers to that name.
+    ///
+    /// Looks inside these shapes as well as at them, for the reason
+    /// `bounds(of:)` does: a nested shape is a row of its own in the editor's
+    /// hierarchy and is picked, described and placed by that name even though it
+    /// has no canvas of its own.
+    func shape(_ shapeId: InertiaID) -> InertiaShape? {
+        for shape in self {
+            if shape.id == shapeId { return shape }
+            if let nested = shape.shapes.shape(shapeId) { return nested }
+        }
+
+        return nil
+    }
+
+    /// Every shape in here the editor has picked, wherever it is nested, in the
+    /// order they are drawn.
+    ///
+    /// What grows a border and a set of handles. Nested shapes are walked into
+    /// as well as listed, because one of those is picked exactly as a shape on
+    /// the canvas is — by pressing the artwork, or by finding its row — and is
+    /// no less selected for being drawn into its parent's vertex buffer.
+    ///
+    /// A parent and a child may both be in here, and both draw their own chrome:
+    /// that is two boxes around two different shapes, which is what was picked.
+    func selected(_ isSelected: (InertiaShape) -> Bool) -> [InertiaShape] {
+        stacked.flatMap { shape in
+            (isSelected(shape) ? [shape] : []) + shape.shapes.selected(isSelected)
+        }
+    }
+
+    /// These shapes with `shapeId` — wherever it is nested — placed at `values`,
+    /// leaving everything else about it and about the shapes around it as it was.
+    ///
+    /// Nil for "nothing to do": no shape in here answers to that name. Callers
+    /// rebuild a schema or a canvas from the result, and neither is worth doing
+    /// for a name that was never in this drawing.
+    func placing(_ values: InertiaAnimationValues, on shapeId: InertiaID) -> [InertiaShape]? {
+        var didPlace = false
+
+        let placed = map { shape -> InertiaShape in
+            if shape.id == shapeId {
+                didPlace = true
+                return shape.with(transforms: values)
+            }
+
+            guard let nested = shape.shapes.placing(values, on: shapeId) else { return shape }
+
+            didPlace = true
+            return shape.with(shapes: nested)
+        }
+
+        return didPlace ? placed : nil
+    }
+
     /// The box the shape called `shapeId` is *placed* in, stated in the units
     /// these shapes are authored in — see ``InertiaPlacementSpace``.
     ///

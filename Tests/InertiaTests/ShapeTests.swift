@@ -666,36 +666,15 @@ final class ShapeTests: XCTestCase {
         // The move restated in the shape's own placement — out through the turn
         // and the scale its parents carry it through, then into their units.
         let authored = InertiaToolEdit(translate: space.values.unapplying(move))
-        let shape = try XCTUnwrap(Self.locate(id, in: drawing))
+        let shape = try XCTUnwrap(drawing.shape(id))
         let placed = shape.placement.applying(
             authored,
             containerSize: CGSize(width: space.unit, height: space.unit)
         )
 
-        let after = try XCTUnwrap(Self.replacing(placed, on: id, in: drawing).bounds(of: id))
+        let after = try XCTUnwrap(try XCTUnwrap(drawing.placing(placed, on: id)).bounds(of: id))
 
         return CGSize(width: after.midX - before.midX, height: after.midY - before.midY)
-    }
-
-    private static func locate(_ id: InertiaID, in shapes: [InertiaShape]) -> InertiaShape? {
-        for shape in shapes {
-            if shape.id == id { return shape }
-            if let found = locate(id, in: shape.shapes) { return found }
-        }
-
-        return nil
-    }
-
-    private static func replacing(
-        _ transforms: InertiaAnimationValues,
-        on id: InertiaID,
-        in shapes: [InertiaShape]
-    ) -> [InertiaShape] {
-        shapes.map { shape in
-            if shape.id == id { return shape.with(transforms: transforms) }
-
-            return shape.with(shapes: replacing(transforms, on: id, in: shape.shapes))
-        }
     }
 
     /// A shape on the actionable's own canvas is placed in the drawing itself,
@@ -716,6 +695,70 @@ final class ShapeTests: XCTestCase {
 
         XCTAssertEqual(space.unit, 2, accuracy: 0.0001)
         XCTAssertEqual(space.values, .identity)
+    }
+
+    // MARK: - Finding, listing and re-placing one shape
+
+    /// What the runtime hangs a border and a set of handles off: the shapes the
+    /// editor has picked, wherever they are nested. A nested vector is picked
+    /// exactly as one on the canvas is — by pressing the artwork, or by finding
+    /// its row — and until this the app under test drew chrome only for shapes it
+    /// had given a canvas to, so a picked child got none at all.
+    func testSelectedFindsNestedShapes() {
+        let drawing = [
+            named("parent", 2, nil, shapes: [named("child", 0.5), named("sibling", 0.5)]),
+            named("solo", 1)
+        ]
+
+        let picked = Set(drawing.selected { ["child", "solo"].contains($0.id) }.map(\.id))
+
+        XCTAssertEqual(picked, ["child", "solo"])
+    }
+
+    /// A parent and a child can both be picked, and both are answered for: that
+    /// is two boxes around two different shapes, which is what was selected.
+    func testSelectedListsAParentAndItsChildTogether() {
+        let drawing = [named("parent", 2, nil, shapes: [named("child", 0.5)])]
+
+        let picked = drawing.selected { _ in true }.map(\.id)
+
+        XCTAssertEqual(picked, ["parent", "child"])
+    }
+
+    /// The shape a name points at, however deeply it is drawn inside another —
+    /// what the placement a gesture authors is measured from.
+    func testShapeFindsANestedShapeByName() throws {
+        let drawing = [named("parent", 2, nil, shapes: [named("child", 0.5, moved(0.5, 0))])]
+
+        XCTAssertEqual(try XCTUnwrap(drawing.shape("child")).placement.translate.width, 0.5, accuracy: 0.0001)
+        XCTAssertNil(drawing.shape("missing"))
+    }
+
+    /// Re-placing a nested shape leaves the drawing around it alone: the parent
+    /// keeps its own placement and its other children stay where they were.
+    func testPlacingANestedShapeLeavesTheRestOfTheDrawingAlone() throws {
+        let drawing = [
+            named("parent", 2, moved(1, 0), shapes: [named("child", 0.5), named("sibling", 0.5, moved(-0.5, 0))])
+        ]
+
+        let placed = try XCTUnwrap(drawing.placing(moved(0.5, 0), on: "child"))
+
+        XCTAssertEqual(try XCTUnwrap(placed.shape("child")).placement.translate.width, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(placed.shape("sibling")).placement.translate.width, -0.5, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(placed.shape("parent")).placement.translate.width, 1, accuracy: 0.0001)
+        // The child moved half a parent-width, and a parent two across makes that
+        // one in the drawing's own units.
+        XCTAssertEqual(
+            try XCTUnwrap(placed.bounds(of: "child")).midX - (try XCTUnwrap(drawing.bounds(of: "child")).midX),
+            1,
+            accuracy: 0.0001
+        )
+    }
+
+    /// Nothing to place: the name is not in this drawing, so there is no schema
+    /// worth rebuilding and no canvas worth redrawing.
+    func testPlacingAShapeThatIsNotInTheDrawingIsNil() {
+        XCTAssertNil([named("only", 1)].placing(moved(1, 0), on: "missing"))
     }
 
     /// Every box between the shape and the drawing, multiplied together: a
