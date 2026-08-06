@@ -152,6 +152,14 @@ public class Tree: Identifiable, Hashable, Codable, CustomStringConvertible, Equ
     public var nodeMap: [String: Node] = [:]
     public var rootNode: Node?
 
+    /// Files a node under its parent, and is safe to call again for a node this
+    /// tree already holds.
+    ///
+    /// Idempotent because a view registers itself whenever its hierarchy id
+    /// lands, and a view that goes off screen and comes back — a tab switch is
+    /// one — lands the same id a second time. Appending blindly gave the parent
+    /// two children with one id, so the hierarchy the editor drew listed the
+    /// node twice while only one of the rows answered to the selection.
     func addRelationship(id: String, parentId: String?, parentIsContainer: Bool) {
         // Get or create the current node
         let currentNode = nodeMap[id] ?? {
@@ -168,16 +176,15 @@ public class Tree: Identifiable, Hashable, Codable, CustomStringConvertible, Equ
                 return newNode
             }()
 
+            if parentNode.children?.contains(where: { $0.id == id }) != true {
+                parentNode.addChild(currentNode)
+            }
+
             if parentIsContainer {
                 // If explicitly marked as root, set it as the root node
-                // Establish parent-child relationship
-                parentNode.addChild(currentNode)
                 rootNode = parentNode
-            } else {
-                parentNode.addChild(currentNode)
-                if rootNode == nil && parentNode.parent == nil {
-                    rootNode = parentNode
-                }
+            } else if rootNode == nil && parentNode.parent == nil {
+                rootNode = parentNode
             }
         }
     }
@@ -316,8 +323,25 @@ private extension Duration {
 public final class InertiaDataModel{
     let containerId: InertiaID
     var inertiaSchemas: [InertiaID: InertiaAnimationSchema]
-    var tree: Tree
-    var actionableIdPairs: Set<ActionableIdPair>
+    /// One hierarchy per container instance, keyed by the container's
+    /// `hierarchyId` — which is also the id of the tree filed under it.
+    ///
+    /// Keyed rather than held singly because a container's `hierarchyId` is what
+    /// tells its instances apart, and one app can have several on screen or
+    /// swap between them: the demo's `animation_\(selectedTab)` is a different
+    /// container per tab, drawing a different set of nodes. A `Tree` has one
+    /// `rootNode`, so a shared one could only ever describe whichever container
+    /// registered last — every message the runtime sent afterwards carried that
+    /// container's hierarchy no matter which one the user was acting in, and the
+    /// editor merged the selection into the wrong panel.
+    var trees: [String: Tree] = [:]
+    /// What is picked in each container, keyed the same way as `trees`.
+    ///
+    /// Split for the reason the trees are: a `MessageActionables` is a tree and
+    /// the selection made *in* it, so sending one container's tree with every
+    /// container's selection tells the editor that nodes it cannot see in that
+    /// hierarchy are picked in it.
+    var actionableIdPairsByContainer: [String: Set<ActionableIdPair>] = [:]
     var states: [InertiaID: InertiaAnimationState]
     var actionableIdToAnimationIdMap: [String: String] = [:]
     var registeredHierarchyIdPrefixes: Set<String> = []
@@ -696,6 +720,52 @@ public final class InertiaDataModel{
         )
     }
 
+    /// The hierarchy a container is building, made the first time it is asked
+    /// for. The tree is named after the container instance, so the editor —
+    /// which files what it is told by `tree.id` — keeps one panel per container
+    /// rather than one per app.
+    ///
+    /// Mutating, so it belongs in `onAppear`/`onChange` rather than anywhere a
+    /// view body reaches: making a tree while SwiftUI is reading this object is
+    /// a write during view update. `tree(reading:)` is the read-only view of it.
+    func tree(for containerId: String) -> Tree {
+        if let tree = trees[containerId] { return tree }
+
+        let tree = Tree(id: containerId)
+        trees[containerId] = tree
+        return tree
+    }
+
+    /// The container's hierarchy if it has started one, without making it.
+    func tree(reading containerId: String?) -> Tree? {
+        guard let containerId else { return nil }
+        return trees[containerId]
+    }
+
+    /// What is picked in one container.
+    func actionableIdPairs(in containerId: String?) -> Set<ActionableIdPair> {
+        guard let containerId else { return [] }
+        return actionableIdPairsByContainer[containerId] ?? []
+    }
+
+    /// Picks a pair in a container, or unpicks it if it was already picked.
+    func toggleActionableIdPair(_ pair: ActionableIdPair, in containerId: String) {
+        var pairs = actionableIdPairsByContainer[containerId] ?? []
+        if pairs.contains(pair) {
+            pairs.remove(pair)
+        } else {
+            pairs.insert(pair)
+        }
+        actionableIdPairsByContainer[containerId] = pairs
+    }
+
+    /// Replaces what is picked in one container — what the editor saying so
+    /// amounts to. Left alone are the other containers, which the editor was not
+    /// talking about.
+    func setActionableIdPairs(_ pairs: Set<ActionableIdPair>, in containerId: String) {
+        actionableIdPairsByContainer[containerId] = pairs
+    }
+
     public func registerHierarchyIdPrefix(_ prefix: String) {
         registeredHierarchyIdPrefixes.insert(prefix)
         // Initialize state for this prefix if it doesn't exist
@@ -708,11 +778,9 @@ public final class InertiaDataModel{
         startAutoAnimations()
     }
 
-    public init(containerId: InertiaID, inertiaSchemas: [InertiaID: InertiaAnimationSchema], tree: Tree, actionableIdPairs: Set<ActionableIdPair>) {
+    public init(containerId: InertiaID, inertiaSchemas: [InertiaID: InertiaAnimationSchema]) {
         self.containerId = containerId
         self.inertiaSchemas = inertiaSchemas
-        self.tree = tree
-        self.actionableIdPairs = actionableIdPairs
         // Initialize from schema keys
         self.registeredHierarchyIdPrefixes = Set(inertiaSchemas.keys)
         // Initialize states for all schema keys
@@ -776,7 +844,7 @@ public struct InertiaContainer<Content: View>: View {
         // TODO: - Solve error handling when file is missing or schema is wrong
         if dev {
             self._inertiaDataModel = State(
-                wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: [:], tree: Tree(id: id), actionableIdPairs: Set())
+                wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: [:])
             )
         } else {
             // Read as bytes rather than text: an animation file is MessagePack,
@@ -787,7 +855,7 @@ public struct InertiaContainer<Content: View>: View {
                     InertiaLog.info("InertiaDataModel instantiated for container: \(id)")
                     let schemaMap = schemas.reduce(into: [String: InertiaAnimationSchema]()) { $0[$1.id] = $1 }
                     self._inertiaDataModel = State(
-                        wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: schemaMap, tree: Tree(id: id), actionableIdPairs: Set())
+                        wrappedValue: InertiaDataModel(containerId: id, inertiaSchemas: schemaMap)
                     )
                 } else {
                     InertiaLog.error("Failed to decode the inertia schemas")
@@ -1061,19 +1129,24 @@ struct InertiaActionable<Content: View>: View {
         return animation.timeline(filling: isRepeating ? loop : nil)
     }
 
+    /// Names this node, once.
+    ///
+    /// Claimed once per view and never re-claimed: this runs from `.task`, which
+    /// starts again every time the view comes back on screen, and taking a fresh
+    /// index each time renamed a node that had not moved. Everything already
+    /// filed under the old name — the node in the tree, the selection the editor
+    /// is holding, the measurement, the schema mapping — went on naming a view
+    /// that no longer answered to it.
     @MainActor
     func updateHierarchyId() {
-        if let indexValue = indexManager?.indexMap[hierarchyIdPrefix] {
-            hierarchyId = "\(hierarchyIdPrefix)--\(indexValue)"
-            indexManager?.indexMap[hierarchyIdPrefix] = indexValue + 1
-        } else {
-            hierarchyId = "\(hierarchyIdPrefix)--\(Int.zero)"
-            indexManager?.indexMap[hierarchyIdPrefix] = 1
-        }
+        guard hierarchyId == nil else { return }
+
+        let index = indexManager?.claimIndex(containerId: inertiaContainerId, prefix: hierarchyIdPrefix) ?? .zero
+        hierarchyId = "\(hierarchyIdPrefix)--\(index)"
         // Register this prefix with the data model
         inertiaDataModel?.registerHierarchyIdPrefix(hierarchyIdPrefix)
     }
-    
+
     /// Whether the run itself is on screen — playing, or parked somewhere in the
     /// track by the editor. Anything else draws where the animation starts.
     var isShowingTrack: Bool {
@@ -1267,14 +1340,30 @@ struct InertiaActionable<Content: View>: View {
 
 final class SharedIndexManager {
     static let shared = SharedIndexManager()
-        
+
     private init() {
 
     }
-    
+
     var indexMap: [String: Int] = [:]
     var objectIndexMap: [String: Int] = [:]
     var objectIdSet: Set<String> = []
+
+    /// The next index to hand a view of this prefix in this container, and the
+    /// counter moved along.
+    ///
+    /// Counted per container rather than per prefix alone: the index is what
+    /// tells two instances of the same authored view apart, and two containers
+    /// each holding one instance are not two instances. Sharing one counter had
+    /// the second container's node come up as `card0--1` with no `card0--0`
+    /// beside it, so a selection authored against the first container named
+    /// nothing the second one drew.
+    func claimIndex(containerId: String?, prefix: String) -> Int {
+        let key = "\(containerId ?? "")\u{1}\(prefix)"
+        let index = indexMap[key] ?? .zero
+        indexMap[key] = index + 1
+        return index
+    }
 }
 
 private extension View {
@@ -1403,7 +1492,7 @@ struct InertiaEditable<Content: View>: View {
     /// appear, and a pair always carries a concrete one.
     var isSelected: Bool {
         guard let hierarchyId else { return false }
-        return inertiaDataModel?.actionableIdPairs.contains(where: { $0.hierarchyId == hierarchyId }) ?? false
+        return inertiaDataModel?.actionableIdPairs(in: inertiaContainerId).contains(where: { $0.hierarchyId == hierarchyId }) ?? false
     }
 
     var showSelectedBorder: Bool {
@@ -1566,7 +1655,7 @@ struct InertiaEditable<Content: View>: View {
         gestureEdit = .none
         inertiaDataModel?.showGrid = false
 
-        guard let actionableIdPairs = inertiaDataModel?.actionableIdPairs else { return }
+        guard let actionableIdPairs = inertiaDataModel?.actionableIdPairs(in: inertiaContainerId) else { return }
 
         manager.sendMessage(
             InertiaMessage.MessageEdit(
@@ -1581,7 +1670,7 @@ struct InertiaEditable<Content: View>: View {
     /// selection the actionables are picked out of, since a shape is selected
     /// as an `ActionableIdPair` like anything else.
     private func isSelected(shape: InertiaShape) -> Bool {
-        inertiaDataModel?.actionableIdPairs.contains { $0.hierarchyId == shape.id } ?? false
+        inertiaDataModel?.actionableIdPairs(in: inertiaContainerId).contains { $0.hierarchyId == shape.id } ?? false
     }
 
     /// Everything a shape drawn behind this node needs in order to be picked and
@@ -1622,18 +1711,30 @@ struct InertiaEditable<Content: View>: View {
     /// picked, but what *is* picked.
     private func toggleSelection(of shape: InertiaShape) {
         guard let inertiaDataModel, inertiaDataModel.isActionable else { return }
+        guard let containerId = inertiaContainerId else { return }
 
         let pair = ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: shape.id)
-        if inertiaDataModel.actionableIdPairs.contains(pair) {
-            inertiaDataModel.actionableIdPairs.remove(pair)
-        } else {
-            inertiaDataModel.actionableIdPairs.insert(pair)
-        }
+        inertiaDataModel.toggleActionableIdPair(pair, in: containerId)
+
+        sendActionables()
+    }
+
+    /// Tells the editor what this node's container is showing and what is picked
+    /// in it.
+    ///
+    /// The container's own tree and its own selection, never the app's: the two
+    /// halves of a `MessageActionables` are read together, and the editor files
+    /// what it is told under the tree that came with it.
+    private func sendActionables() {
+        guard let inertiaDataModel,
+              let containerId = inertiaContainerId,
+              let tree = inertiaDataModel.tree(reading: containerId)
+        else { return }
 
         manager.sendMessage(
             InertiaMessage.MessageActionables(
-                tree: inertiaDataModel.tree,
-                actionableIds: inertiaDataModel.actionableIdPairs
+                tree: tree,
+                actionableIds: inertiaDataModel.actionableIdPairs(in: containerId)
             )
         )
     }
@@ -1744,23 +1845,15 @@ struct InertiaEditable<Content: View>: View {
                 return
             }
             
-            guard let hierarchyId else {
+            guard let hierarchyId, let containerId = inertiaContainerId else {
                 return
             }
-            
-            let pair = ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: hierarchyId)
-            if inertiaDataModel.actionableIdPairs.contains(pair) {
-                inertiaDataModel.actionableIdPairs.remove(pair)
-            } else {
-                inertiaDataModel.actionableIdPairs.insert(pair)
-            }
-            
-            InertiaLog.info("Tapped: Starting to send data...")
 
-            let tree = inertiaDataModel.tree
-            let actionableIds = inertiaDataModel.actionableIdPairs
-            let message = InertiaMessage.MessageActionables(tree: tree, actionableIds: actionableIds)
-            manager.sendMessage(message)
+            let pair = ActionableIdPair(hierarchyIdPrefix: hierarchyIdPrefix, hierarchyId: hierarchyId)
+            inertiaDataModel.toggleActionableIdPair(pair, in: containerId)
+
+            InertiaLog.info("Tapped: Starting to send data...")
+            sendActionables()
         }
         .overlay {
             if showSelectedBorder && inertiaDataModel?.isActionable ?? false {
@@ -1908,19 +2001,23 @@ struct InertiaEditable<Content: View>: View {
         return isShowingTrack || (shape.animation?.invokeType == .auto && isPlaying)
     }
 
+    /// Names this node, once — see `InertiaActionable.updateHierarchyId`, which
+    /// this is the editing half of and which has the reason.
+    ///
+    /// It matters more here than there: this runs from `.onAppear`, which a
+    /// `TabView` fires again on every switch back to a tab, and it is the
+    /// editor that is left holding the stale name.
     @MainActor
     func updateHierarchyId() {
-        if let indexValue = indexManager?.indexMap[hierarchyIdPrefix] {
-            hierarchyId = "\(hierarchyIdPrefix)--\(indexValue)"
-            indexManager?.indexMap[hierarchyIdPrefix] = indexValue + 1
-        } else {
-            hierarchyId = "\(hierarchyIdPrefix)--\(Int.zero)"
-            indexManager?.indexMap[hierarchyIdPrefix] = 1
-        }
+        guard hierarchyId == nil else { return }
+
+        let index = indexManager?.claimIndex(containerId: inertiaContainerId, prefix: hierarchyIdPrefix) ?? .zero
+        hierarchyId = "\(hierarchyIdPrefix)--\(index)"
         // Register this prefix with the data model
         inertiaDataModel?.registerHierarchyIdPrefix(hierarchyIdPrefix)
     }
-    
+
+
     var body: some View {
         Group {
             // One stack for the schema and the gesture together, rather than the
@@ -1988,7 +2085,7 @@ struct InertiaEditable<Content: View>: View {
             InertiaLog.info("Connecting to the editor (setup)...")
             manager.start()
 
-            manager.messageReceived = handleMessage
+            manager.messageReceived = handleMessage(tree:selectedIds:)
             manager.messageReceivedSchema = handleMessageSchema
             manager.messageReceivedIsActionable = handleMessageActionable
             manager.messageReceivedTool = handleMessageTool(tool:)
@@ -1997,16 +2094,12 @@ struct InertiaEditable<Content: View>: View {
         .onChange(of: manager.isConnected, { oldValue, newValue in
             // An editor just attached — push the current hierarchy so it can
             // render the tree without waiting for the next change.
-            guard newValue, let inertiaDataModel else {
+            guard newValue else {
                 return
             }
 
             InertiaLog.info("Editor attached, sending current tree...")
-            let message = InertiaMessage.MessageActionables(
-                tree: inertiaDataModel.tree,
-                actionableIds: inertiaDataModel.actionableIdPairs
-            )
-            manager.sendMessage(message)
+            sendActionables()
 
             // Layout happened long before this editor was listening, and it
             // will not happen again just because one attached. Forgetting what
@@ -2014,27 +2107,22 @@ struct InertiaEditable<Content: View>: View {
             reportedSize = nil
             reportMeasurement(layoutFrame.size)
         })
-        .onChange(of: inertiaDataModel?.tree, { oldValue, newValue in
-            if let tree = newValue {
-                for node in tree.nodeMap.values {
-                    node.tree = tree
-                    node.link()
-                }
-            }
-        })
-        .onChange(of: hierarchyId) { oldValue, hierarchyId in
-            InertiaLog.debug("onAppear: \(String(describing: hierarchyId))")
-            if oldValue != nil {
-                return
-            }
-
-            guard let hierarchyId else {
+        // Registered whenever the id lands rather than only on the first one it
+        // ever had. It used to bail out on any later change, which was only ever
+        // right because the id never legitimately changed — and when a stale
+        // `updateHierarchyId` renamed the node anyway, this is what quietly left
+        // the tree describing a name nothing answered to.
+        .onChange(of: hierarchyId) { _, hierarchyId in
+            guard let hierarchyId, let containerId = inertiaContainerId else {
                 return
             }
 
             InertiaLog.debug("adding relationship: hierarchyId: \(hierarchyId) inertiaParentID: \(String(describing: inertiaParentID)), isInertiaContainer: \(isInertiaContainer)")
-            inertiaDataModel?.tree.addRelationship(id: hierarchyId, parentId: inertiaParentID, parentIsContainer: isInertiaContainer)
-            if let tree = inertiaDataModel?.tree {
+
+            // Into this container's own hierarchy — see `InertiaDataModel.trees`.
+            let tree = inertiaDataModel?.tree(for: containerId)
+            tree?.addRelationship(id: hierarchyId, parentId: inertiaParentID, parentIsContainer: isInertiaContainer)
+            if let tree {
                 for node in tree.nodeMap.values {
                     node.tree = tree
                     node.link()
@@ -2044,15 +2132,7 @@ struct InertiaEditable<Content: View>: View {
             InertiaLog.debug("Starting to send data 2...")
             manager.start()
 
-            if let tree = inertiaDataModel?.tree {
-                InertiaLog.verbose("tree \(tree)")
-                if let actionableIdPairs = inertiaDataModel?.actionableIdPairs {
-                    InertiaLog.verbose("tree \(actionableIdPairs)")
-                    let message = InertiaMessage.MessageActionables(tree: tree, actionableIds: actionableIdPairs)
-                    InertiaLog.verbose("\(message)")
-                    manager.sendMessage(message)
-                }
-            }
+            sendActionables()
         }
         .onDisappear {
             // Cleanup disabled for new schema - no shape objects with zIndex
@@ -2093,15 +2173,16 @@ struct InertiaEditable<Content: View>: View {
         return animation
     }
     
-    func handleMessage(_ msg: Set<ActionableIdPair>) {
-        InertiaLog.debug("Received handleMessage with \(msg.count) IDs")
-        var newPairs = Set(msg)
-
-        InertiaLog.debug("✅ Updating actionableIdPairs from WS: \(newPairs)")
-
-        if var model = inertiaDataModel {
-            model.actionableIdPairs = newPairs
-        }
+    /// What the editor says is picked, in the hierarchy it says it about.
+    ///
+    /// Filed under the tree that came with it rather than over the whole app:
+    /// the editor draws one panel per hierarchy and writes a selection back
+    /// through the packet it was made in, so a message names one container. Laid
+    /// over everything, picking a row in one container silently cleared what was
+    /// picked in every other.
+    func handleMessage(tree: Tree, selectedIds: Set<ActionableIdPair>) {
+        InertiaLog.debug("✅ Updating actionableIdPairs for \(tree.id) from WS: \(selectedIds)")
+        inertiaDataModel?.setActionableIdPairs(selectedIds, in: tree.id)
     }
     
     func handleMessageSignal(_ signal: AnimationSignal, sequence: Int) {

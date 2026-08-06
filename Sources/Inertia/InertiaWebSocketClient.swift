@@ -61,7 +61,12 @@ public final class InertiaWebSocketClient {
     /// True while the editor connection is open.
     public private(set) var isConnected: Bool = false
 
-    public var messageReceived: ((_ selectedIds: Set<ActionableIdPair>) -> Void)? = nil
+    /// The editor's selection, with the hierarchy it was made in.
+    ///
+    /// The tree travels with it because a runtime can be drawing more than one —
+    /// a container per tab, say — and a selection only means anything against
+    /// the one it was picked in.
+    public var messageReceived: ((_ tree: Tree, _ selectedIds: Set<ActionableIdPair>) -> Void)? = nil
     public var messageReceivedSchema: ((_ schemas: [InertiaSchemaWrapper]) -> Void)? = nil
     public var messageReceivedSignal: ((_ signal: AnimationSignal, _ sequence: Int) -> Void)? = nil
     public var messageReceivedIsActionable: ((_ isActionable: Bool) -> Void)? = nil
@@ -355,7 +360,7 @@ public final class InertiaWebSocketClient {
             guard let message = try? InertiaCoding.decode(InertiaMessage.MessageActionables.self, from: messageWrapper.payload) else {
                 return
             }
-            DispatchQueue.main.async { self.messageReceived?(message.actionableIds) }
+            DispatchQueue.main.async { self.messageReceived?(message.tree, message.actionableIds) }
         case .schema:
             guard let message = try? InertiaCoding.decode(InertiaMessage.MessageSchema.self, from: messageWrapper.payload) else {
                 return
