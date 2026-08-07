@@ -97,16 +97,8 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.hpennington:inertia-compose:v1.0.8")
+    implementation("com.github.hpennington:inertia-compose:v1.6.0")
 }
-```
-
-GLES shape rendering landed after `v1.0.8` was cut, so a build pinned to that tag animates
-views but draws no shapes. Until a newer tag is published, take it from the branch or a
-commit instead — JitPack resolves both:
-
-```kotlin
-implementation("com.github.hpennington:inertia-compose:main-SNAPSHOT")
 ```
 
 Requires `minSdk` 26 and Kotlin 2.0+ / JVM 17. The runtime dials the editor over plain
@@ -116,11 +108,11 @@ source set. See [Installation](https://hpennington.github.io/Inertia/getting-sta
 
 ### React
 
-The two npm packages are built out of the repository rather than published to a registry —
-`inertia-base` is the framework-agnostic core, `inertia-react` the bindings on top of it:
+The runtime is published to npm as two packages — `inertia-base` is the framework-agnostic
+core, `inertia-react` the bindings on top of it. Installing the latter pulls in the former:
 
 ```sh
-./scripts/build_react.sh
+npm install inertia-react
 ```
 
 **`package.json`**
@@ -128,10 +120,14 @@ The two npm packages are built out of the repository rather than published to a 
 ```json
 {
   "dependencies": {
-    "inertia-react": "file:../path/to/runtime-web/inertia-react"
+    "inertia-react": "^0.5.0"
   }
 }
 ```
+
+To work against local checkouts instead — building both out of this repository — run
+`./scripts/build_react.sh` and point the dependency at the directory with
+`"inertia-react": "file:../path/to/runtime-web/inertia-react"`.
 
 React 18.3.1 is a **peer** dependency, so your app supplies it — a second copy of React
 resolving inside the package breaks hooks.

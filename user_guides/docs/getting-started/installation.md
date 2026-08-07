@@ -118,7 +118,7 @@ an Android emulator, or your web dev server in a web view.
 
     ```kotlin title="app/build.gradle.kts"
     dependencies {
-        implementation("com.github.hpennington:inertia-compose:v1.0.8")
+        implementation("com.github.hpennington:inertia-compose:v1.6.0")
     }
     ```
 
@@ -198,39 +198,50 @@ an Android emulator, or your web dev server in a web view.
 
 === "React"
 
-    ## Build and link the packages
+    ## Install the packages
 
-    The React runtime is two npm packages that are not published to a registry — you build
-    them out of the repository and link them into your app:
+    The React runtime is two npm packages:
 
     - **`inertia-base`** — the framework-agnostic core: schema and message types, the
       hierarchy tree, the interpolation, the WebSocket client.
     - **`inertia-react`** — the React bindings that sit on top of it.
 
-    `inertia-react` depends on `inertia-base` by file path, so the two build in order.
-    The repository has a script that does exactly that:
+    `inertia-react` depends on `inertia-base`, so installing it pulls in both:
 
     ```sh
-    ./scripts/build_react.sh
+    npm install inertia-react
     ```
-
-    Then depend on the built package from your app:
 
     ```json title="package.json"
     {
       "dependencies": {
-        "inertia-react": "file:../path/to/runtime-web/inertia-react"
+        "inertia-react": "^0.5.0"
       }
     }
     ```
 
-    ```sh
-    npm install
-    ```
-
     React 18.3.1 is a **peer** dependency of `inertia-react`, so your app supplies it.
-    Having a second copy of React resolve inside the package breaks hooks, which is why
-    the build script deletes `node_modules/react` before building.
+    Having a second copy of React resolve inside the package breaks hooks.
+
+    !!! tip "Building against a checkout instead"
+
+        To work against the runtime source rather than a published release — which is
+        what the demo app in the repository does — build both packages out of the
+        repository and depend on the directory. The script builds them in dependency
+        order and deletes `node_modules/react` first, so no second copy of React
+        resolves inside the package:
+
+        ```sh
+        ./scripts/build_react.sh
+        ```
+
+        ```json title="package.json"
+        {
+          "dependencies": {
+            "inertia-react": "file:../path/to/runtime-web/inertia-react"
+          }
+        }
+        ```
 
     Then import from it:
 
