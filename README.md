@@ -3,7 +3,7 @@
 **A keyframe animation editor for the UI you already built.**
 
 Wrap the views you want to move, run your app inside the Inertia editor, drag those views
-around on a timeline, and Inertia writes the result to a JSON file your app loads at
+around on a timeline, and Inertia writes the result to a `.inertia` file your app loads at
 runtime.
 
 There is no separate rendering surface and no exported video. The thing you animate in the
@@ -26,8 +26,8 @@ Inertia sits between the two. Your app is the canvas:
   drifts from the app.
 - **You keep native performance.** SwiftUI plays tracks through `KeyframeAnimator`;
   Compose and React sample the same tracks on their own clocks. Nothing is rasterized.
-- **The handoff is a JSON file.** Designers scrub a timeline, developers `git add` the
-  result. One file, three runtimes, identical ids.
+- **The handoff is a `.inertia` file.** Designers scrub a timeline, developers `git add`
+  the result. One file, three runtimes, identical ids.
 - **Editing is live.** The app connects to the editor over a local WebSocket, reports its
   tagged hierarchy, and receives schema updates as you edit. What you see running is the
   animation as it currently stands.
@@ -46,7 +46,7 @@ The editor is a macOS app in every case. A worked app on all three runtimes live
 ## Features
 
 - 🌍 Three runtimes — SwiftUI, Jetpack Compose, React — on one file format
-- 🎨 WYSIWYG keyframe editor with MessagePack export
+- 🎨 WYSIWYG keyframe editor exporting binary MessagePack `.inertia` files
 - ⚡ Native playback: `KeyframeAnimator` on iOS, native clocks on Android and web
 - 🎛️ Playback control from your app: `trigger`, `cancel`, `restart`, `isCancelled`
 - 🔁 Looping or play-once, switchable at runtime
@@ -75,9 +75,11 @@ targets: [
 
 Requires **iOS 17+ / macOS 14+** and Swift 5.9+. The iOS 17 floor is `KeyframeAnimator`.
 
-Add an `animation.inertia` containing `[]` to your target's **Copy Bundle Resources** — the
-container reads it by `id` at init and traps if it is missing. Then add `-D INERTIA_EDITOR`
-to **Other Swift Flags** for the configuration you want to edit in.
+Add the `animation.inertia` the editor writes to your target's **Copy Bundle Resources** —
+the container reads it by `id` at init and traps if it is missing. It is a binary file, so
+take it from the editor rather than hand-writing one; a file with no animations in it is
+valid. Then add `-D INERTIA_EDITOR` to **Other Swift Flags** for the configuration you want
+to edit in.
 
 ### Jetpack Compose
 
@@ -381,7 +383,8 @@ them. `cancel` returns an animation to its initial values and leaves it there un
 
 ## Animation file format
 
-The editor writes an array of animation objects, one per tagged id:
+A `.inertia` file is MessagePack, not text — the editor writes a binary array of animation
+objects, one per tagged id. Shown here as JSON for readability:
 
 ```json
 [
@@ -497,9 +500,9 @@ HTTP on React.
 The runtimes are deliberately parallel, but they are not at the same level of maturity.
 
 - **SwiftUI is strict about the bundled file.** With `dev: false` the container reads the
-  resource during init and traps if it is missing or fails to decode. `[]` is valid; absent
-  is a crash. Compose and React log an error and leave the views at their layout
-  positions instead.
+  resource during init and traps if it is missing or fails to decode. A file with no
+  animations in it is valid; an absent one is a crash. Compose and React log an error and
+  leave the views at their layout positions instead.
 - **Interpolation differs.** SwiftUI fits a cubic spline across the whole track, so motion
   can overshoot a keyframe on the way to the next. Compose and React solve each segment
   with a cubic ease-in-out, which never overshoots. The poses at the keyframes are
@@ -537,7 +540,7 @@ the full comparison.
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
 | Author in the editor | ✅ | ✅ | ✅ |
-| Ship the result | ✅ (bundle the JSON) | ✅ (`assets/`) | ✅ (serve the JSON) |
+| Ship the result | ✅ (bundle the file) | ✅ (`assets/`) | ✅ (serve the file) |
 | Shape rendering | ✅ Metal | ✅ GLES 2.0 | ✅ WebGL |
 | Distribution | Swift Package Manager | JitPack | build from source |
 
