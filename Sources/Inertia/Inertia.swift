@@ -521,6 +521,15 @@ public final class InertiaDataModel{
 
         start(id)
     }
+    
+    public func restartAll() {
+        clock?.cancel()
+        clock = nil
+        playheadTime = .zero
+
+        startAll()
+    }
+
 
     public func isCancelled(_ id: InertiaID) -> Bool {
         states[id]?.isCancelled == true
@@ -528,6 +537,16 @@ public final class InertiaDataModel{
 
     private func start(_ id: InertiaID) {
         states[id] = InertiaAnimationState(id: id, trigger: true, isCancelled: false)
+        seekTime = nil
+        isRunning = true
+        startClock()
+    }
+    
+    private func startAll() {
+        for id in states.keys {
+            states[id] = InertiaAnimationState(id: id, trigger: true, isCancelled: false)
+        }
+        
         seekTime = nil
         isRunning = true
         startClock()
@@ -1262,7 +1281,9 @@ struct InertiaActionable<Content: View>: View {
         .buttonStyle(.plain)
         .onAppear {
             manager.messageReceivedSignal = handleMessageSignal
-
+        }
+        .onChange(of: inertiaContainerId) { oldValue, newId in
+            inertiaDataModel?.restartAll()
         }
         .task {
             updateHierarchyId()

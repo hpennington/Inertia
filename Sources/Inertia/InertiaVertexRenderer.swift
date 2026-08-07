@@ -48,6 +48,19 @@ public struct Vertex: Codable, Equatable, Sendable {
 }
 
 public final class InertiaVertexRenderer: MTKView, MTKViewDelegate {
+    /// How many samples an edge is measured with — see `samples(on:)`.
+    private static let preferredSampleCount = 4
+
+    /// The samples this device will actually give us, which is what both the
+    /// view and the pipeline are built at: the two have to agree, and a
+    /// mismatch is a validation failure rather than a slightly rougher edge.
+    ///
+    /// Every Apple GPU supports 4, so the fallback is for the simulator and
+    /// whatever turns up that does not.
+    private static func samples(on device: MTLDevice) -> Int {
+        device.supportsTextureSampleCount(preferredSampleCount) ? preferredSampleCount : 1
+    }
+
     public var vertices: [Vertex] {
         didSet {
             guard vertices != oldValue else { return }
@@ -81,10 +94,23 @@ public final class InertiaVertexRenderer: MTKView, MTKViewDelegate {
         let vertexFunction = library?.makeFunction(name: "vertex_main")
         let fragmentFunction = library?.makeFunction(name: "fragment_main")
         
+        let sampleCount = Self.samples(on: device)
+
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
         pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        // Multisampled, so a shape's edges are measured rather than taken from
+        // the one sample at the middle of each pixel. Everything a shape is made
+        // of is a triangle — a circle is a forty-eight-sided polygon, an oval
+        // the same ring in a box, a stroke a band of quads around either — so
+        // every edge that is not flat across or straight down was drawn as a
+        // staircase, and the rounder the shape the more of it there was to see.
+        //
+        // On the view as well as here: the two counts have to agree, and MTKView
+        // is what allocates the multisample target and resolves it into the
+        // drawable. See `samples(on:)`.
+        pipelineDescriptor.rasterSampleCount = sampleCount
         // Standard source-over. Without the factors, "blending enabled" still
         // writes the source straight through, so a shape's alpha would do
         // nothing and the canvas could not sit behind anything.
@@ -121,6 +147,7 @@ public final class InertiaVertexRenderer: MTKView, MTKViewDelegate {
         self.pipelineState = pipelineState
         super.init(frame: frame, device: device)
 
+        self.sampleCount = sampleCount
         self.delegate = self
         // A canvas per actionable, so the renderers cannot each hold a display
         // link open: they draw when their shapes or their bounds change and
