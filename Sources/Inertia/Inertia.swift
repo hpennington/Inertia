@@ -17,11 +17,15 @@ public enum AnimationSignal: Codable {
     /// into the loop.
     case seek(CGFloat)
     /// The editor's play button. Carries on from where `pause` or `seek` left
-    /// off, and starts anything not running yet — including a `trigger`
-    /// animation, which the app would otherwise have to start itself. Nothing
-    /// but the editor sends signals, so this does not make a `trigger` animation
-    /// self-starting in the app.
+    /// off, and starts the animations that start themselves — the `auto` ones.
+    /// A `trigger` animation is the app's to start and goes on waiting, exactly
+    /// as it would with no editor attached.
     case resume
+    /// The editor's Trigger action on the named animation, standing in for the
+    /// `trigger(_:)` call the app would make. Its own signal rather than
+    /// something `resume` does on the side, so the play button means the same
+    /// thing in the editor as arriving on the screen does in the app.
+    case trigger(InertiaID)
 }
 
 public enum InertiaPlayback {
@@ -451,20 +455,6 @@ public final class InertiaDataModel{
 
     private var clock: Task<Void, Never>? = nil
 
-    /// Whether the editor has asked for playback and not since paused it.
-    ///
-    /// Held across schema arrivals because the two race. The editor sends the
-    /// schemas and then `resume` straight after, and a signal is applied the
-    /// moment it arrives while a schema has to reach this model first — so
-    /// `resume` can land against a `states` map that is still empty, with
-    /// nothing for it to start. Remembering the request lets the schemas start
-    /// themselves when they turn up, which is what `startAutoAnimations` reads
-    /// this for.
-    ///
-    /// Only the editor sends signals, so this stays false in a shipped build
-    /// and a `trigger` animation there still waits for the app.
-    private var isEditorPlaying: Bool = false
-
     /// Roughly one message per display frame. Fine enough for the editor to
     /// interpolate a smooth playhead without flooding the socket.
     private static let clockInterval: Duration = .milliseconds(16)
@@ -519,6 +509,11 @@ public final class InertiaDataModel{
         clock = nil
         playheadTime = .zero
 
+        // The playhead is back at zero, which ends the pass of anything else
+        // that was triggered — the same rule as everywhere else, so a restart
+        // does not quietly carry another animation's run over the boundary.
+        retireTriggeredAnimations(holdingAt: .zero)
+
         start(id)
     }
     
@@ -534,9 +529,8 @@ public final class InertiaDataModel{
     /// `trigger(_:)` call a `trigger` animation is still waiting for, and
     /// starting one here played animations the app had said it would start
     /// itself. Those are returned to their initial values instead, so the screen
-    /// offers them from the top when the app does trigger them. The editor's
-    /// play button does stand in for the app, which is what `isEditorPlaying`
-    /// keeps true here.
+    /// offers them from the top when the app does trigger them — the editor's
+    /// Trigger action included, which is a `trigger(_:)` call like any other.
     public func restartAll() {
         clock?.cancel()
         clock = nil
@@ -548,6 +542,29 @@ public final class InertiaDataModel{
 
     public func isCancelled(_ id: InertiaID) -> Bool {
         states[id]?.isCancelled == true
+    }
+
+    /// Where to read `prefix`'s track, or nil when its run is not on screen at
+    /// all and the animation is drawn at the values it starts from.
+    ///
+    /// The one answer to both halves of that question, so that whether a track
+    /// shows and where it has got to can never disagree — which they did once a
+    /// finished pass started holding a frame of its own rather than the
+    /// playhead's.
+    ///
+    /// Three states in it: a run on screen — playing, or parked in the track by
+    /// the editor — reads at the playhead; a triggered run that has had its pass
+    /// holds the frame it ended on, whatever the playhead does afterwards, until
+    /// it is triggered again; anything else is not drawn from its track.
+    func trackTime(for prefix: InertiaID) -> CGFloat? {
+        guard let state = states[prefix], !state.isCancelled else { return nil }
+
+        if let heldTime = state.heldTime { return heldTime }
+
+        // Scrubbing shows the animation without running it.
+        guard isRunning || seekTime != nil, state.trigger == true else { return nil }
+
+        return seekTime ?? playheadTime
     }
 
     private func start(_ id: InertiaID) {
@@ -569,7 +586,7 @@ public final class InertiaDataModel{
         var didStart = false
 
         for id in Set(states.keys).union(inertiaSchemas.keys) {
-            let isAuto = inertiaSchemas[id]?.invokeType == .auto || isEditorPlaying
+            let isAuto = inertiaSchemas[id]?.invokeType == .auto
             states[id] = InertiaAnimationState(id: id, trigger: isAuto, isCancelled: false)
             didStart = didStart || isAuto
         }
@@ -596,16 +613,16 @@ public final class InertiaDataModel{
     /// its schema — which is why this runs both when an actionable registers and
     /// when the editor sends a schema, whichever of the two arrives last.
     ///
-    /// While the editor is playing, everything starts whatever its `invokeType`:
-    /// authoring a `trigger` animation is exactly when nothing is going to call
-    /// `trigger(_:)` for it, and a schema that arrived after the editor's
-    /// `resume` would otherwise sit still until the next one. See
-    /// `isEditorPlaying` for the race this settles.
+    /// The same set with the editor attached as without, which is what settles
+    /// the race between a `resume` and the schemas it was sent alongside: an
+    /// `auto` animation whose schema lands after the play button starts itself
+    /// here rather than waiting to be told, and a `trigger` one was never the
+    /// play button's to start.
     ///
     /// Cancelled animations are left where they are: stopping one is the app's
     /// call, and picking it back up is `restart(_:)`'s.
     func startAutoAnimations() {
-        guard markTriggered(where: { $0.invokeType == .auto || isEditorPlaying }) else { return }
+        guard markTriggered(where: { $0.invokeType == .auto }) else { return }
 
         // A parked playhead means the editor is scrubbing, and starting the clock
         // would pull the run out from under whoever is dragging it.
@@ -629,19 +646,67 @@ public final class InertiaDataModel{
             guard let state = states[prefix], !state.isCancelled, state.trigger != true else { continue }
 
             states[prefix]?.trigger = true
+            // Playing again is what lets go of the frame a finished pass was
+            // left holding.
+            states[prefix]?.heldTime = nil
             didStart = true
         }
 
         return didStart
     }
 
+    /// Puts the `trigger` animations that have played their pass back to
+    /// waiting, holding each where `time` leaves it.
+    ///
+    /// A trigger is answered once. The run it asked for ends when the playhead
+    /// goes back to zero, and the animation has to be asked for again — the
+    /// first trigger of a repeating container's life would otherwise leave it
+    /// playing for as long as the app was on screen, and a second call would
+    /// have nothing to do. An `auto` animation is not answering anything, so it
+    /// simply plays the next pass.
+    ///
+    /// The end of a pass is the end of the *loop* rather than the end of the
+    /// track, which is not the same instant: a track that stops moving half a
+    /// second into a three-second loop is padded out to it like every other, and
+    /// ending its pass where it settled would cut short a pass it is meant to be
+    /// holding through. The transport ends one too — play, pause, or the
+    /// playhead dragged back to the start — since each is a request about the
+    /// timeline rather than the answer to a trigger.
+    ///
+    /// What ends is the run, not what is on screen: `heldTime` is the frame the
+    /// animation was showing at that moment, and it stays on it until the next
+    /// trigger replays it. Every caller passes the playhead the node is drawn
+    /// at, so nothing moves at the instant a pass ends.
+    ///
+    /// The clock goes down with the last thing running off it, the same as a
+    /// cancellation: a playhead with nothing left to follow is one the editor
+    /// should see parked. Reporting that is left to the caller, each of which is
+    /// about to say something about the run anyway.
+    private func retireTriggeredAnimations(holdingAt time: CGFloat) {
+        for (prefix, schema) in inertiaSchemas where schema.invokeType == .trigger {
+            guard states[prefix]?.trigger == true else { continue }
+
+            states[prefix]?.trigger = false
+            states[prefix]?.heldTime = time
+        }
+
+        guard !states.values.contains(where: { $0.trigger == true }) else { return }
+
+        isRunning = false
+        clock?.cancel()
+        clock = nil
+    }
+
     /// Stops the run and reports where it stopped, so a paused playhead sits
     /// exactly where the animation froze.
     ///
     /// Pausing parks the playhead where it is, which holds the frame on screen
-    /// and is what playing again picks up from.
+    /// and is what playing again picks up from — for the `auto` animations. A
+    /// triggered one has had its pass ended by the transport being touched at
+    /// all, so it is back at its initial values waiting to be asked again.
     func pausePlayback() {
-        isEditorPlaying = false
+        retireTriggeredAnimations(holdingAt: playheadTime)
+
         isRunning = false
         clock?.cancel()
         clock = nil
@@ -649,22 +714,27 @@ public final class InertiaDataModel{
         report(isRunning: false)
     }
 
-    /// The editor's play button: runs every animation, whatever its
-    /// `invokeType`, picking a paused or scrubbed run back up where it was left.
+    /// The editor's play button: picks a paused or scrubbed run back up where it
+    /// was left, and starts the animations that start themselves.
     ///
-    /// `auto` animations are already going by the time this arrives —
-    /// `startAutoAnimations` starts those as soon as the runtime holds their
-    /// schema. A `trigger` animation is waiting on the app to call `trigger(_:)`,
-    /// which is not something the app does while its animation is being authored,
-    /// so the editor stands in for the app and starts it here. Signals only ever
-    /// come from the editor, so the same animation running without the editor
-    /// attached still waits for its trigger, which is the whole point of the
-    /// `trigger` invoke type.
+    /// The `auto` ones, which are the same set `startAutoAnimations` plays and
+    /// has usually played already — what is left for this to start is one whose
+    /// schema arrived while the playhead was parked, where starting the clock
+    /// would have pulled the run out from under whoever was scrubbing.
+    ///
+    /// A `trigger` animation goes on waiting for the app's `trigger(_:)` call —
+    /// and one that was mid-pass is put back to waiting, since pressing play is
+    /// asking for the run the timeline describes rather than for the one a
+    /// trigger asked for. Playing is not that call either: the play button asks
+    /// the runtime to run the animation it would be running anyway, so what the
+    /// editor shows is what the app will do. Standing in for the app is the
+    /// Trigger action's job, and it arrives as `AnimationSignal.trigger` rather
+    /// than riding along with this.
     ///
     /// Cancelled animations are left where they are: stopping one is the app's
     /// call, and picking it back up is `restart(_:)`'s.
     func resumePlayback() {
-        isEditorPlaying = true
+        let wasRunning = isRunning
 
         // Unparked before the bail-out below, not after: a play following a
         // pause has to release the playhead even when the schemas it applies to
@@ -672,12 +742,21 @@ public final class InertiaDataModel{
         // and declines to start the run they were meant to join.
         seekTime = nil
 
-        markTriggered(where: { _ in true })
+        retireTriggeredAnimations(holdingAt: playheadTime)
+        markTriggered(where: { $0.invokeType == .auto })
 
-        // Nothing to play yet: the schemas this request arrived ahead of will
-        // start themselves in `startAutoAnimations`, which is where the race
-        // `isEditorPlaying` describes is settled.
-        guard states.values.contains(where: { $0.trigger == true }) else { return }
+        // Nothing to play, either because the schemas this request arrived ahead
+        // of are still on their way — they start themselves in
+        // `startAutoAnimations` when they land, and reporting a stop against
+        // that would flip the transport back and forth for the round trip — or
+        // because everything here is waiting on a trigger this is not, which is
+        // worth saying if it means a run just ended.
+        guard states.values.contains(where: { $0.trigger == true }) else {
+            if wasRunning {
+                report(isRunning: false)
+            }
+            return
+        }
 
         isRunning = true
         startClock()
@@ -693,6 +772,13 @@ public final class InertiaDataModel{
         clock = nil
 
         let time = time.clamped(to: 0...playbackDuration)
+
+        // Back at the start of the timeline, which is where a pass ends however
+        // the playhead got there — see `retireTriggeredAnimations`.
+        if time == .zero {
+            retireTriggeredAnimations(holdingAt: .zero)
+        }
+
         seekTime = time
         playheadTime = time
     }
@@ -747,11 +833,29 @@ public final class InertiaDataModel{
                 }
 
                 if self.isRepeating {
-                    self.playheadTime = elapsed.truncatingRemainder(dividingBy: duration)
+                    let wrapped = elapsed.truncatingRemainder(dividingBy: duration)
+
+                    // The timeline has come round, so whatever was triggered has
+                    // had the pass it was triggered for. Held at the end of the
+                    // loop, which is the frame it is on as it comes round.
+                    if wrapped < self.playheadTime {
+                        self.retireTriggeredAnimations(holdingAt: duration)
+
+                        guard self.isRunning else {
+                            self.playheadTime = wrapped
+                            self.report(isRunning: false)
+                            return
+                        }
+                    }
+
+                    self.playheadTime = wrapped
                     self.report(isRunning: true)
                     continue
                 }
 
+                // A run that plays once holds its final frame instead: nothing
+                // retires here, because the playhead stops at the end of the
+                // loop rather than coming back round to the start of it.
                 if elapsed >= duration {
                     self.playheadTime = duration
                     self.clock = nil
@@ -1209,15 +1313,18 @@ struct InertiaActionable<Content: View>: View {
         inertiaDataModel?.registerHierarchyIdPrefix(hierarchyIdPrefix)
     }
 
-    /// Whether the run itself is on screen — playing, or parked somewhere in the
-    /// track by the editor. Anything else draws where the animation starts.
+    /// Whether the run itself is on screen — playing, parked somewhere in the
+    /// track by the editor, or holding the frame a finished pass ended on.
+    /// Anything else draws where the animation starts.
     var isShowingTrack: Bool {
-        guard let inertiaDataModel else { return false }
+        trackTime != nil
+    }
 
-        // Scrubbing shows the animation without running it.
-        guard inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else { return false }
-
-        return inertiaDataModel.states[hierarchyIdPrefix]?.trigger == true
+    /// Where in the track this actionable is drawn, or nil when it is not drawn
+    /// from its track at all — see `InertiaDataModel.trackTime(for:)`, which is
+    /// where the question is actually answered.
+    var trackTime: CGFloat? {
+        inertiaDataModel?.trackTime(for: hierarchyIdPrefix)
     }
 
     /// What to show right now: where the run has got to, or — with no run on
@@ -1243,12 +1350,12 @@ struct InertiaActionable<Content: View>: View {
     /// position, so initial values only ever appeared once something played —
     /// the React and Compose runtimes have always drawn them.
     func displayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues {
-        guard isShowingTrack, let inertiaDataModel else {
+        // A parked playhead holds there, a running one advances, and a finished
+        // pass stays on the frame it ended on. Same read.
+        guard let time = trackTime else {
             return animation.initialValues.sanitized
         }
 
-        // A parked playhead holds there; a running one advances. Same read.
-        let time = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
         return timeline(for: animation).value(time: time).sanitized
     }
 
@@ -1262,15 +1369,18 @@ struct InertiaActionable<Content: View>: View {
     /// animation marked `auto` runs as soon as the container's clock does, even
     /// while the actionable it backs is still waiting on the app to trigger it.
     /// A shape given a `trigger` animation waits for the actionable, which is
-    /// the only trigger a shape can be reached by.
+    /// the only trigger a shape can be reached by — and is held with it when its
+    /// pass ends, since the frame the actionable is holding is the one the shape
+    /// was drawn on.
     func shapeDisplayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues {
         guard let inertiaDataModel else { return animation.initialValues.sanitized }
 
         let isPlaying = inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil
-        let isShowing = isShowingTrack || (animation.invokeType == .auto && isPlaying)
-        guard isShowing else { return animation.initialValues.sanitized }
+        let playheadTime = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
+        let time = trackTime ?? (animation.invokeType == .auto && isPlaying ? playheadTime : nil)
 
-        let time = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
+        guard let time else { return animation.initialValues.sanitized }
+
         return timeline(for: animation).value(time: time).sanitized
     }
 
@@ -1369,6 +1479,11 @@ struct InertiaActionable<Content: View>: View {
             inertiaDataModel?.seek(to: time)
         case .resume:
             inertiaDataModel?.resumePlayback()
+        case .trigger(let id):
+            // The app's own entry point, reached by the editor's Trigger action
+            // standing in for the app — a `trigger` animation starts the one way
+            // whoever is watching it in the editor is authoring it to start.
+            inertiaDataModel?.trigger(id)
         }
     }
     
@@ -2030,15 +2145,17 @@ struct InertiaEditable<Content: View>: View {
         return animation.timeline(filling: isRepeating ? loop : nil)
     }
 
-    /// Whether the run itself is on screen — playing, or parked somewhere in the
-    /// track by the editor. Anything else draws where the animation starts.
+    /// Whether the run itself is on screen — playing, parked somewhere in the
+    /// track by the editor, or holding the frame a finished pass ended on.
+    /// Anything else draws where the animation starts.
     var isShowingTrack: Bool {
-        guard let inertiaDataModel else { return false }
+        trackTime != nil
+    }
 
-        // Scrubbing shows the animation without running it.
-        guard inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil else { return false }
-
-        return inertiaDataModel.states[hierarchyIdPrefix]?.trigger == true
+    /// Where in the track this node is drawn, or nil when it is not drawn from
+    /// its track at all — see `InertiaDataModel.trackTime(for:)`.
+    var trackTime: CGFloat? {
+        inertiaDataModel?.trackTime(for: hierarchyIdPrefix)
     }
 
     /// What to show right now: where the run has got to, or — with no run on
@@ -2051,11 +2168,11 @@ struct InertiaEditable<Content: View>: View {
     /// also the only way play can pick up mid-loop — an animator can only ever
     /// start a track at its beginning.
     func displayValues(for animation: InertiaAnimationSchema) -> InertiaAnimationValues {
-        guard isShowingTrack, let inertiaDataModel else {
+        guard let time = trackTime else {
             return animation.initialValues.sanitized
         }
 
-        return timeline(for: animation).value(time: inertiaDataModel.playheadTime).sanitized
+        return timeline(for: animation).value(time: time).sanitized
     }
 
     /// Where a shape's own track has got to, drawn from the same playhead as
@@ -2066,10 +2183,12 @@ struct InertiaEditable<Content: View>: View {
         guard let inertiaDataModel else { return animation.initialValues.sanitized }
 
         let isPlaying = inertiaDataModel.isRunning || inertiaDataModel.seekTime != nil
-        let isShowing = isShowingTrack || (animation.invokeType == .auto && isPlaying)
-        guard isShowing else { return animation.initialValues.sanitized }
+        let playheadTime = inertiaDataModel.seekTime ?? inertiaDataModel.playheadTime
+        let time = trackTime ?? (animation.invokeType == .auto && isPlaying ? playheadTime : nil)
 
-        return timeline(for: animation).value(time: inertiaDataModel.playheadTime).sanitized
+        guard let time else { return animation.initialValues.sanitized }
+
+        return timeline(for: animation).value(time: time).sanitized
     }
 
     /// Whether a shape is drawn at all right now — see
@@ -2291,6 +2410,11 @@ struct InertiaEditable<Content: View>: View {
             inertiaDataModel?.seek(to: time)
         case .resume:
             inertiaDataModel?.resumePlayback()
+        case .trigger(let id):
+            // The app's own entry point, reached by the editor's Trigger action
+            // standing in for the app — a `trigger` animation starts the one way
+            // whoever is watching it in the editor is authoring it to start.
+            inertiaDataModel?.trigger(id)
         }
     }
 
@@ -2360,11 +2484,22 @@ public struct InertiaAnimationState: Identifiable, Equatable, Codable {
     public let id: InertiaID
     public var trigger: Bool?
     public let isCancelled: Bool
-    
-    public init(id: InertiaID, trigger: Bool? = nil, isCancelled: Bool = false) {
+    /// Where the track is frozen after a triggered run has had its pass, in
+    /// seconds into the loop — nil while the animation is waiting, running, or
+    /// being scrubbed.
+    ///
+    /// Ending a pass clears `trigger`, so the animation can be asked for again;
+    /// on its own that would also take the node back to its initial values,
+    /// since nothing but a running track draws anywhere else. It stays where the
+    /// run left it instead, which is this: the frame it was showing when the
+    /// pass ended, held until it is triggered again.
+    public var heldTime: CGFloat?
+
+    public init(id: InertiaID, trigger: Bool? = nil, isCancelled: Bool = false, heldTime: CGFloat? = nil) {
         self.id = id
         self.trigger = trigger
         self.isCancelled = isCancelled
+        self.heldTime = heldTime
     }
 }
 
