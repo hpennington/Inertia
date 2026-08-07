@@ -36,11 +36,12 @@ Inertia sits between the two. Your app is the canvas:
 
 | Runtime | Package | Editor target |
 | --- | --- | --- |
-| **SwiftUI** | `Inertia` (Swift package) | iOS Simulator, driven through `simctl` |
-| **Jetpack Compose** | `com.github.hpennington:inertia-compose` | Android emulator, over `adb` |
-| **React** | `inertia-react` + `inertia-base` | Your dev server, in a `WKWebView` |
+| **SwiftUI** | [`Inertia`](https://github.com/hpennington/Inertia) (Swift package) | iOS Simulator, driven through `simctl` |
+| **Jetpack Compose** | [`com.github.hpennington:inertia-compose`](https://github.com/hpennington/inertia-compose) | Android emulator, over `adb` |
+| **React** | [`inertia-react`](https://github.com/hpennington/inertia-react) + [`inertia-base`](https://github.com/hpennington/inertia-base) | Your dev server, in a `WKWebView` |
 
-The editor is a macOS app in every case.
+The editor is a macOS app in every case. A worked app on all three runtimes lives in
+[**inertia-example**](https://github.com/hpennington/inertia-example).
 
 ## Features
 
@@ -79,7 +80,8 @@ to **Other Swift Flags** for the configuration you want to edit in.
 
 ### Jetpack Compose
 
-The runtime is published through JitPack:
+The runtime lives in [**hpennington/inertia-compose**](https://github.com/hpennington/inertia-compose)
+and is published through JitPack:
 
 **`settings.gradle.kts`**
 
@@ -116,19 +118,26 @@ source set. See [Installation](https://hpennington.github.io/Inertia/getting-sta
 
 ### React
 
-The two npm packages are built out of the repository rather than published to a registry —
-`inertia-base` is the framework-agnostic core, `inertia-react` the bindings on top of it:
+The two npm packages are built from source rather than published to a registry —
+[**inertia-base**](https://github.com/hpennington/inertia-base) is the framework-agnostic
+core, [**inertia-react**](https://github.com/hpennington/inertia-react) the bindings on top
+of it. Clone each and build it in place:
 
 ```sh
-./scripts/build_react.sh
+git clone https://github.com/hpennington/inertia-base
+git clone https://github.com/hpennington/inertia-react
+(cd inertia-base && npm install && npm run build)
+(cd inertia-react && npm install && npm run build)
 ```
+
+Then point your app at the checkout:
 
 **`package.json`**
 
 ```json
 {
   "dependencies": {
-    "inertia-react": "file:../path/to/runtime-web/inertia-react"
+    "inertia-react": "file:../path/to/inertia-react"
   }
 }
 ```
@@ -291,8 +300,9 @@ export default function App() {
 ```
 
 Outside editor mode the React container fetches `<baseURL>/<id>.inertia` over HTTP, so
-something has to serve the editor's animations directory with CORS headers. The repository
-ships `example/demo.inertia/animations/serve_animations.py` for exactly that. In editor
+something has to serve the editor's animations directory with CORS headers.
+[inertia-example](https://github.com/hpennington/inertia-example) ships
+`demo.inertia/animations/serve_animations.py` for exactly that. In editor
 mode the socket is dialed at `ws://127.0.0.1:8080` regardless of `baseURL`.
 
 ### Shapes
@@ -495,6 +505,16 @@ The runtimes are deliberately parallel, but they are not at the same level of ma
 
 [Choosing a runtime](https://hpennington.github.io/Inertia/getting-started/runtimes/) has
 the full comparison.
+
+## Repositories
+
+| Repository | What it is |
+| --- | --- |
+| [hpennington/Inertia](https://github.com/hpennington/Inertia) | The SwiftUI runtime, this repo |
+| [hpennington/inertia-compose](https://github.com/hpennington/inertia-compose) | The Jetpack Compose runtime, published through JitPack |
+| [hpennington/inertia-react](https://github.com/hpennington/inertia-react) | The React bindings |
+| [hpennington/inertia-base](https://github.com/hpennington/inertia-base) | The framework-agnostic core `inertia-react` is built on |
+| [hpennington/inertia-example](https://github.com/hpennington/inertia-example) | The same demo app on all three runtimes, with a shared `.inertia` project |
 
 ## Documentation
 
