@@ -198,39 +198,29 @@ an Android emulator, or your web dev server in a web view.
 
 === "React"
 
-    ## Build and link the packages
+    ## Install the package
 
-    The React runtime is two npm packages that are not published to a registry — you build
-    them out of the repository and link them into your app:
+    The React runtime is two npm packages, both published to the registry:
 
     - **`inertia-base`** — the framework-agnostic core: schema and message types, the
       hierarchy tree, the interpolation, the WebSocket client.
     - **`inertia-react`** — the React bindings that sit on top of it.
 
-    `inertia-react` depends on `inertia-base` by file path, so the two build in order.
-    The repository has a script that does exactly that:
+    `inertia-react` depends on `inertia-base`, so installing the one is enough:
 
     ```sh
-    ./scripts/build_react.sh
+    npm install inertia-react
     ```
 
-    Then depend on the built package from your app:
-
-    ```json title="package.json"
-    {
-      "dependencies": {
-        "inertia-react": "file:../path/to/runtime-web/inertia-react"
-      }
-    }
-    ```
+    React and React DOM 18.3.1 are **peer** dependencies of `inertia-react`, so your app
+    supplies them:
 
     ```sh
-    npm install
+    npm install react@18.3.1 react-dom@18.3.1
     ```
 
-    React 18.3.1 is a **peer** dependency of `inertia-react`, so your app supplies it.
-    Having a second copy of React resolve inside the package breaks hooks, which is why
-    the build script deletes `node_modules/react` before building.
+    Having a second copy of React resolve inside the package breaks hooks, so keep a
+    single React in your app's tree.
 
     Then import from it:
 

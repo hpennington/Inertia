@@ -520,10 +520,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#build-and-link-the-packages" class="md-nav__link">
+  <a href="#install-the-package" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Build and link the packages
+        Install the package
       
     </span>
   </a>
@@ -1251,10 +1251,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#build-and-link-the-packages" class="md-nav__link">
+  <a href="#install-the-package" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Build and link the packages
+        Install the package
       
     </span>
   </a>
@@ -1491,39 +1491,31 @@ editor over the socket instead.</p>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<h2 id="build-and-link-the-packages">Build and link the packages<a class="headerlink" href="#build-and-link-the-packages" title="Permanent link">&para;</a></h2>
-<p>The React runtime is two npm packages that are not published to a registry — you build
-them out of the repository and link them into your app:</p>
+<h2 id="install-the-package">Install the package<a class="headerlink" href="#install-the-package" title="Permanent link">&para;</a></h2>
+<p>The React runtime is two npm packages, both published to the registry:</p>
 <ul>
 <li><strong><code>inertia-base</code></strong> — the framework-agnostic core: schema and message types, the
   hierarchy tree, the interpolation, the WebSocket client.</li>
 <li><strong><code>inertia-react</code></strong> — the React bindings that sit on top of it.</li>
 </ul>
-<p><code>inertia-react</code> depends on <code>inertia-base</code> by file path, so the two build in order.
-The repository has a script that does exactly that:</p>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>./scripts/build_react.sh
+<p><code>inertia-react</code> depends on <code>inertia-base</code>, so installing the one is enough:</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>npm<span class="w"> </span>install<span class="w"> </span>inertia-react
 </span></code></pre></div>
-<p>Then depend on the built package from your app:</p>
-<div class="language-json highlight"><span class="filename">package.json</span><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="p">{</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span><span class="nt">&quot;dependencies&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="nt">&quot;inertia-react&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;file:../path/to/runtime-web/inertia-react&quot;</span>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="p">}</span>
+<p>React and React DOM 18.3.1 are <strong>peer</strong> dependencies of <code>inertia-react</code>, so your app
+supplies them:</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>npm<span class="w"> </span>install<span class="w"> </span>react@18.3.1<span class="w"> </span>react-dom@18.3.1
 </span></code></pre></div>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>npm<span class="w"> </span>install
-</span></code></pre></div>
-<p>React 18.3.1 is a <strong>peer</strong> dependency of <code>inertia-react</code>, so your app supplies it.
-Having a second copy of React resolve inside the package breaks hooks, which is why
-the build script deletes <code>node_modules/react</code> before building.</p>
+<p>Having a second copy of React resolve inside the package breaks hooks, so keep a
+single React in your app's tree.</p>
 <p>Then import from it:</p>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">InertiaContainer</span><span class="p">,</span><span class="w"> </span><span class="nx">Inertia</span><span class="p">,</span><span class="w"> </span><span class="nx">useInertia</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;inertia-react&quot;</span><span class="p">;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">InertiaContainer</span><span class="p">,</span><span class="w"> </span><span class="nx">Inertia</span><span class="p">,</span><span class="w"> </span><span class="nx">useInertia</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;inertia-react&quot;</span><span class="p">;</span>
 </span></code></pre></div>
 <h2 id="serve-the-animation-file">Serve the animation file<a class="headerlink" href="#serve-the-animation-file" title="Permanent link">&para;</a></h2>
 <p>Outside editor mode the container does not read a bundled file — it fetches
 <code>&lt;baseURL&gt;/&lt;id&gt;.inertia</code> over HTTP. Something has to serve the editor's animations
 directory, with CORS headers, at whatever <code>baseURL</code> you pass:</p>
-<div class="language-sh highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nb">cd</span><span class="w"> </span>MyProject.inertia/animations
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8000</span>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nb">cd</span><span class="w"> </span>MyProject.inertia/animations
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8000</span>
 </span></code></pre></div>
 <p>The repository ships a small server that does this with
 <code>Access-Control-Allow-Origin: *</code> already set, at
@@ -1531,8 +1523,8 @@ directory, with CORS headers, at whatever <code>baseURL</code> you pass:</p>
 as long as your page is served from the same origin.</p>
 <h2 id="add-the-editor-flag">Add the editor flag<a class="headerlink" href="#add-the-editor-flag" title="Permanent link">&para;</a></h2>
 <p>Editor mode is a prop, so drive it from the environment rather than hardcoding it:</p>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">isDev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">REACT_APP_INERTIA_DEV</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s2">&quot;false&quot;</span><span class="p">;</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">REACT_APP_INERTIA_BASE_URL</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;http://localhost:8000&quot;</span><span class="p">;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">isDev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">REACT_APP_INERTIA_DEV</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s2">&quot;false&quot;</span><span class="p">;</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">REACT_APP_INERTIA_BASE_URL</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;http://localhost:8000&quot;</span><span class="p">;</span>
 </span></code></pre></div>
 <p>With <code>dev</code> false the container never opens a socket, so a production bundle does not
 reach for an editor.</p>
