@@ -1310,9 +1310,9 @@ every actionable inside it is drawn from.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="p">&lt;</span><span class="nt">App</span><span class="w"> </span><span class="p">/&gt;</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">&lt;/</span><span class="nt">InertiaContainer</span><span class="p">&gt;</span>
 </span></code></pre></div>
-<p>This is the same argument list the SwiftUI and Compose containers take, in the same order.
-SwiftUI has no <code>baseURL</code> — it reads from a <code>Bundle</code> — and on Compose <code>baseURL</code> is the
-editor's socket rather than an HTTP origin.</p>
+<p>This is the same argument list the SwiftUI and Compose containers take, in the same order,
+plus <code>baseURL</code> — which React is now the only runtime to have. SwiftUI reads its animation
+file from a <code>Bundle</code> and Compose from <code>assets/</code>, so neither needs an origin to fetch from.</p>
 <div class="admonition warning">
 <p class="admonition-title">The editor only addresses the container id <code>animation</code></p>
 <p>The editor sends every schema against the container id <code>"animation"</code>, and the runtime

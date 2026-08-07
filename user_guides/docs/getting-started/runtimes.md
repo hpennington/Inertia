@@ -23,7 +23,7 @@ Every runtime has the same four pieces:
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
 | Import | `import Inertia` | `org.inertiagraphics.inertia` | `from "inertia-react"` |
-| Container | `InertiaContainer(dev:id:hierarchyId:)` | `InertiaContainer(dev, id, hierarchyId, baseURL)` | `<InertiaContainer dev id hierarchyId baseURL>` |
+| Container | `InertiaContainer(dev:id:hierarchyId:)` | `InertiaContainer(dev, id, hierarchyId)` | `<InertiaContainer dev id hierarchyId baseURL>` |
 | Tag a view | `.inertia("card0")` | `Inertia(id = "card0") { … }` | `<Inertia id="card0">` |
 | Playback handle | `@Environment(\.inertiaDataModel)` | `LocalInertia.current` | `useInertia()` |
 | Start / stop / restart | `trigger`, `cancel`, `restart` | `trigger`, `cancel`, `restart` | `trigger`, `cancel`, `restart` |
@@ -38,10 +38,11 @@ what you learn on one carries over: the id you tag a view with is the id you pas
 `trigger`, and `isRepeating` and `loopDuration` are properties you assign to rather than
 setter functions.
 
-SwiftUI is the one runtime with no `baseURL` — it reads its animation file from a `Bundle`
-and reaches the editor at `127.0.0.1:8060`. Note also that `baseURL` is not the same thing
-on the other two: React fetches its animation file from it, while Compose dials the editor
-at it.
+React is the one runtime that takes a `baseURL`, and it is an HTTP origin — where the
+animation file is fetched from outside editor mode — not the editor's address. SwiftUI and
+Compose both read their animation file locally (a `Bundle`, `assets/`) and both reach the
+editor through a default host and port their runtime owns: `127.0.0.1:8060` for SwiftUI,
+`127.0.0.1:8070` for Compose.
 
 ## Where they still differ
 

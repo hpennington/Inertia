@@ -66,8 +66,7 @@ the animation data. Put it at the root of your app.
                     InertiaContainer(
                         dev = true,                       // (1)!
                         id = "animation",                 // (2)!
-                        hierarchyId = "animation",        // (3)!
-                        baseURL = "ws://127.0.0.1:8070"   // (4)!
+                        hierarchyId = "animation"         // (3)!
                     ) {
                         DemoApp()
                     }
@@ -83,9 +82,12 @@ the animation data. Put it at the root of your app.
        the runtime drops schemas meant for any other container.
     3. The id of the container's own node, which every actionable inside it hangs from.
        Usually the same string as `id`.
-    4. Where the editor is listening. `127.0.0.1:8070` works from an emulator because the
-       editor opens an `adb reverse` tunnel for that port; a physical device wants the
-       Mac's address on the local network instead.
+
+    The editor's address is not a parameter — the container dials `ws://127.0.0.1:8070` on
+    its own, which works from an emulator because the editor opens an `adb reverse` tunnel
+    for that port. A device with no such tunnel wants the Mac's address on the local
+    network: call `WebSocketClient.shared.setEndpoint(host = "…")` before the first
+    container composes.
 
     !!! note "The container fills the space it is given"
 

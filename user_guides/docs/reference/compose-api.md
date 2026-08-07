@@ -15,7 +15,6 @@ fun InertiaContainer(
     dev: Boolean,
     id: String,
     hierarchyId: String,
-    baseURL: String,
     content: @Composable () -> Unit
 )
 ```
@@ -25,22 +24,21 @@ fun InertiaContainer(
 | `dev` | `true` takes animations from the editor over the socket; `false` reads `assets/<id>.inertia` and never opens a socket. |
 | `id` | The container id the editor addresses its schemas to, and the basename of the asset read outside editor mode. Schemas for any other container are dropped. |
 | `hierarchyId` | The id of the container's own node — the root every actionable inside it hangs from. Usually the same string as `id`. |
-| `baseURL` | The editor's WebSocket address, passed through as given — `ws://10.0.2.2:8070` from a stock emulator, a LAN address from a device. |
 
 ```kotlin
 InertiaContainer(
     dev = BuildConfig.INERTIA_EDITOR,
     id = "animation",
-    hierarchyId = "animation",
-    baseURL = "ws://127.0.0.1:8070"
+    hierarchyId = "animation"
 ) {
     DemoApp()
 }
 ```
 
-This is the same argument list the SwiftUI and React containers take, in the same order.
-SwiftUI has no `baseURL` — it reads from a `Bundle` and reaches the editor at
-`127.0.0.1:8060` — and on React `baseURL` is an HTTP origin rather than a socket.
+This is the same argument list the SwiftUI container takes, in the same order. The editor's
+address is not among them: see [Where the editor is](#where-the-editor-is) below. React is
+the one runtime that still takes a `baseURL`, and there it is an HTTP origin rather than a
+socket.
 
 !!! warning "The editor only addresses the container id `animation`"
 
@@ -55,8 +53,39 @@ missing or fails to decode — a broken animation leaves the actionables at thei
 positions rather than bringing the app down. Put the file the editor exported at
 `app/src/main/assets/animation.inertia`.
 
-With `dev` true it dials `baseURL` and takes its schemas from the editor. No socket is
+With `dev` true it dials the editor and takes its schemas from there. No socket is
 opened when `dev` is false, so the container is safe to leave in a release build.
+
+### Where the editor is
+
+The container takes no address. It dials `ws://` + `inertiaDefaultHost` +
+`inertiaDefaultPort` — `127.0.0.1:8070`, the Compose runtime's own port — which reaches
+your Mac because the editor opens an `adb reverse` tunnel for it on the device it launches
+on. Both constants are public.
+
+```kotlin
+val inertiaDefaultHost: String = "127.0.0.1"
+val inertiaDefaultPort: Int = 8070
+```
+
+An app that has to find the editor somewhere else — `10.0.2.2` from a stock emulator
+started outside the editor, or your Mac's address on the local network from an untunnelled
+device — moves the endpoint before the first container composes:
+
+```kotlin
+WebSocketClient.shared.setEndpoint(host = "192.168.1.42")
+```
+
+```kotlin
+fun WebSocketClient.setEndpoint(
+    host: String = inertiaDefaultHost,
+    port: Int = inertiaDefaultPort
+)
+```
+
+Called later, it moves a connection that is already up. This is the counterpart of
+SwiftUI's `InertiaWebSocketClient.shared.setEnabled(_:host:port:)`; React has no equivalent
+and its socket URL cannot be moved.
 
 The container fills the space its host offers it (`fillMaxSize()`). Since `translate` is a
 fraction of that box, this is the same rectangle SwiftUI's `GeometryReader` reports and the
@@ -228,5 +257,5 @@ vector shapes a schema can carry on either side of an actionable's content.
 do not construct any of it yourself, the editor authors them.
 
 `getHostForWebSocket()`, `isValidIPv4()` and `getFirstDnsIP()` are host-discovery helpers
-that shell out to `ip route`. Nothing in the runtime calls them — `baseURL` is passed
-through as given.
+that shell out to `ip route`. Nothing in the runtime calls them — the endpoint is
+`inertiaDefaultHost`/`inertiaDefaultPort` unless an app moves it with `setEndpoint`.

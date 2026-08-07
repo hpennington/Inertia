@@ -102,12 +102,13 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.hpennington:inertia-compose:v1.6.0")
+    implementation("com.github.hpennington:inertia-compose:v1.7.0")
 }
 ```
 
-`v1.6.0` includes GLES shape rendering. To track unreleased changes, take the runtime from
-the branch or a commit instead — JitPack resolves both:
+`v1.7.0` drops the container's `baseURL` parameter — the runtime dials the editor itself
+now; `v1.6.0` added GLES shape rendering. To track unreleased changes, take the runtime
+from the branch or a commit instead — JitPack resolves both:
 
 ```kotlin
 implementation("com.github.hpennington:inertia-compose:main-SNAPSHOT")
@@ -230,8 +231,7 @@ class MainActivity : ComponentActivity() {
                 InertiaContainer(
                     dev = true,
                     id = "animation",
-                    hierarchyId = "animation",
-                    baseURL = "ws://127.0.0.1:8070"  // the editor, through `adb reverse`
+                    hierarchyId = "animation"
                 ) {
                     DemoApp()
                 }
@@ -262,6 +262,19 @@ fun DemoApp() {
     }
 }
 ```
+
+The container takes no endpoint: in editor mode it dials `ws://127.0.0.1:8070`, the
+runtime's own port, which reaches the Mac through the `adb reverse` tunnel the editor sets
+up for the device it launches on. An app that has to find the editor somewhere else — a
+device on the network rather than tunnelled — moves it once, before the first container
+composes:
+
+```kotlin
+WebSocketClient.shared.setEndpoint(host = "192.168.1.42")
+```
+
+`inertiaDefaultHost` and `inertiaDefaultPort` are public, so an app can build that address
+from them rather than repeating the port.
 
 ### React
 
@@ -363,7 +376,7 @@ while the actionable it backs is still waiting on your `trigger` call.
 | | SwiftUI | Compose | React |
 | --- | --- | --- | --- |
 | Import | `import Inertia` | `org.inertiagraphics.inertia` | `from "inertia-react"` |
-| Container | `InertiaContainer(dev:id:hierarchyId:)` | `InertiaContainer(dev, id, hierarchyId, baseURL)` | `<InertiaContainer dev id hierarchyId baseURL>` |
+| Container | `InertiaContainer(dev:id:hierarchyId:)` | `InertiaContainer(dev, id, hierarchyId)` | `<InertiaContainer dev id hierarchyId baseURL>` |
 | Tag a view | `.inertia("card0")` | `Inertia(id = "card0") { … }` | `<Inertia id="card0">` |
 | Playback handle | `@Environment(\.inertiaDataModel)` | `LocalInertia.current` | `useInertia()` |
 | Start | `trigger(_:)` | `trigger(…)` | `trigger(…)` |

@@ -1242,15 +1242,14 @@ the animation data. Put it at the root of your app.</p>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">                </span><span class="n">InertiaContainer</span><span class="p">(</span>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">                    </span><span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">                       </span><span class="c1">// (1)!</span>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">                    </span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span><span class="w">                 </span><span class="c1">// (2)!</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">                    </span><span class="n">hierarchyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="p">,</span><span class="w">        </span><span class="c1">// (3)!</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">                    </span><span class="n">baseURL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ws://127.0.0.1:8070&quot;</span><span class="w">   </span><span class="c1">// (4)!</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">                </span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">                    </span><span class="n">DemoApp</span><span class="p">()</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">                </span><span class="p">}</span>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">            </span><span class="p">}</span>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">        </span><span class="p">}</span>
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="p">}</span>
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="p">}</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">                    </span><span class="n">hierarchyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;animation&quot;</span><span class="w">         </span><span class="c1">// (3)!</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">                </span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">                    </span><span class="n">DemoApp</span><span class="p">()</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">                </span><span class="p">}</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">            </span><span class="p">}</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="p">}</span>
 </span></code></pre></div>
 <ol>
 <li><code>true</code> takes animations from the editor over the socket; <code>false</code> reads
@@ -1259,10 +1258,12 @@ the animation data. Put it at the root of your app.</p>
    the runtime drops schemas meant for any other container.</li>
 <li>The id of the container's own node, which every actionable inside it hangs from.
    Usually the same string as <code>id</code>.</li>
-<li>Where the editor is listening. <code>127.0.0.1:8070</code> works from an emulator because the
-   editor opens an <code>adb reverse</code> tunnel for that port; a physical device wants the
-   Mac's address on the local network instead.</li>
 </ol>
+<p>The editor's address is not a parameter — the container dials <code>ws://127.0.0.1:8070</code> on
+its own, which works from an emulator because the editor opens an <code>adb reverse</code> tunnel
+for that port. A device with no such tunnel wants the Mac's address on the local
+network: call <code>WebSocketClient.shared.setEndpoint(host = "…")</code> before the first
+container composes.</p>
 <div class="admonition note">
 <p class="admonition-title">The container fills the space it is given</p>
 <p><code>InertiaContainer</code> measures itself with <code>fillMaxSize()</code>, so it is as big as its

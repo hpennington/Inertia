@@ -36,10 +36,12 @@ has its own listener, and the panel only shows the one currently selected.
 
 === "Compose"
 
-    - Is `baseURL` right? From an emulator it should be `ws://127.0.0.1:8070`, which works
-      because the editor opens `adb reverse tcp:8070 tcp:8070`. If the editor never saw the
-      device, that tunnel does not exist and `127.0.0.1` is the emulator itself. A stock
-      emulator can also reach the host at `10.0.2.2`.
+    - Can the app reach the editor at all? The container dials `ws://127.0.0.1:8070`,
+      which works from an emulator because the editor opens `adb reverse tcp:8070
+      tcp:8070`. If the editor never saw the device, that tunnel does not exist and
+      `127.0.0.1` is the emulator itself. A stock emulator can also reach the host at
+      `10.0.2.2` — call `WebSocketClient.shared.setEndpoint(host = "10.0.2.2")` before the
+      first container composes to use it.
     - Is cleartext traffic permitted for that host? Android denies `ws://` by default from
       `targetSdk` 28 on — see [Installation](getting-started/installation.md).
     - Does the manifest have `android.permission.INTERNET`?

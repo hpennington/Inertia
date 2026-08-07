@@ -1341,7 +1341,7 @@ maturity, and the differences that remain are worth knowing before you start.</p
 <tr>
 <td>Container</td>
 <td><code>InertiaContainer(dev:id:hierarchyId:)</code></td>
-<td><code>InertiaContainer(dev, id, hierarchyId, baseURL)</code></td>
+<td><code>InertiaContainer(dev, id, hierarchyId)</code></td>
 <td><code>&lt;InertiaContainer dev id hierarchyId baseURL&gt;</code></td>
 </tr>
 <tr>
@@ -1398,10 +1398,11 @@ maturity, and the differences that remain are worth knowing before you start.</p
 what you learn on one carries over: the id you tag a view with is the id you pass to
 <code>trigger</code>, and <code>isRepeating</code> and <code>loopDuration</code> are properties you assign to rather than
 setter functions.</p>
-<p>SwiftUI is the one runtime with no <code>baseURL</code> — it reads its animation file from a <code>Bundle</code>
-and reaches the editor at <code>127.0.0.1:8060</code>. Note also that <code>baseURL</code> is not the same thing
-on the other two: React fetches its animation file from it, while Compose dials the editor
-at it.</p>
+<p>React is the one runtime that takes a <code>baseURL</code>, and it is an HTTP origin — where the
+animation file is fetched from outside editor mode — not the editor's address. SwiftUI and
+Compose both read their animation file locally (a <code>Bundle</code>, <code>assets/</code>) and both reach the
+editor through a default host and port their runtime owns: <code>127.0.0.1:8060</code> for SwiftUI,
+<code>127.0.0.1:8070</code> for Compose.</p>
 <h2 id="where-they-still-differ">Where they still differ<a class="headerlink" href="#where-they-still-differ" title="Permanent link">&para;</a></h2>
 <h3 id="loading-an-animation-outside-the-editor">Loading an animation outside the editor<a class="headerlink" href="#loading-an-animation-outside-the-editor" title="Permanent link">&para;</a></h3>
 <p>All three load their own animation file when <code>dev</code> is false, and none of them opens a

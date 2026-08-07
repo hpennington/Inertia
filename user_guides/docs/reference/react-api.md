@@ -40,9 +40,9 @@ type InertiaContainerProps = {
 </InertiaContainer>
 ```
 
-This is the same argument list the SwiftUI and Compose containers take, in the same order.
-SwiftUI has no `baseURL` — it reads from a `Bundle` — and on Compose `baseURL` is the
-editor's socket rather than an HTTP origin.
+This is the same argument list the SwiftUI and Compose containers take, in the same order,
+plus `baseURL` — which React is now the only runtime to have. SwiftUI reads its animation
+file from a `Bundle` and Compose from `assets/`, so neither needs an origin to fetch from.
 
 !!! warning "The editor only addresses the container id `animation`"
 

@@ -71,8 +71,7 @@ is listening.
     InertiaContainer(
         dev = true,
         id = "animation",
-        hierarchyId = "animation",
-        baseURL = "ws://127.0.0.1:8070"
+        hierarchyId = "animation"
     ) {
         DemoApp()
     }
@@ -82,10 +81,11 @@ is listening.
     editor and reads `assets/animation.inertia` instead, so it is safe to leave in a release
     build.
 
-    `baseURL` is passed through as given. From an emulator, `127.0.0.1` reaches the editor
-    because the editor opens an `adb reverse` tunnel for port 8070 when it attaches — see
-    below. From a physical device, point it at your Mac's address on the local network
-    instead.
+    The address is the runtime's own — `ws://127.0.0.1:8070` — rather than something the
+    app passes. `127.0.0.1` reaches the editor because the editor opens an `adb reverse`
+    tunnel for port 8070 when it attaches; see below. From a device with no such tunnel,
+    call `WebSocketClient.shared.setEndpoint(host = "…")` with your Mac's address on the
+    local network before the first container composes.
 
 === "React"
 

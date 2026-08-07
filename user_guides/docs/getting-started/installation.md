@@ -118,7 +118,7 @@ an Android emulator, or your web dev server in a web view.
 
     ```kotlin title="app/build.gradle.kts"
     dependencies {
-        implementation("com.github.hpennington:inertia-compose:v1.0.8")
+        implementation("com.github.hpennington:inertia-compose:v1.7.0")
     }
     ```
 
@@ -191,10 +191,14 @@ an Android emulator, or your web dev server in a web view.
     InertiaContainer(
         dev = BuildConfig.DEBUG,
         id = "animation",
-        hierarchyId = "animation",
-        baseURL = "ws://127.0.0.1:8070"
+        hierarchyId = "animation"
     ) { App() }
     ```
+
+    The editor's address is not a parameter: the container dials `ws://127.0.0.1:8070`
+    itself, which the editor's `adb reverse` tunnel carries to your Mac. To reach an editor
+    elsewhere, call `WebSocketClient.shared.setEndpoint(host = "…")` before the first
+    container composes — see the [Compose API](../reference/compose-api.md).
 
 === "React"
 

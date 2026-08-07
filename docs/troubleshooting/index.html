@@ -1563,10 +1563,12 @@ filter in Console.app or <code>xcrun simctl spawn booted log stream</code>.</p>
 </div>
 <div class="tabbed-block">
 <ul>
-<li>Is <code>baseURL</code> right? From an emulator it should be <code>ws://127.0.0.1:8070</code>, which works
-  because the editor opens <code>adb reverse tcp:8070 tcp:8070</code>. If the editor never saw the
-  device, that tunnel does not exist and <code>127.0.0.1</code> is the emulator itself. A stock
-  emulator can also reach the host at <code>10.0.2.2</code>.</li>
+<li>Can the app reach the editor at all? The container dials <code>ws://127.0.0.1:8070</code>,
+  which works from an emulator because the editor opens <code>adb reverse tcp:8070
+  tcp:8070</code>. If the editor never saw the device, that tunnel does not exist and
+  <code>127.0.0.1</code> is the emulator itself. A stock emulator can also reach the host at
+  <code>10.0.2.2</code> — call <code>WebSocketClient.shared.setEndpoint(host = "10.0.2.2")</code> before the
+  first container composes to use it.</li>
 <li>Is cleartext traffic permitted for that host? Android denies <code>ws://</code> by default from
   <code>targetSdk</code> 28 on — see <a href="../getting-started/installation/">Installation</a>.</li>
 <li>Does the manifest have <code>android.permission.INTERNET</code>?</li>
