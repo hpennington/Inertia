@@ -358,7 +358,7 @@ public final class InertiaDataModel{
     /// also what a runtime that reconnects mid-session falls back to until the
     /// editor resends.
     var activeTool: InertiaTool = .translate
-    var isRunning:Bool = false
+    var isRunning: Bool = false
 
     /// The `sequence` of the last `MessageSignal` this runtime has applied.
     /// Echoed back on every `MessagePlaybackProgress` so the editor can tell
@@ -522,6 +522,21 @@ public final class InertiaDataModel{
         start(id)
     }
     
+    /// Rewinds the playhead and plays this container's `auto` animations from
+    /// the top.
+    ///
+    /// What a container reaches for when it is handed a new `hierarchyId`: the
+    /// screen just navigated to plays its animations again rather than holding
+    /// the final frame of the run they finished the first time round.
+    ///
+    /// `invokeType` decides who plays, here as everywhere else. Arriving on a
+    /// screen is the app deciding to show what is on it — it is not the
+    /// `trigger(_:)` call a `trigger` animation is still waiting for, and
+    /// starting one here played animations the app had said it would start
+    /// itself. Those are returned to their initial values instead, so the screen
+    /// offers them from the top when the app does trigger them. The editor's
+    /// play button does stand in for the app, which is what `isEditorPlaying`
+    /// keeps true here.
     public func restartAll() {
         clock?.cancel()
         clock = nil
@@ -542,12 +557,34 @@ public final class InertiaDataModel{
         startClock()
     }
     
+    /// Puts every animation in this container back to the state it is in when
+    /// the screen it is on has just appeared: `auto` ones running from the top,
+    /// `trigger` ones waiting at their initial values.
+    ///
+    /// Every schema as well as every state, since an animation that has never
+    /// run has no state to rewind and is exactly the one this has to start. A
+    /// cancellation goes with the screen that was cancelled on: the app's next
+    /// `trigger(_:)` on this one is answered rather than dropped.
     private func startAll() {
-        for id in states.keys {
-            states[id] = InertiaAnimationState(id: id, trigger: true, isCancelled: false)
+        var didStart = false
+
+        for id in Set(states.keys).union(inertiaSchemas.keys) {
+            let isAuto = inertiaSchemas[id]?.invokeType == .auto || isEditorPlaying
+            states[id] = InertiaAnimationState(id: id, trigger: isAuto, isCancelled: false)
+            didStart = didStart || isAuto
         }
-        
+
         seekTime = nil
+
+        // A screen of nothing but `trigger` animations has no run to follow, and
+        // a clock started for it would report a playhead crossing a timeline
+        // nothing is drawn from.
+        guard didStart else {
+            isRunning = false
+            report(isRunning: false)
+            return
+        }
+
         isRunning = true
         startClock()
     }

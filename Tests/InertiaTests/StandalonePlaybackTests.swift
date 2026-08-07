@@ -237,4 +237,94 @@ final class StandalonePlaybackTests: XCTestCase {
         XCTAssertTrue(model.isRunning)
         XCTAssertEqual(model.playheadTime, .zero)
     }
+
+    // MARK: - Arriving on a screen
+
+    /// The screen navigated to plays what it is meant to play by itself, which
+    /// is the same set as anywhere else: the `auto` animations.
+    func testRestartAllStartsAutoAnimations() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card1")
+        model.seek(to: 1.0)
+
+        model.restartAll()
+
+        XCTAssertEqual(model.states["card1"]?.trigger, true)
+        XCTAssertTrue(model.isRunning)
+        XCTAssertEqual(model.playheadTime, .zero)
+        XCTAssertNil(model.seekTime)
+    }
+
+    /// Arriving on a screen is not the `trigger(_:)` call a `trigger` animation
+    /// is waiting for. It sits at its initial values until the app makes it.
+    func testRestartAllLeavesTriggerAnimationsWaiting() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.registerHierarchyIdPrefix("card1")
+
+        model.restartAll()
+
+        XCTAssertNotEqual(model.states["card0"]?.trigger, true)
+
+        model.trigger("card0")
+        XCTAssertEqual(model.states["card0"]?.trigger, true)
+    }
+
+    /// A `trigger` animation that has already played goes back to the top when
+    /// the screen it is on is arrived at again, rather than being left holding
+    /// the last frame of the run it finished.
+    func testRestartAllRewindsAPlayedTriggerAnimation() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.trigger("card0")
+
+        model.restartAll()
+
+        XCTAssertNotEqual(model.states["card0"]?.trigger, true)
+    }
+
+    /// A cancellation belongs to the screen it was made on: the app's next
+    /// `trigger(_:)` after a navigation is answered rather than dropped.
+    func testRestartAllClearsCancellation() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.cancel("card0")
+
+        model.restartAll()
+
+        XCTAssertFalse(model.isCancelled("card0"))
+        XCTAssertEqual(model.states["card1"]?.trigger, true, "the auto animation plays whatever the app cancelled")
+    }
+
+    /// A screen of nothing but `trigger` animations has no run for the playhead
+    /// to follow, and the editor should see its clock parked.
+    func testRestartAllWithNothingToPlayLeavesTheClockDown() {
+        let model = InertiaDataModel(
+            containerId: "animation",
+            inertiaSchemas: demoSchemas().filter { $0.value.invokeType == .trigger }
+        )
+
+        model.registerHierarchyIdPrefix("card0")
+        model.restartAll()
+
+        XCTAssertFalse(model.isRunning)
+    }
+
+    /// The editor's play button stands in for the app, so a `trigger` animation
+    /// being authored still plays across a navigation while it is held down.
+    func testRestartAllStartsEverythingWhileTheEditorPlays() {
+        let model = makeModel()
+
+        model.registerHierarchyIdPrefix("card0")
+        model.resumePlayback()
+
+        model.restartAll()
+
+        XCTAssertEqual(model.states["card0"]?.trigger, true)
+        XCTAssertTrue(model.isRunning)
+    }
 }
