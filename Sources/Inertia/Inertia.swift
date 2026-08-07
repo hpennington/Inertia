@@ -1134,6 +1134,30 @@ public struct InertiaContainer<Content: View>: View {
             .onChange(of: dev) { _, isDev in
                 manager.setEnabled(isDev)
             }
+            // Plays this container's animations again whenever the app hands it
+            // a new `hierarchyId`.
+            //
+            // A `hierarchyId` is what the app names the screen this container is
+            // currently showing, so a change of one is a navigation — and the
+            // screen arrived at should play its animations rather than hold the
+            // final frame of the run they finished the first time it was up. The
+            // Compose and React runtimes restart on the same signal.
+            //
+            // Watched here rather than inside each actionable, which is where
+            // this used to live. An actionable only sees the change while the
+            // navigation keeps it mounted, so a screen torn down on the way out
+            // restarted nothing at all — and `InertiaEditable`, the half of the
+            // pair the editor is actually looking at, never watched it in the
+            // first place, which is why switching tabs under the editor played
+            // nothing on this runtime while it played on the other two. One
+            // container, one restart per change.
+            //
+            // No guard on the first id, unlike the other two: `onChange` fires
+            // on changes only, where a `LaunchedEffect` and a `useEffect` also
+            // run on the composition/mount they are keyed into.
+            .onChange(of: hierarchyId) { _, _ in
+                inertiaDataModel.restartAll()
+            }
         }
     }
 }
@@ -1429,9 +1453,10 @@ struct InertiaActionable<Content: View>: View {
         .onAppear {
             manager.messageReceivedSignal = handleMessageSignal
         }
-        .onChange(of: inertiaContainerId) { oldValue, newId in
-            inertiaDataModel?.restartAll()
-        }
+        // A navigation is the container's to notice — see
+        // `InertiaContainer.body`. Watched from here, it restarted once per
+        // actionable the navigation happened to keep mounted, and not at all for
+        // one it tore down.
         .task {
             updateHierarchyId()
             // The id is what a measurement is filed under, and it is only known
