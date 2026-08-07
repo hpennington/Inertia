@@ -60,7 +60,8 @@ The editor is a macOS app in every case. A worked app on all three runtimes live
 
 ### SwiftUI
 
-In Xcode: **File → Add Package Dependencies…** and enter
+The runtime lives in [**hpennington/Inertia**](https://github.com/hpennington/Inertia) and
+ships as a Swift package. In Xcode: **File → Add Package Dependencies…** and enter
 `https://github.com/hpennington/Inertia`. Or in a `Package.swift`:
 
 ```swift
@@ -99,13 +100,12 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.hpennington:inertia-compose:v1.0.8")
+    implementation("com.github.hpennington:inertia-compose:v1.6.0")
 }
 ```
 
-GLES shape rendering landed after `v1.0.8` was cut, so a build pinned to that tag animates
-views but draws no shapes. Until a newer tag is published, take it from the branch or a
-commit instead — JitPack resolves both:
+`v1.6.0` includes GLES shape rendering. To track unreleased changes, take the runtime from
+the branch or a commit instead — JitPack resolves both:
 
 ```kotlin
 implementation("com.github.hpennington:inertia-compose:main-SNAPSHOT")
@@ -118,10 +118,23 @@ source set. See [Installation](https://hpennington.github.io/Inertia/getting-sta
 
 ### React
 
-The two npm packages are built from source rather than published to a registry —
-[**inertia-base**](https://github.com/hpennington/inertia-base) is the framework-agnostic
-core, [**inertia-react**](https://github.com/hpennington/inertia-react) the bindings on top
-of it. Clone each and build it in place:
+Both packages are published to npm.
+[**inertia-react**](https://github.com/hpennington/inertia-react) is the bindings package
+and pulls in [**inertia-base**](https://github.com/hpennington/inertia-base), the
+framework-agnostic core, so installing the one is enough:
+
+```sh
+npm install inertia-react
+```
+
+React and React DOM 18.3.1 are **peer** dependencies, so your app supplies them:
+
+```sh
+npm install react@18.3.1 react-dom@18.3.1
+```
+
+To track unreleased changes, build the packages from source and point your app at the
+checkouts instead:
 
 ```sh
 git clone https://github.com/hpennington/inertia-base
@@ -129,8 +142,6 @@ git clone https://github.com/hpennington/inertia-react
 (cd inertia-base && npm install && npm run build)
 (cd inertia-react && npm install && npm run build)
 ```
-
-Then point your app at the checkout:
 
 **`package.json`**
 
@@ -141,9 +152,6 @@ Then point your app at the checkout:
   }
 }
 ```
-
-React 18.3.1 is a **peer** dependency, so your app supplies it — a second copy of React
-resolving inside the package breaks hooks.
 
 ## Usage
 
